@@ -3,7 +3,7 @@ from numpy.linalg import norm
 from liegroups.numpy import SO3
 import matplotlib.pylab as plt
 import cvxpy as cp
-
+np.random.seed(42)
 #Helpers
 ##########
 def Omega_1(q):
@@ -91,11 +91,11 @@ def q_from_qqT(qqT):
 ##Parameters
 
 #Sim
-N = 10
-sigma = 0.01
+N = 20
+sigma = 0.001
 
 #Solver
-sigma_2_i = 0.5**2
+sigma_2_i = 1**2
 c_bar_2 = 10**2
 
 
@@ -134,12 +134,26 @@ for i in range(N):
 #Build Z variable with constraints
 Z = cp.Variable((4*(N+1),4*(N+1)), symmetric=True)
 constraints = [Z >> 0]
+
+#Naive constraints
 constraints += [
     cp.trace(Z[:4,:4]) == 1
 ]
 constraints += [
     Z[(i)*4:(i+1)*4, (i)*4:(i+1)*4] == Z[:4,:4] for i in range(1, N)
 ]
+
+#Additional non-naive constraints
+#q q_i
+constraints += [
+    Z[:4, (i)*4:(i+1)*4] == Z[:4, (i)*4:(i+1)*4].T for i in range(1, N)
+]
+
+# q_i q_j
+for i in range(2,N):
+    constraints += [
+        Z[4*i:4*(i+1), (j)*4:(j+1)*4] == Z[4*i:4*(i+1), (j)*4:(j+1)*4].T for j in range(i, N)
+    ]
 
 #Solve SDP
 prob = cp.Problem(cp.Minimize(cp.trace(Q@Z)),
