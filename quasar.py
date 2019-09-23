@@ -101,7 +101,8 @@ def normalized(a, axis=-1, order=2):
 
 #Sim
 N = 10
-sigma = 0.001
+sigma = 0.01
+N_out = 1 #How many of N samples are outliers
 
 #Solver
 sigma_2_i = (100*sigma)**2
@@ -118,6 +119,10 @@ x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
 #Rotate and add noise
 x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
 
+#Outliers
+if N_out > 0:
+    x_2[np.random.randint(0,x_2.shape[0], N_out)] = 5*np.random.rand(N_out, 3)
+    
 ## Solver
 #Build Q matrix
 #No sparsity for now
