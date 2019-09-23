@@ -89,26 +89,32 @@ def q_from_qqT(qqT):
         q[2] *=  -1.
 
     return q
+
+def normalized(a, axis=-1, order=2):
+    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
+    l2[l2==0] = 1
+    return a / np.expand_dims(l2, axis)
+
 ######
 
 ##Parameters
 
 #Sim
 N = 10
-sigma = 0.01
+sigma = 0.001
 
 #Solver
-sigma_2_i = 1**2
-c_bar_2 = 10**2
+sigma_2_i = (100*sigma)**2
+c_bar_2 = 4**2  #16 gives a roughly a chi-squared probability of 0.001 of this error occuring
+redundant_constraints = True
 
 
 ##Simulation
 #Create a random rotation
 C = SO3.exp(np.random.randn(3)).as_matrix()
 
-#Create two sets of vectors 
-x_1 = 10*np.random.rand(N, 3) 
-
+#Create two sets of vectors (normalized to unit l2 norm)
+x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
 #Rotate and add noise
 x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
 
@@ -147,16 +153,17 @@ constraints += [
 ]
 
 #Additional non-naive constraints
-#q q_i
-constraints += [
-    Z[:4, (i)*4:(i+1)*4] == Z[:4, (i)*4:(i+1)*4].T for i in range(1, N)
-]
-
-# q_i q_j
-for i in range(2,N):
+if redundant_constraints:
+    #q q_i
     constraints += [
-        Z[4*i:4*(i+1), (j)*4:(j+1)*4] == Z[4*i:4*(i+1), (j)*4:(j+1)*4].T for j in range(i, N)
+        Z[:4, (i)*4:(i+1)*4] == Z[:4, (i)*4:(i+1)*4].T for i in range(1, N)
     ]
+
+    # q_i q_j
+    for i in range(2,N):
+        constraints += [
+            Z[4*i:4*(i+1), (j)*4:(j+1)*4] == Z[4*i:4*(i+1), (j)*4:(j+1)*4].T for j in range(i, N)
+        ]
 
 #Solve SDP
 print('Set up problem data and constraints')
