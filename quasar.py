@@ -3,6 +3,9 @@ from numpy.linalg import norm
 from liegroups.numpy import SO3
 import matplotlib.pylab as plt
 import cvxpy as cp
+import time
+
+
 np.random.seed(42)
 #Helpers
 ##########
@@ -91,8 +94,8 @@ def q_from_qqT(qqT):
 ##Parameters
 
 #Sim
-N = 20
-sigma = 0.001
+N = 10
+sigma = 0.01
 
 #Solver
 sigma_2_i = 1**2
@@ -104,7 +107,7 @@ c_bar_2 = 10**2
 C = SO3.exp(np.random.randn(3)).as_matrix()
 
 #Create two sets of vectors 
-x_1= np.random.rand(N, 3) 
+x_1 = 10*np.random.rand(N, 3) 
 
 #Rotate and add noise
 x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
@@ -156,17 +159,21 @@ for i in range(2,N):
     ]
 
 #Solve SDP
+print('Set up problem data and constraints')
+print('Solving..')
+start_time = time.time()
+
 prob = cp.Problem(cp.Minimize(cp.trace(Q@Z)),
                   constraints)
 prob.solve()
-print("status:", prob.status)
+print("Final status:", prob.status)
 #print(Z.value)
 q_est = q_from_qqT(Z.value[:4,:4])
-print(q_est)
 
 C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
-
+end_time = time.time()
+print('Done. Solved in {:.3f} seconds.'.format(end_time - start_time))
 #Compare to known rotation
 # C_est = C
-print('Frob norm error:')
+print('SO(3) Frob norm error:')
 print(np.linalg.norm(C-C_est))
