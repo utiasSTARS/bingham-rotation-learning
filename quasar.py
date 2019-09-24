@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import chi2
 from numpy.linalg import norm 
 from liegroups.numpy import SO3
 import matplotlib.pylab as plt
@@ -76,6 +77,7 @@ def Q_0i(a_i, b_i, c_bar_2, sigma_2_i):
     Q = (t1 + t2)/(4*sigma_2_i) - 0.25*c_bar_2*I
     return Q
 
+
 def q_from_qqT(qqT):
     #Returns unit quaternion q from q * q^T 4x4 matrix
     #Assumes scalar is the last value and it is positive (can make this choice since q = -q)
@@ -100,13 +102,15 @@ def normalized(a, axis=-1, order=2):
 ##Parameters
 
 #Sim
-N = 10
-sigma = 0.01
-N_out = 1 #How many of N samples are outliers
+N = 5
+sigma = 0 #0.01
+N_out = 0 #How many of N samples are outliers
 
 #Solver
-sigma_2_i = (100*sigma)**2
-c_bar_2 = 4**2  #16 gives a roughly a chi-squared probability of 0.001 of this error occuring
+sigma_2_i = 1 #sigma**2#(100*sigma)**2
+p_false_negative = 0.0001 # Probability an inlier is classified as an outlier
+#c_bar_2 = sigma**2*chi2.ppf(1-p_false_negative, df=3)
+c_bar_2 = 0.1
 redundant_constraints = True
 
 
@@ -128,16 +132,16 @@ if N_out > 0:
 #No sparsity for now
 Q = np.zeros((4*(N+1), 4*(N+1)))
 
-for i in range(N): 
+# for i in range(N):
+for ii in range(N):
     Q_i = np.zeros((4*(N+1), 4*(N+1)))
-    for ii in range(N):
-        #Block diagonal indices
-        idx_range = slice( (ii+1)*4 , (ii+2)*4 )
-        
-        Q_i[idx_range, idx_range] = Q_ii(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
-        Q_0ii =  Q_0i(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
-        Q_i[:4, idx_range] = Q_0ii
-        Q_i[idx_range, :4] = Q_0ii
+    #Block diagonal indices
+    idx_range = slice( (ii+1)*4 , (ii+2)*4 )
+
+    Q_i[idx_range, idx_range] = Q_ii(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+    Q_0ii =  Q_0i(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+    Q_i[:4, idx_range] = Q_0ii
+    Q_i[idx_range, :4] = Q_0ii
 
     Q += Q_i
 
@@ -167,7 +171,7 @@ if redundant_constraints:
     # q_i q_j
     for i in range(2,N):
         constraints += [
-            Z[4*i:4*(i+1), (j)*4:(j+1)*4] == Z[4*i:4*(i+1), (j)*4:(j+1)*4].T for j in range(i, N)
+            Z[4*i:4*(i+1), (j)*4:(j+1)*4] == Z[4*i:4*(i+1), (j)*4:(j+1)*4].T for j in range(i+1, N)
         ]
 
 #Solve SDP
@@ -181,10 +185,10 @@ prob.solve()
 print("Final status:", prob.status)
 #print(Z.value)
 q_est = q_from_qqT(Z.value[:4,:4])
-
 C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
 end_time = time.time()
 print('Done. Solved in {:.3f} seconds.'.format(end_time - start_time))
+
 #Compare to known rotation
 # C_est = C
 print('SO(3) Frob norm error:')
