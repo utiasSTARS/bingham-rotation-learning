@@ -102,7 +102,7 @@ def normalized(a, axis=-1, order=2):
 #Sim
 N = 20
 sigma = 0.01 #0.01
-N_out = 10 #How many of N samples are outliers
+N_out = 5 #How many of N samples are outliers
 
 #Solver
 # sigma_2_i = sigma**2
