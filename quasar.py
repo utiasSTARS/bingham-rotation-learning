@@ -100,7 +100,7 @@ def normalized(a, axis=-1, order=2):
 ##Parameters
 
 #Sim
-N = 15
+N = 20
 sigma = 0.01 #0.01
 N_out = 10 #How many of N samples are outliers
 
@@ -115,7 +115,7 @@ N_out = 10 #How many of N samples are outliers
 sigma_2_i = 1
 c_bar_2 = (3*(sigma+1e-3))**2 
 print('c_bar_2: {:.3f}'.format(c_bar_2))
-redundant_constraints = True
+redundant_constraints = False
 
 
 ##Simulation
