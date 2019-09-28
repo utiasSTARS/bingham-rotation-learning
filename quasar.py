@@ -12,9 +12,9 @@ from helpers import *
 ##Parameters
 
 #Sim
-N = 5
-sigma = 0.001 #0.01
-N_out = 4 #How many of N samples are outliers
+N = 20
+sigma = 0.01 #0.01
+N_out = 5 #How many of N samples are outliers
 
 #Solver
 # sigma_2_i = sigma**2
@@ -27,7 +27,7 @@ N_out = 4 #How many of N samples are outliers
 sigma_2_i = 1
 c_bar_2 = (3*(sigma+1e-3))**2 
 print('c_bar_2: {:.3f}'.format(c_bar_2))
-redundant_constraints = True
+redundant_constraints = False
 
 
 ##Simulation
