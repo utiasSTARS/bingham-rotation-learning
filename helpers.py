@@ -176,8 +176,37 @@ def compute_inlier_matches(x_1, x_2, C_est, c_bar_2, sigma_2_i):
     for i in range(N):
         for j in range(N):
             err = C_est.dot(x_1[i].T).T - x_2[j]
-            if (err.dot(err)/sigma_2_i < c_bar_2):
+            if err.dot(err)/sigma_2_i < c_bar_2:
                 inlier_1_idx.append(i)
                 inlier_2_idx.append(j)
     
     return np.array(inlier_1_idx), np.array(inlier_2_idx)
+
+
+def build_cost_function_matrix(x_1, x_2, c_bar_2, sigma_2_i):
+    N = x_1.shape[0]
+    Q = np.zeros((4 * (N + 1), 4 * (N + 1)))
+    # for i in range(N):
+    for ii in range(N):
+        Q_i = np.zeros((4 * (N + 1), 4 * (N + 1)))
+        # Block diagonal indices
+        idx_range = slice((ii + 1) * 4, (ii + 2) * 4)
+        Q_i[idx_range, idx_range] = Q_ii(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q_0ii = Q_0i(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q_i[:4, idx_range] = Q_0ii
+        Q_i[idx_range, :4] = Q_0ii
+        Q += Q_i
+
+    return Q
+
+def make_random_instance(N, N_out, sigma=0.01):
+    C = SO3.exp(np.random.randn(3)).as_matrix()
+    # Create two sets of vectors (normalized to unit l2 norm)
+    x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
+    # Rotate and add noise
+    x_2 = C.dot(x_1.T).T + sigma * np.random.randn(N, 3)
+    # Outliers
+    if N_out > 0:
+        outlier_indices = np.random.choice(x_2.shape[0], N_out, replace=False)
+        x_2[outlier_indices] = 10 * (np.random.rand(N_out, 3) - 0.5)
+    return x_1, x_2

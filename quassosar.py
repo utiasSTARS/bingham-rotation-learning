@@ -1,16 +1,48 @@
 # QUaternion-based Sparse Sum Of Squares relAxation for Robust alignment
-from ncpol2sdpa import generate_operators, generate_variables, SdpRelaxation
+from ncpol2sdpa import generate_variables, SdpRelaxation
+
+from helpers import *
+
+
+def make_quassosar_equalities(X, redundancies=None):
+    N = int(len(X)/4 - 1)
+    equalities= [np.dot(X[0:4], np.transpose(X[0:4])) - 1]
+    for i in range(1, N+1):
+        for j in range(0, 4):
+            for k in range(0, 4):
+        # Ai = np.dot(np.transpose(X[1:4]), X[1:4]) - np.dot(np.transpose(X[i*4:(i+1)*4]), X[i*4:(i+1)*4])
+                equalities.append(X[j]*X[k] - X[i*4+j]*X[i*4+k])
+    if redundancies == 'linear':
+        pass
+
+    return equalities
+
+
+def make_quassosar_objective(X, q1, q2, c_bar_2=1, sigma_2_i=1):
+    Q = build_cost_function_matrix(q1, q2, c_bar_2, sigma_2_i)
+    return np.dot(X, np.dot(Q, np.transpose(X)))
+
+
+def make_quassosar_sdp(q1, q2, c_bar_2, level=1, redundancies=None):
+    N = q1.shape[0]
+    X = generate_variables('x', 4*(N+1))
+    equalities = make_quassosar_equalities(X, redundancies=redundancies)
+    obj = make_quassosar_objective(X, q1, q2, c_bar_2=c_bar_2)
+    sdp = SdpRelaxation(X)
+    # Not sure chordal_extension=True makes a difference yet
+    sdp.get_relaxation(level, objective=obj, equalities=equalities, chordal_extension=True)
+    return sdp, X
 
 
 if __name__=='__main__':
+    np.random.seed(8675309)
     level = 1
-    X = generate_variables('x', 3)
-
-    obj = X[1] - 2 * X[0] * X[1] + X[1] * X[2]
-    inequalities = [1 - X[0] ** 2 - X[1] ** 2, 1 - X[1] ** 2 - X[2] ** 2]
-
-    sdp = SdpRelaxation(X)
-    sdp.get_relaxation(level, objective=obj, inequalities=inequalities,
-                       chordal_extension=True)
+    N = 5
+    N_out = 1
+    sigma = 0.01
+    c_bar_2 = (3*sigma+1e-4)**2
+    q1, q2 = make_random_instance(N, N_out, sigma=sigma)
+    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level)
     sdp.solve(solver='mosek')
     print(sdp.primal, sdp.dual)
+    print(sdp.find_solution_ranks())
