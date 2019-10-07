@@ -60,7 +60,13 @@ def extract_sparse_pop_solution(sdp, X):
         q[1] *= -1.
     if sdp[X[2]*X[3]] < 0.:
         q[2] *= -1.
-    return q
+
+    N = int(len(X)/4 - 1)
+    outlier_list = []
+    for idx in range(1, N+1):
+        if sdp[X[0]*X[4*idx]] < 0:
+            outlier_list.append(idx-1)
+    return q, outlier_list
 
 
 def custom_sparsity(variables, N, redundancies=None):
@@ -82,8 +88,8 @@ def solve_quassosar(q1, q2, c_bar_2, level=1, redundancies=None):
     sdp.solve(solver='mosek')
     gap = sdp.primal-sdp.dual
     t_solve = sdp.solution_time
-    q_est, inlier_inds = extract_sparse_pop_solution(sdp, X)
-    return q_est, inlier_inds, t_solve, gap
+    q_est, outlier_inds = extract_sparse_pop_solution(sdp, X)
+    return q_est, outlier_inds, t_solve, gap, sdp.dual
 
 
 if __name__=='__main__':
@@ -95,13 +101,9 @@ if __name__=='__main__':
     c_bar_2 = (3*sigma+1e-4)**2
     redundancies =  None  # None #'full'
     q1, q2, C_true = make_random_instance(N, N_out, sigma=sigma)
-    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=True, redundancies=redundancies)
-    sdp.solve(solver='mosek')
-    print(sdp.primal, sdp.dual)
-    print(sdp.find_solution_ranks())
-    print('Runtime: {:}'.format(sdp.solution_time))
-
+    q_est, outlier_inds, t_solve, gap, dual = solve_quassosar(q1, q2, c_bar_2, level=1, redundancies=redundancies)
+    print('Gap: {:}'.format(gap))
+    print('Runtime: {:}'.format(t_solve))
     # Extract solution
-    q_est = extract_sparse_pop_solution(sdp, X)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
     print('Frob. norm error: {:.5f}'.format(np.linalg.norm(C_est - C_true)))

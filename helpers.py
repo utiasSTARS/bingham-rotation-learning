@@ -210,4 +210,7 @@ def make_random_instance(N, N_out, sigma=0.01):
     if N_out > 0:
         outlier_indices = np.random.choice(x_2.shape[0], N_out, replace=False)
         x_2[outlier_indices] = 10 * (np.random.rand(N_out, 3) - 0.5)
-    return x_1, x_2, C
+        outlier_indices = list(outlier_indices)
+    else:
+        outlier_indices = []
+    return x_1, x_2, C, outlier_indices

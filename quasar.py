@@ -56,8 +56,17 @@ def solve_quasar(x_1, x_2, c_bar_2, redundant_constraints=False, rank_tol=1e-4):
     rank_Z = np.sum(eigs > rank_tol)
     q_est = q_from_qqT(Z.value[:4, :4])
     # Extract outliers
-    est_outlier_indices = extract_outlier_indices(Z.value)
-    return q_est, est_outlier_indices, t_solve, rank_Z
+    est_outlier_indices, est_inlier_indices = extract_outlier_indices(Z.value)
+    q_full_est = np.zeros((4*(N+1), 1))
+    q_full_est[0:4, 0] = q_est
+    for idx in range(1, N+1):
+        if idx-1 in est_outlier_indices:
+            q_full_est[4*idx:4*(idx+1), 0] = -q_est
+        else:
+            q_full_est[4 * idx:4 * (idx + 1), 0] = q_est
+    primal_cost = np.dot(q_full_est.T, np.dot(Q, q_full_est))
+    gap = primal_cost - prob.solution.opt_val
+    return q_est, list(est_outlier_indices), t_solve, gap, prob.solution.opt_val
 
 if __name__=='__main__':
     ##Parameters
@@ -77,7 +86,7 @@ if __name__=='__main__':
     sigma_2_i = 1
     c_bar_2 = (3*(sigma+1e-3))**2
     print('c_bar_2: {:.3f}'.format(c_bar_2))
-    redundant_constraints = False
+    redundant_constraints = True
 
     ##Simulation
     #Create a random rotation
@@ -96,7 +105,7 @@ if __name__=='__main__':
     ## Solver
     #Build Q matrix
     #No sparsity for now
-    q_est, est_outlier_indices, t_solve, rank_Z = solve_quasar(x_1, x_2, c_bar_2, redundant_constraints=redundant_constraints)
+    q_est, est_outlier_indices, t_solve, gap = solve_quasar(x_1, x_2, c_bar_2, redundant_constraints=redundant_constraints)
     #Extract outliers
     # est_outlier_indices = extract_outlier_indices(Z.value)
     outlier_indices = list(outlier_indices)
