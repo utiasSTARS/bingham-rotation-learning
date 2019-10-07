@@ -199,6 +199,7 @@ def build_cost_function_matrix(x_1, x_2, c_bar_2, sigma_2_i):
 
     return Q
 
+
 def make_random_instance(N, N_out, sigma=0.01):
     C = SO3.exp(np.random.randn(3)).as_matrix()
     # Create two sets of vectors (normalized to unit l2 norm)
@@ -209,4 +210,4 @@ def make_random_instance(N, N_out, sigma=0.01):
     if N_out > 0:
         outlier_indices = np.random.choice(x_2.shape[0], N_out, replace=False)
         x_2[outlier_indices] = 10 * (np.random.rand(N_out, 3) - 0.5)
-    return x_1, x_2
+    return x_1, x_2, C

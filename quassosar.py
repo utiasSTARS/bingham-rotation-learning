@@ -1,20 +1,32 @@
 # QUaternion-based Sparse Sum Of Squares relAxation for Robust alignment
 from ncpol2sdpa import generate_variables, SdpRelaxation
-
+from liegroups import SO3
 from helpers import *
 
 
 def make_quassosar_equalities(X, redundancies=None):
     N = int(len(X)/4 - 1)
-    equalities= [np.dot(X[0:4], np.transpose(X[0:4])) - 1]
+    equalities = [np.dot(X[0:4], np.transpose(X[0:4])) - 1]
     for i in range(1, N+1):
         for j in range(0, 4):
             for k in range(0, 4):
-        # Ai = np.dot(np.transpose(X[1:4]), X[1:4]) - np.dot(np.transpose(X[i*4:(i+1)*4]), X[i*4:(i+1)*4])
                 equalities.append(X[j]*X[k] - X[i*4+j]*X[i*4+k])
-    if redundancies == 'linear':
-        pass
 
+    if redundancies == 'linear':
+        for i in range(1, N):
+            for k in range(0, 4):
+                for l in range(0, 4):
+                    equalities.append(X[i*4+k]*X[i*4+l] - X[(i+1)*4+k]*X[(i+1)*4+l])
+        for k in range(0, 4):
+            for l in range(0, 4):
+                equalities.append(X[4+k]*X[4+l] - X[N*4+k]*X[N*4+l])
+    elif redundancies == 'full':
+        # This ruins the sparsity, may not need it (hopefully)
+        for i in range(1, N+1):
+            for j in range(1, i):
+                for k in range(0, 4):
+                    for l in range(0, 4):
+                        equalities.append(X[i*4+k]*X[i*4+l] - X[j*4+k]*X[j*4+l])
     return equalities
 
 
@@ -30,33 +42,66 @@ def make_quassosar_sdp(q1, q2, c_bar_2, level=1, redundancies=None, sparsity=Tru
     obj = make_quassosar_objective(X, q1, q2, c_bar_2=c_bar_2)
     sdp = SdpRelaxation(X)
     if sparsity:
-        sdp.variables = custom_sparsity(sdp.variables, N)
-    # Not sure chordal_extension=True makes a difference yet
-    # TODO: FIX SPARSITY
+        sdp.variables = custom_sparsity(sdp.variables, N, redundancies=redundancies)
+    # The chordal_extension=True option does not work, so we use our custom sparsity
     sdp.get_relaxation(level, objective=obj, equalities=equalities)#, chordal_extension=True)
     return sdp, X
 
 
 def extract_sparse_pop_solution(sdp, X):
-    pass
+    q = np.zeros(4)
+    q[0] = np.sqrt(sdp[X[0] ** 2])
+    q[1] = np.sqrt(sdp[X[1] ** 2])
+    q[2] = np.sqrt(sdp[X[2] ** 2])
+    q[3] = np.sqrt(sdp[X[3] ** 2])
+    if sdp[X[0]*X[3]] < 0.:
+        q[0] *= -1.
+    if sdp[X[1]*X[3]] < 0.:
+        q[1] *= -1.
+    if sdp[X[2]*X[3]] < 0.:
+        q[2] *= -1.
+    return q
 
 
-def custom_sparsity(variables, N):
-    return [variables[0:4]+variables[4*i:4*(i+1)] for i in range(1, N+1)]
+def custom_sparsity(variables, N, redundancies=None):
+    if not redundancies:
+        return [variables[0:4] + variables[4 * i:4 * (i + 1)] for i in range(1, N + 1)]
+    elif redundancies == 'linear':
+        # Create cliques for redundant constraints
+        cliques = [variables[0:4] + variables[4 * i:4 * (i + 1)] + variables[4 * (i + 1):4 * (i + 2)] for i in range(1, N)]
+        cliques.append(variables[0:4] + variables[4:8] + variables[-4:])
+        return cliques
+    elif redundancies == 'full':
+        cliques = [variables[0:4] + variables[4 * i:4 * (i + 1)] + variables[4 * j:4 * (j+1)] for i in range(1, N) for j in range(1, i)]
+        cliques.append(variables[0:4] + variables[4:8] + variables[-4:])
+        return cliques
+
+
+def solve_quassosar(q1, q2, c_bar_2, level=1, redundancies=None):
+    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=True, redundancies=redundancies)
+    sdp.solve(solver='mosek')
+    gap = sdp.primal-sdp.dual
+    t_solve = sdp.solution_time
+    q_est, inlier_inds = extract_sparse_pop_solution(sdp, X)
+    return q_est, inlier_inds, t_solve, gap
 
 
 if __name__=='__main__':
     np.random.seed(8675309)
     level = 1
-    N = 30
+    N = 10
     N_out = 5
     sigma = 0.01
     c_bar_2 = (3*sigma+1e-4)**2
-    q1, q2 = make_random_instance(N, N_out, sigma=sigma)
-    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=False)
+    redundancies =  None  # None #'full'
+    q1, q2, C_true = make_random_instance(N, N_out, sigma=sigma)
+    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=True, redundancies=redundancies)
     sdp.solve(solver='mosek')
     print(sdp.primal, sdp.dual)
     print(sdp.find_solution_ranks())
-    print(sdp.solution_time)
+    print('Runtime: {:}'.format(sdp.solution_time))
 
     # Extract solution
+    q_est = extract_sparse_pop_solution(sdp, X)
+    C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
+    print('Frob. norm error: {:.5f}'.format(np.linalg.norm(C_est - C_true)))

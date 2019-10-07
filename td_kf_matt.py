@@ -14,7 +14,7 @@ from mpl_toolkits.mplot3d import Axes3D
 #  p(k + 1) = p(k) + v*dt
 #  t_d(k + 1) = t_d(k)
 p0 = 0.0
-td = 0.25
+td = 0.2
 dT = 0.1
 # Ground truth - velocity update rate is 10 Hz.
 t = np.arange(0, 1000.0, dT)
@@ -41,7 +41,7 @@ Q = np.array([[sigma_proc**2]])
 vm = tru_data['v'] + np.random.normal(scale = sigma_proc, size = t.shape)
 
 # Position measurements are corrupted by noise *and* time shifted.
-sigma_meas = 0.0000000001
+sigma_meas = 0.01
 R  = np.array([[sigma_meas**2]])  # sigma = 0.05 m
 pm = tru_data['p'] + np.random.normal(scale = sigma_meas, size = t.shape)
 
