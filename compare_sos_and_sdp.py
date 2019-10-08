@@ -6,14 +6,12 @@ from liegroups import SO3
 import shelve
 
 if __name__=='__main__':
-    N_vec = np.array([20, 30, 40, 50])
-    outlier_rate_vec = np.array([0.5, 0.8, 0.9])
-    N_runs = 5
+    N_vec = np.array([20, 30, 40])
+    outlier_rate_vec = np.array([0.5, 0.9])
+    N_runs = 2
     # Problem data parameters
     sigma_vec = np.array([0.01, 0.1])
     n_solves_total = len(N_vec) * len(outlier_rate_vec) * len(sigma_vec) * N_runs
-
-
 
     t_sos = np.zeros((len(outlier_rate_vec), len(N_vec), len(sigma_vec), N_runs))
     t_sos_lin = np.zeros((len(outlier_rate_vec), len(N_vec), len(sigma_vec), N_runs))
@@ -90,6 +88,7 @@ if __name__=='__main__':
     my_shelf.close()
 
     ## For restoring data:
+    # filename = 'data/quasar_experiment1.out'
     # my_shelf = shelve.open(filename)
     # for key in my_shelf:
     #     globals()[key] = my_shelf[key]
