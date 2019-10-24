@@ -65,7 +65,7 @@ def solve_sdp(x_1, x_2, c_bar_2, sigma_2_i, redundant_constraints=True):
 ##Parameters
 
 #Sim
-N = 100 #Numbers of vectors in each cloud
+N = 500 #Numbers of vectors in each cloud
 N_ransac = 100 #How many times do we sample?
 N_batch = 5
 sigma = 0.01 #Noise
@@ -135,7 +135,7 @@ for i in range(N_ransac):
     # if num_large_eigs == 1:
     #   print(eigs)
 
-    true_matches = np.intersect1d(sample_match_idx, true_match_idx)
+    #true_matches = np.intersect1d(sample_match_idx, true_match_idx)
 
     #if true_matches.shape[0] > 1:
     #print('Found {} true matches.'.format(true_matches.shape[0]))

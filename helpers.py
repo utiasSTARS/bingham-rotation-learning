@@ -172,12 +172,18 @@ def compute_inlier_matches(x_1, x_2, C_est, c_bar_2, sigma_2_i):
     N = x_1.shape[0]
     inlier_1_idx = []
     inlier_2_idx = []
+
+    C_x_1_T = C_est.dot(x_1.T).T
     
-    for i in range(N):
-        for j in range(N):
-            err = C_est.dot(x_1[i].T).T - x_2[j]
-            if (err.dot(err)/sigma_2_i < c_bar_2):
-                inlier_1_idx.append(i)
-                inlier_2_idx.append(j)
-    
-    return np.array(inlier_1_idx), np.array(inlier_2_idx)
+    for j in range(N):
+
+        err_i = C_x_1_T - x_2[j]
+        eps = np.sum(err_i**2, axis=1)/sigma_2_i
+        
+        inliers_1 = np.where(eps < c_bar_2)[0]
+        inliers_2 = 0*inliers_1 + j
+
+        inlier_1_idx.append(inliers_1)
+        inlier_2_idx.append(inliers_2)
+
+    return np.concatenate(inlier_1_idx).ravel(), np.concatenate(inlier_2_idx).ravel()
