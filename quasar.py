@@ -8,6 +8,57 @@ import time
 from helpers import *
 
 
+def solve_quasar_sparse(x_1, x_2, c_bar_2, redundant_constraints=False, rank_tol=1e-4):
+    N = x_1.shape[0]
+    Q = np.zeros((N, 8, 8))
+    sigma_2_i = 1
+    for ii in range(N):
+        # Block diagonal indices
+        Q_0ii = Q_0i(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q[ii, 4:, 4:] = Q_ii(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q[ii, 0:4, 4:] = Q_0ii
+        Q[ii, 4:, 0:4] = Q_0ii
+    # Make the variable list
+    Z = []
+    for _ in range(N):
+        Z.append(cp.Variable((8, 8), PSD=True))
+    # Naive constraints
+    constraints = [
+        cp.trace(Z[0][0:4, 0:4]) == 1
+    ]
+    constraints += [
+        Z[idx][0:4, 0:4] == Z[idx][4:, 4:] for idx in range(N)
+    ]
+    constraints += [
+        Z[idx][0:4, 4:] == Z[idx][0:4, 4:].T for idx in range(N)
+    ]
+    # Make the q-region of each sub-variable equal (for chordal sparsity)
+    constraints += [
+        Z[idx][0:4, 0:4] == Z[0][0:4, 0:4] for idx in range(1, N)
+    ]
+    cost = sum([cp.trace(Q[idx,:,:] @ Z[idx]) for idx in range(N)])
+
+    prob = cp.Problem(cp.Minimize(cost), constraints)
+    prob.solve(solver=cp.MOSEK, verbose=False)
+    t_solve = prob.solver_stats.solve_time
+    eigs = np.linalg.eigvals(Z[0].value[0:4, 0:4])
+    rank_Z = np.sum(eigs > rank_tol)
+    q_est = q_from_qqT(Z[0].value[0:4, 0:4])
+    # Extract outliers
+    est_outlier_indices, est_inlier_indices = extract_outlier_indices_sparse(Z)
+    q_full_est = np.zeros((4 * (N + 1), 1))
+    q_full_est[0:4, 0] = q_est
+    for idx in range(1, N + 1):
+        if idx - 1 in est_outlier_indices:
+            q_full_est[4 * idx:4 * (idx + 1), 0] = -q_est
+        else:
+            q_full_est[4 * idx:4 * (idx + 1), 0] = q_est
+    Q_gap_test = make_Q(x_1, x_2, c_bar_2, sigma_2_i)
+    primal_cost = np.dot(q_full_est.T, np.dot(Q_gap_test, q_full_est))
+    gap = primal_cost - prob.solution.opt_val
+    return q_est, list(est_outlier_indices), t_solve, gap, prob.solution.opt_val
+
+
 def solve_quasar(x_1, x_2, c_bar_2, redundant_constraints=False, rank_tol=1e-4):
     N = x_1.shape[0]
     Q = np.zeros((4 * (N + 1), 4 * (N + 1)))

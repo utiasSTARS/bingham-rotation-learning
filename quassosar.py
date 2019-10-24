@@ -32,20 +32,20 @@ def make_quassosar_equalities(X, redundancies=None):
 
 def make_quassosar_objective(X, q1, q2, c_bar_2=1, sigma_2_i=1):
     Q = build_cost_function_matrix(q1, q2, c_bar_2, sigma_2_i)
-    return np.dot(X, np.dot(Q, np.transpose(X)))
+    return np.dot(X, np.dot(Q, np.transpose(X))), Q
 
 
 def make_quassosar_sdp(q1, q2, c_bar_2, level=1, redundancies=None, sparsity=True):
     N = q1.shape[0]
     X = generate_variables('x', 4*(N+1))
     equalities = make_quassosar_equalities(X, redundancies=redundancies)
-    obj = make_quassosar_objective(X, q1, q2, c_bar_2=c_bar_2)
+    obj, Q = make_quassosar_objective(X, q1, q2, c_bar_2=c_bar_2)
     sdp = SdpRelaxation(X)
     if sparsity:
         sdp.variables = custom_sparsity(sdp.variables, N, redundancies=redundancies)
     # The chordal_extension=True option does not work, so we use our custom sparsity
     sdp.get_relaxation(level, objective=obj, equalities=equalities)#, chordal_extension=True)
-    return sdp, X
+    return sdp, X, Q
 
 
 def extract_sparse_pop_solution(sdp, X):
@@ -83,12 +83,21 @@ def custom_sparsity(variables, N, redundancies=None):
         return cliques
 
 
-def solve_quassosar(q1, q2, c_bar_2, level=1, redundancies=None):
-    sdp, X = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=True, redundancies=redundancies)
+def solve_quassosar(q1, q2, c_bar_2, level=1, redundancies=None, sparsity=True):
+    sdp, X, Q = make_quassosar_sdp(q1, q2, c_bar_2, level=level, sparsity=sparsity, redundancies=redundancies)
     sdp.solve(solver='mosek')
-    gap = sdp.primal-sdp.dual
+    # gap = sdp.primal-sdp.dual
     t_solve = sdp.solution_time
     q_est, outlier_inds = extract_sparse_pop_solution(sdp, X)
+    N = q1.shape[0]
+    q_full_est = np.zeros((4 * (N + 1), 1))
+    q_full_est[0:4, 0] = q_est
+    for idx in range(1, N + 1):
+        if idx - 1 in outlier_inds:
+            q_full_est[4 * idx:4 * (idx + 1), 0] = -q_est
+        else:
+            q_full_est[4 * idx:4 * (idx + 1), 0] = q_est
+    gap = np.dot(q_full_est.T, np.dot(Q, q_full_est)) - sdp.dual
     return q_est, outlier_inds, t_solve, gap, sdp.dual
 
 

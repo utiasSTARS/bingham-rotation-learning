@@ -72,6 +72,22 @@ def Q_0i(a_i, b_i, c_bar_2, sigma_2_i):
     return Q
 
 
+def make_Q(x_1, x_2, c_bar_2, sigma_2_i):
+    N = x_1.shape[0]
+    Q = np.zeros((4 * (N + 1), 4 * (N + 1)))
+    # for i in range(N):
+    for ii in range(N):
+        Q_i = np.zeros((4 * (N + 1), 4 * (N + 1)))
+        # Block diagonal indices
+        idx_range = slice((ii + 1) * 4, (ii + 2) * 4)
+        Q_i[idx_range, idx_range] = Q_ii(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q_0ii = Q_0i(x_1[ii], x_2[ii], c_bar_2, sigma_2_i)
+        Q_i[:4, idx_range] = Q_0ii
+        Q_i[idx_range, :4] = Q_0ii
+        Q += Q_i
+    return Q
+
+
 def q_from_qqT(qqT):
     #Returns unit quaternion q from q * q^T 4x4 matrix
     #Assumes scalar is the last value and it is positive (can make this choice since q = -q)
@@ -91,6 +107,7 @@ def normalized(a, axis=-1, order=2):
     l2[l2==0] = 1
     return a / np.expand_dims(l2, axis)
 
+
 def extract_outlier_indices(qqT):
     outlier_indices = []
     inlier_indices = []
@@ -103,6 +120,18 @@ def extract_outlier_indices(qqT):
             inlier_indices.append(i-1)
     return np.array(outlier_indices), np.array(inlier_indices)
 
+
+def extract_outlier_indices_sparse(Z):
+    outlier_indices = []
+    inlier_indices = []
+    N = len(Z)
+    for i in range(0, N):
+        qqiT = Z[i].value[0:4, 4:]
+        if qqiT[0,0] < 0:
+            outlier_indices.append(i)
+        else:
+            inlier_indices.append(i)
+    return np.array(outlier_indices), np.array(inlier_indices)
 
 
 def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
