@@ -73,7 +73,7 @@ def compute_grad_ij(A, nu, q, i, j):
 
     b = np.zeros(5)
     b[:4] = I_ij.dot(q)
-    dz = - np.linalg.solve(M, -1*b)
+    dz = -np.linalg.solve(M, b)
     grad = dz[:4]
     
     return grad
@@ -90,9 +90,13 @@ def gen_sim_data(N=100, sigma=0.01):
     return C, x_1, x_2
 
 
+def rel_tol(X,Y):
+    return np.abs(1 - np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
+
+
 def check_gradients():
-    N = 10
-    sigma = 1
+    N = 100
+    sigma = 0.01
 
     print('Checking gradients...')
     _, x_1, x_2 = gen_sim_data(N, sigma)
@@ -102,25 +106,27 @@ def check_gradients():
     
 
     G_numerical = np.zeros((4, 4, 4))
-    dth = 1e-6
-    print('Using dA_ij = {:.3E}.'.format(dth))
+    step = 1e-3
+    print('Using step = {:.3E}.'.format(step))
     for i in range(4):
         for j in range(4):
+            dth = step*A[i,j]
             dA_ij = np.zeros((4,4))
             dA_ij[i,j] = dth
             q_plus,_,_,_ =  solve_wahba(A+dA_ij, redundant_constraints=True)
             q_minus,_,_,_ =  solve_wahba(A-dA_ij, redundant_constraints=True)
             G_numerical[:,i,j] = (q_plus - q_minus)/(2.*dth)
 
-    norm_diff = np.linalg.norm(G_analytic - G_numerical)
-    print('Matrix norm difference of numerical vs analytic: {:.5f}'.format(norm_diff))
+    rel_diff = rel_tol(G_analytic, G_numerical)
     
-    for i in range(4):
-        for j in range(4):
-            print('i: {} | j: {} '.format(i, j))
-            print(G_analytic[:,i,j])
-            print(G_numerical[:,i,j])
-            print()
+    print('Relative tolerance of numerical vs analytic: {:.5E}'.format(rel_diff))
+    
+    # for i in range(4):
+    #     for j in range(4):
+    #         print('i: {} | j: {} '.format(i, j))
+    #         print(G_analytic[:,i,j])
+    #         print(G_numerical[:,i,j])
+    #         print()
     return
 
 def check_single_solve():
