@@ -135,6 +135,7 @@ def check_single_solve():
     C, x_1, x_2 = gen_sim_data(N, sigma)
     redundant_constraints = False
     ## Solver
+    print('Checking single solve...')
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
     q_est, nu, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
@@ -145,7 +146,7 @@ def check_single_solve():
     print('Horn rotation error: {:.3f} deg'.format(so3_error(solve_horn(x_1, x_2), C)))
 
 if __name__=='__main__':
-    #check_single_solve()
+    check_single_solve()
     check_gradients()
     
 
