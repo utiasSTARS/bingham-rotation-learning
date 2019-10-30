@@ -140,7 +140,7 @@ def check_single_solve():
     ## Solver
     print('Checking single solve...')
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
-    q_est, nu, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
+    q_est, _, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
     print('Done. Solved in {:.3f} seconds.'.format(t_solve))
     print('Duality gap: {:.3E}.'.format(gap))
