@@ -78,8 +78,9 @@ def gen_sim_data(N=100, sigma=0.01):
 
 def check_gradients():
     N = 10
-    C, x_1, x_2 = gen_sim_data(N, 1)
-    q_opt, nu_opt, A, _, _ = solve_wahba(x_1, x_2, np.ones(N), redundant_constraints=True)
+    sigma = 1
+    C, x_1, x_2 = gen_sim_data(N, sigma)
+    q_opt, nu_opt, A, _, _ = solve_wahba(x_1, x_2, sigma*sigma*np.ones(N), redundant_constraints=True)
     G = compute_grad(A, nu_opt, q_opt)
     print(G)
     return
@@ -99,8 +100,8 @@ def check_single_solve():
     print('Horn rotation error: {:.3f} deg'.format(so3_error(solve_horn(x_1, x_2), C)))
 
 if __name__=='__main__':
-    #check_single_solve()
-    check_gradients()
+    check_single_solve()
+    #check_gradients()
     
 
 
