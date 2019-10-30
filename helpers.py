@@ -4,7 +4,7 @@ from numpy.linalg import norm
 
 #Helpers
 ##########
-def Omega_1(q):
+def Omega_l(q):
     Om = np.zeros((4,4)) * np.nan
     np.fill_diagonal(Om, q[3]) 
     
@@ -26,7 +26,7 @@ def Omega_1(q):
 
     return Om
 
-def Omega_2(q):
+def Omega_r(q):
     Om = np.zeros((4,4)) * np.nan
     np.fill_diagonal(Om, q[3]) 
     
@@ -53,25 +53,6 @@ def pure_quat(v):
     q[:3] = v
     return q
 
-def Q_ii(a_i, b_i, c_bar_2, sigma_2_i):
-    I = np.eye(4)
-    t1 = (b_i.dot(b_i) + a_i.dot(a_i))*I
-    t2 = 2*Omega_1(pure_quat(b_i)).dot(
-        Omega_2(pure_quat(a_i))
-        )
-    Q = (t1 + t2)/(2*sigma_2_i) + 0.5*c_bar_2*I
-    return Q
-
-def Q_0i(a_i, b_i, c_bar_2, sigma_2_i):
-    I = np.eye(4)
-    t1 = (b_i.dot(b_i) + a_i.dot(a_i))*I
-    t2 = 2*Omega_1(pure_quat(b_i)).dot(
-        Omega_2(pure_quat(a_i))
-        )
-    Q = (t1 + t2)/(4*sigma_2_i) - 0.25*c_bar_2*I
-    return Q
-
-
 def q_from_qqT(qqT):
     #Returns unit quaternion q from q * q^T 4x4 matrix
     #Assumes scalar is the last value and it is positive (can make this choice since q = -q)
@@ -90,18 +71,6 @@ def normalized(a, axis=-1, order=2):
     l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
     l2[l2==0] = 1
     return a / np.expand_dims(l2, axis)
-
-def extract_outlier_indices(qqT):
-    outlier_indices = []
-    inlier_indices = []
-    N = round(qqT.shape[0]/4) - 1
-    for i in range(1, N+1):
-        qqiT = qqT[:4, 4*i:4*(i+1)]
-        if qqiT[0,0] < 0:
-            outlier_indices.append(i-1) 
-        else:
-            inlier_indices.append(i-1)
-    return np.array(outlier_indices), np.array(inlier_indices)
 
 
 
@@ -167,23 +136,17 @@ def solve_horn(x_1, x_2):
     return C
 
 
-def compute_inlier_matches(x_1, x_2, C_est, c_bar_2, sigma_2_i):
-
-    N = x_1.shape[0]
-    inlier_1_idx = []
-    inlier_2_idx = []
-
-    C_x_1_T = C_est.dot(x_1.T).T
-    
-    for j in range(N):
-
-        err_i = C_x_1_T - x_2[j]
-        eps = np.sum(err_i**2, axis=1)/sigma_2_i
-        
-        inliers_1 = np.where(eps < c_bar_2)[0]
-        inliers_2 = 0*inliers_1 + j
-
-        inlier_1_idx.append(inliers_1)
-        inlier_2_idx.append(inliers_2)
-
-    return np.concatenate(inlier_1_idx).ravel(), np.concatenate(inlier_2_idx).ravel()
+def make_random_instance(N, N_out, sigma=0.01):
+    C = SO3.exp(np.random.randn(3)).as_matrix()
+    # Create two sets of vectors (normalized to unit l2 norm)
+    x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
+    # Rotate and add noise
+    x_2 = C.dot(x_1.T).T + sigma * np.random.randn(N, 3)
+    # Outliers
+    if N_out > 0:
+        outlier_indices = np.random.choice(x_2.shape[0], N_out, replace=False)
+        x_2[outlier_indices] = 10 * (np.random.rand(N_out, 3) - 0.5)
+        outlier_indices = list(outlier_indices)
+    else:
+        outlier_indices = []
+    return x_1, x_2, C, outlier_indices
