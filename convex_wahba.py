@@ -114,7 +114,13 @@ def check_gradients():
 
     norm_diff = np.linalg.norm(G_analytic - G_numerical)
     print('Matrix norm difference of numerical vs analytic: {:.5f}'.format(norm_diff))
-
+    
+    for i in range(4):
+        for j in range(4):
+            print('i: {} | j: {} '.format(i, j))
+            print(G_analytic[:,i,j])
+            print(G_numerical[:,i,j])
+            print()
     return
 
 def check_single_solve():
