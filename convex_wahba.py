@@ -7,12 +7,9 @@ import cvxpy as cp
 import time
 from helpers import *
 
-def solve_wahba(x_1, x_2, sigma_2, redundant_constraints=False):
-    #Input: x_1, x_2: N x 3 matrices, sigma_2_i is N dimensional
-    start = time.time()
+def build_A(x_1, x_2, sigma_2):
     N = x_1.shape[0]
     A = np.zeros((4, 4))
-
     for i in range(N):
         # Block diagonal indices
         I = np.eye(4)
@@ -21,6 +18,11 @@ def solve_wahba(x_1, x_2, sigma_2, redundant_constraints=False):
             Omega_r(pure_quat(x_1[i])))
         A_i = (t1 + t2)/(sigma_2[i])
         A += A_i
+    return A   
+
+def solve_wahba(A, redundant_constraints=False):
+    #Input: x_1, x_2: N x 3 matrices, sigma_2_i is N dimensional
+    start = time.time()
 
     # Build Q variable with constraints
     Q = cp.Variable((4, 4), PSD=True)
@@ -44,7 +46,7 @@ def solve_wahba(x_1, x_2, sigma_2, redundant_constraints=False):
     gap = primal_cost - prob.solution.opt_val[0]
     nu = constraints[0].dual_value
 
-    return q_est, nu, A, t_solve, gap 
+    return q_est, nu, t_solve, gap 
 
 
 def compute_grad(A, nu, q):
@@ -59,9 +61,21 @@ def compute_grad_ij(A, nu, q, i, j):
     #Computes 4x1 gradient, dq/dA_ij where A_ij is A[i,j]s
     I_ij = np.zeros((4,4))
     I_ij[i,j] = 1
-    M = np.linalg.inv(A + nu*np.eye(4))
-    term = M.dot(q.T.dot(q)).dot(M) / (q.dot(A).dot(q.T))
-    grad = -(M - term).dot(I_ij).dot(q.T)
+    # This formulation runs into numerical stability issues
+    # M = np.linalg.inv(A + nu*np.eye(4))
+    # term = M.dot(q.T.dot(q)).dot(M) / (q.dot(A).dot(q.T))
+    # grad = -(M - term).dot(I_ij).dot(q.T)
+
+    M = np.zeros((5,5))
+    M[:4,:4] = A + nu*np.eye(4)
+    M[4,:4] = q
+    M[:4,4] = q.T
+
+    b = np.zeros(5)
+    b[:4] = I_ij.dot(q)
+    dz = - np.linalg.solve(M, -1*b)
+    grad = dz[:4]
+    
     return grad
 
 def gen_sim_data(N=100, sigma=0.01):
@@ -79,10 +93,28 @@ def gen_sim_data(N=100, sigma=0.01):
 def check_gradients():
     N = 10
     sigma = 1
-    C, x_1, x_2 = gen_sim_data(N, sigma)
-    q_opt, nu_opt, A, _, _ = solve_wahba(x_1, x_2, sigma*sigma*np.ones(N), redundant_constraints=True)
-    G = compute_grad(A, nu_opt, q_opt)
-    print(G)
+
+    print('Checking gradients...')
+    _, x_1, x_2 = gen_sim_data(N, sigma)
+    A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
+    q_opt, nu_opt, _, _ = solve_wahba(A, redundant_constraints=True)
+    G_analytic = compute_grad(A, nu_opt, q_opt)
+    
+
+    G_numerical = np.zeros((4, 4, 4))
+    dth = 1e-6
+    print('Using dA_ij = {:.3E}.'.format(dth))
+    for i in range(4):
+        for j in range(4):
+            dA_ij = np.zeros((4,4))
+            dA_ij[i,j] = dth
+            q_plus,_,_,_ =  solve_wahba(A+dA_ij, redundant_constraints=True)
+            q_minus,_,_,_ =  solve_wahba(A-dA_ij, redundant_constraints=True)
+            G_numerical[:,i,j] = (q_plus - q_minus)/(2.*dth)
+
+    norm_diff = np.linalg.norm(G_analytic - G_numerical)
+    print('Matrix norm difference of numerical vs analytic: {:.5f}'.format(norm_diff))
+
     return
 
 def check_single_solve():
@@ -91,7 +123,8 @@ def check_single_solve():
     C, x_1, x_2 = gen_sim_data(N, sigma)
     redundant_constraints = False
     ## Solver
-    q_est, nu, _, t_solve, gap = solve_wahba(x_1, x_2, sigma*sigma*np.ones(N), redundant_constraints=redundant_constraints)
+    A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
+    q_est, nu, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
     print('Done. Solved in {:.3f} seconds.'.format(t_solve))
     print('Duality gap: {:.3E}.'.format(gap))
@@ -100,8 +133,8 @@ def check_single_solve():
     print('Horn rotation error: {:.3f} deg'.format(so3_error(solve_horn(x_1, x_2), C)))
 
 if __name__=='__main__':
-    check_single_solve()
-    #check_gradients()
+    #check_single_solve()
+    check_gradients()
     
 
 
