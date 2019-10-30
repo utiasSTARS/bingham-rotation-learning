@@ -41,6 +41,9 @@ def solve_wahba(A, redundant_constraints=False):
     t_solve = time.time() - start #Note: the following only seems to properly work with MOSEK: prob.solver_stats.solve_time
     # eigs = np.linalg.eigvals(Q.value)
     # rank_Q = np.sum(eigs > rank_tol)
+    if Q.value is None:
+        print('Q is empty. Solver may have failed.')
+        return
     q_est = q_from_qqT(Q.value)
     primal_cost = np.dot(q_est.T, np.dot(A, q_est))
     gap = primal_cost - prob.solution.opt_val[0]
@@ -94,7 +97,7 @@ def rel_tol(X,Y):
     return np.abs(1 - np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
 
 
-def check_gradients():
+def check_gradients(verbose=False):
     N = 100
     sigma = 0.01
 
@@ -103,7 +106,6 @@ def check_gradients():
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
     q_opt, nu_opt, _, _ = solve_wahba(A, redundant_constraints=True)
     G_analytic = compute_grad(A, nu_opt, q_opt)
-    
 
     G_numerical = np.zeros((4, 4, 4))
     step = 1e-3
@@ -119,14 +121,15 @@ def check_gradients():
 
     rel_diff = rel_tol(G_analytic, G_numerical)
     
-    print('Relative tolerance of numerical vs analytic: {:.5E}'.format(rel_diff))
-    
-    # for i in range(4):
-    #     for j in range(4):
-    #         print('i: {} | j: {} '.format(i, j))
-    #         print(G_analytic[:,i,j])
-    #         print(G_numerical[:,i,j])
-    #         print()
+    print('Relative matrix norm difference: {:.5E}'.format(rel_diff))
+
+    if verbose:    
+        for i in range(4):
+            for j in range(4):
+                print('i: {} | j: {} '.format(i, j))
+                print(G_analytic[:,i,j])
+                print(G_numerical[:,i,j])
+                print()
     return
 
 def check_single_solve():
