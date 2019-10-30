@@ -110,13 +110,16 @@ def solve_quasar(x_1, x_2, c_bar_2, redundant_constraints=False, rank_tol=1e-4):
     est_outlier_indices, est_inlier_indices = extract_outlier_indices(Z.value)
     q_full_est = np.zeros((4*(N+1), 1))
     q_full_est[0:4, 0] = q_est
+
     for idx in range(1, N+1):
         if idx-1 in est_outlier_indices:
             q_full_est[4*idx:4*(idx+1), 0] = -q_est
         else:
             q_full_est[4 * idx:4 * (idx + 1), 0] = q_est
+
     primal_cost = np.dot(q_full_est.T, np.dot(Q, q_full_est))
     gap = primal_cost - prob.solution.opt_val
+
     return q_est, list(est_outlier_indices), t_solve, gap, prob.solution.opt_val
 
 if __name__=='__main__':
