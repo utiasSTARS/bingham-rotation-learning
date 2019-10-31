@@ -9,12 +9,12 @@ from helpers import *
 
 def build_A(x_1, x_2, sigma_2):
     N = x_1.shape[0]
-    A = np.zeros((4, 4))
+    A = np.zeros((4, 4), dtype=np.float64)
     for i in range(N):
         # Block diagonal indices
-        I = np.eye(4)
+        I = np.eye(4, dtype=np.float64)
         t1 = (x_2[i].dot(x_2[i]) + x_1[i].dot(x_1[i]))*I
-        t2 = 2*Omega_l(pure_quat(x_2[i])).dot(
+        t2 = 2.*Omega_l(pure_quat(x_2[i])).dot(
             Omega_r(pure_quat(x_1[i])))
         A_i = (t1 + t2)/(sigma_2[i])
         A += A_i
@@ -44,12 +44,12 @@ def solve_wahba(A, redundant_constraints=False):
     if Q.value is None:
         print('Q is empty. Solver may have failed.')
         return
-    q_est = q_from_qqT(Q.value)
-    primal_cost = np.dot(q_est.T, np.dot(A, q_est))
+    q_opt = q_from_qqT(Q.value)
+    primal_cost = np.dot(q_opt.T, np.dot(A, q_opt))
     gap = primal_cost - prob.solution.opt_val[0]
-    nu = constraints[0].dual_value
+    nu_opt = constraints[0].dual_value
 
-    return q_est, nu, t_solve, gap 
+    return q_opt, nu_opt, t_solve, gap 
 
 
 def compute_grad(A, nu, q):
@@ -76,7 +76,7 @@ def compute_grad_ij(A, nu, q, i, j):
 
     b = np.zeros(5)
     b[:4] = I_ij.dot(q)
-    dz = -np.linalg.solve(M, b)
+    dz = -1*np.linalg.solve(M, b)
     grad = dz[:4]
     
     return grad
@@ -133,15 +133,18 @@ def check_gradients(verbose=False):
     return
 
 def check_single_solve():
-    N = 100
+    N = 1000
     sigma = 0.01
     C, x_1, x_2 = gen_sim_data(N, sigma)
-    redundant_constraints = False
+    redundant_constraints = True
+
     ## Solver
     print('Checking single solve...')
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
     q_est, _, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
+
+    ## Output
     print('Done. Solved in {:.3f} seconds.'.format(t_solve))
     print('Duality gap: {:.3E}.'.format(gap))
     #Compare to known rotation
@@ -149,7 +152,7 @@ def check_single_solve():
     print('Horn rotation error: {:.3f} deg'.format(so3_error(solve_horn(x_1, x_2), C)))
 
 if __name__=='__main__':
-    check_single_solve()
+    #check_single_solve()
     check_gradients()
     
 
