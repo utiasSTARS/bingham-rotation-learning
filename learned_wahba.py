@@ -48,24 +48,29 @@ class QuadQuat(torch.autograd.Function):
         with respect to the input.
         """
         A, q_opt, nu_opt = ctx.saved_tensors
-        grad_qcqp = torch.from_numpy(compute_grad(A.detach().numpy(), nu_opt.item(), q_opt.detach().numpy())).double()
-        outgrad = torch.einsum('bij,b->ij',grad_qcqp, grad_output) 
+        grad_qcqp = torch.from_numpy(
+            compute_grad(A.detach().numpy(), nu_opt.item(), q_opt.detach().numpy())
+            )
+        outgrad = torch.einsum('bij,b->ij', grad_qcqp, grad_output) 
         return outgrad
 
 def check_gradient():
     qcqp_solver = QuadQuat.apply
-    N, sigma = 100, 0.01
-    _, x_1, x_2 = gen_sim_data(N, sigma)
+    iters = 20
+    #N, sigma = 100, 0.01
+    #_, x_1, x_2 = gen_sim_data(N, sigma)
     # A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
     # A = torch.from_numpy(A)
     # A.requires_grad_(True)
 
-    A = torch.randn((4,4), dtype=torch.double, requires_grad=True)
-    A = (A + A.transpose(0,1))/2.
-    input = (A,)
+    for i in range(iters):
+        A = torch.randn((4,4), dtype=torch.double, requires_grad=True)
+        input = (A,)
+        grad_test = gradcheck(qcqp_solver, input, eps=1e-6, atol=1e-4)
+        print('Grad check iteration {}/{}...Passed.'.format(i, iters))
+
     
-    test = gradcheck(qcqp_solver, input, eps=1e-6, atol=1e-1)
-    print(test)
+    print('Passed all gradient checks!')
 
 
 if __name__=='__main__':

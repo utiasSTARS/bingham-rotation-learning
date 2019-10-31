@@ -62,20 +62,21 @@ def compute_grad(A, nu, q):
 
 def compute_grad_ij(A, nu, q, i, j):
     #Computes 4x1 gradient, dq/dA_ij where A_ij is A[i,j]s
-    I_ij = np.zeros((4,4))
-    I_ij[i,j] = 1
+    I_ij_ji = np.zeros((4,4))
+    I_ij_ji[i,j] += 1
+    I_ij_ji[j,i] += 1
     # This formulation runs into numerical stability issues
     # M = np.linalg.inv(A + nu*np.eye(4))
     # term = M.dot(q.T.dot(q)).dot(M) / (q.dot(A).dot(q.T))
     # grad = -(M - term).dot(I_ij).dot(q.T)
 
     M = np.zeros((5,5))
-    M[:4,:4] = A + nu*np.eye(4)
-    M[4,:4] = q
-    M[:4,4] = q.T
+    M[:4,:4] = A + A.T + 2*nu*np.eye(4)
+    M[4,:4] = 2*q
+    M[:4,4] = 2*q.T
 
     b = np.zeros(5)
-    b[:4] = I_ij.dot(q)
+    b[:4] = I_ij_ji.dot(q)
     dz = -1*np.linalg.solve(M, b)
     grad = dz[:4]
     
@@ -94,26 +95,30 @@ def gen_sim_data(N=100, sigma=0.01):
 
 
 def rel_tol(X,Y):
-    return np.abs(1 - np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
+    return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
 
 
 def check_gradients(verbose=False):
-    N = 100
-    sigma = 0.01
-
     print('Checking gradients...')
-    _, x_1, x_2 = gen_sim_data(N, sigma)
-    A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
-    q_opt, nu_opt, _, _ = solve_wahba(A, redundant_constraints=True)
-    G_analytic = compute_grad(A, nu_opt, q_opt)
+    # N = 100
+    # sigma = 0.01
+    #_, x_1, x_2 = gen_sim_data(N, sigma)
+    #A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
 
+    print('Using random non-symmetric A...')
+    A = np.random.randn(4,4)
+
+    q_opt, nu_opt, _, _ = solve_wahba(A, redundant_constraints=True)
+
+    G_analytic = compute_grad(A, nu_opt, q_opt)
     G_numerical = np.zeros((4, 4, 4))
-    step = 1e-3
+    step = 1e-5
     print('Using step = {:.3E}.'.format(step))
     for i in range(4):
         for j in range(4):
-            dth = step*A[i,j]
+            dth = step
             dA_ij = np.zeros((4,4))
+            #Account for symmetry of A!
             dA_ij[i,j] = dth
             q_plus,_,_,_ =  solve_wahba(A+dA_ij, redundant_constraints=True)
             q_minus,_,_,_ =  solve_wahba(A-dA_ij, redundant_constraints=True)
@@ -140,7 +145,8 @@ def check_single_solve():
 
     ## Solver
     print('Checking single solve...')
-    A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
+    #A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
+    A = np.random.randn(4,4)
     q_est, _, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
     C_est = SO3.from_quaternion(q_est, ordering='xyzw').as_matrix()
 
