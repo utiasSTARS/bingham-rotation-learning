@@ -6,15 +6,14 @@ from convex_wahba import solve_wahba, compute_grad, build_A
 from helpers import matrix_diff, so3_diff, gen_sim_data, solve_horn
 from liegroups.numpy import SO3
 
-def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=5):
-    print('Checking PyTorch gradients (random A)...')
+def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
+    print('Checking PyTorch gradients (random A, batch_size: {})'.format(num_samples))
     qcqp_solver = QuadQuatSolver.apply
-    for i in range(num_samples):
-        A = torch.randn((4,4), dtype=torch.double, requires_grad=True)
-        input = (A,)
-        grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
-        assert(grad_test == True)
-        print('Sample {}/{}...Passed.'.format(i+1, num_samples))
+    A = torch.randn((num_samples,4,4), dtype=torch.double, requires_grad=True)
+    input = (A,)
+    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    assert(grad_test == True)
+    print('Batch...Passed.')
 
 
 def numerical_grad(A, eps):

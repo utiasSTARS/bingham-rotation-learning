@@ -46,7 +46,7 @@ def quat_loss(q_in, q_target):
     losses = 0.5*d*d
     return losses.mean()
 
-def create_experimental_data(N_train=2000, N_test=100, N_matches_per_sample=10):
+def create_experimental_data(N_train=1000, N_test=100, N_matches_per_sample=10):
 
     C, x_1, x_2 = gen_sim_data(N=100, sigma=0.001, torch_vars=True)
     q = torch.from_numpy(SO3.from_matrix(C.numpy()).to_quaternion(ordering='xyzw'))

@@ -16,10 +16,12 @@ class ANetwork(torch.nn.Module):
             torch.nn.PReLU(),
             torch.nn.Linear(128, num_outputs)
         )
+        self.qcqp_solver = QuadQuatSolver.apply
 
     def forward(self, x):
         A = self.net(x).view(-1, 4, 4)
-        return A
+        q = self.qcqp_solver(A)
+        return q
 
 
 class QuadQuatSolver(torch.autograd.Function):
@@ -37,17 +39,21 @@ class QuadQuatSolver(torch.autograd.Function):
         to stash information for backward computation. You can cache arbitrary
         objects for use in the backward pass using the ctx.save_for_backward method.
         """
-        if A.dim > 2:
+
+        if A.dim() > 2:
             # minibatch size > 1
             # Iterate for now, maybe speed this up later
+            q = torch.empty(A.shape[0], 4, dtype=torch.double)
+            nu = torch.empty(A.shape[0], 1, dtype=torch.double)
             for i in range(A.shape[0]):
-                q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
-                q = torch.from_numpy(q_opt)
-                nu = nu_opt*torch.ones(1, dtype=torch.double)
+                q_opt, nu_opt, _, _ = solve_wahba(A[i].detach().numpy(),redundant_constraints=True)
+                q[i] = torch.from_numpy(q_opt)
+                nu[i] = nu_opt
         else:
             q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
             q = torch.from_numpy(q_opt)
             nu = nu_opt*torch.ones(1, dtype=torch.double)
+
         ctx.save_for_backward(A, q, nu)
         return q
 
@@ -59,9 +65,16 @@ class QuadQuatSolver(torch.autograd.Function):
         with respect to the input.
         """
         A, q, nu = ctx.saved_tensors
-        grad_qcqp = torch.from_numpy(
-            compute_grad(A.detach().numpy(), nu.detach().numpy()[0], q.detach().numpy())
-            ).double()
-        outgrad = torch.einsum('bij,b->ij', grad_qcqp, grad_output) 
+
+        if A.dim() > 2:
+            # minibatch size > 1
+            # Iterate for now, maybe speed this up later
+            grad_qcqp = torch.empty(A.shape[0], 4, 4, 4, dtype=torch.double)
+            for i in range(A.shape[0]):
+                grad_qcqp[i] = torch.from_numpy(compute_grad(A[i].detach().numpy(), nu[i].detach().numpy()[0], q[i].detach().numpy())).double()
+            outgrad = torch.einsum('bkij,bk->bij', grad_qcqp, grad_output) 
+        else:
+            grad_qcqp = torch.from_numpy(compute_grad(A.detach().numpy(), nu.detach().numpy()[0], q.detach().numpy())).double()
+            outgrad = torch.einsum('kij,k->ij', grad_qcqp, grad_output) 
 
         return outgrad
