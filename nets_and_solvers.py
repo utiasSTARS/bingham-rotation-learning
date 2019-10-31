@@ -10,9 +10,11 @@ class ANetwork(torch.nn.Module):
         self.net = torch.nn.Sequential(
             torch.nn.Linear(num_inputs, 128),
             torch.nn.LayerNorm(128),
+            torch.nn.BatchNorm1d(128),
             torch.nn.PReLU(),
             torch.nn.Linear(128, 128),
             torch.nn.LayerNorm(128),
+            torch.nn.BatchNorm1d(128),
             torch.nn.PReLU(),
             torch.nn.Linear(128, num_outputs)
         )
@@ -46,9 +48,15 @@ class QuadQuatSolver(torch.autograd.Function):
             q = torch.empty(A.shape[0], 4, dtype=torch.double)
             nu = torch.empty(A.shape[0], 1, dtype=torch.double)
             for i in range(A.shape[0]):
-                q_opt, nu_opt, _, _ = solve_wahba(A[i].detach().numpy(),redundant_constraints=True)
-                q[i] = torch.from_numpy(q_opt)
-                nu[i] = nu_opt
+                try:
+                    q_opt, nu_opt, _, _ = solve_wahba(A[i].detach().numpy(),redundant_constraints=True)
+                    q[i] = torch.from_numpy(q_opt)
+                    nu[i,0] = nu_opt
+                except:
+                    print('Solve failed!')
+                    print(A[i].detach().numpy())
+                    return 
+
         else:
             q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
             q = torch.from_numpy(q_opt)
