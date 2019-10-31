@@ -108,7 +108,7 @@ def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
 
 
 
-def so3_error(C_1, C_2):
+def so3_diff(C_1, C_2):
     A = SO3.from_matrix(C_1)
     B = SO3.from_matrix(C_2)
     err = A.dot(B.inv()).log()    
@@ -135,18 +135,18 @@ def solve_horn(x_1, x_2):
     C = U.dot(S).dot(V)
     return C
 
+def matrix_diff(X,Y):
+    return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
+    
 
-def make_random_instance(N, N_out, sigma=0.01):
+
+def gen_sim_data(N=100, sigma=0.01):
+    ##Simulation
+    #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
-    # Create two sets of vectors (normalized to unit l2 norm)
+    #Create two sets of vectors (normalized to unit l2 norm)
     x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
-    # Rotate and add noise
-    x_2 = C.dot(x_1.T).T + sigma * np.random.randn(N, 3)
-    # Outliers
-    if N_out > 0:
-        outlier_indices = np.random.choice(x_2.shape[0], N_out, replace=False)
-        x_2[outlier_indices] = 10 * (np.random.rand(N_out, 3) - 0.5)
-        outlier_indices = list(outlier_indices)
-    else:
-        outlier_indices = []
-    return x_1, x_2, C, outlier_indices
+    #Rotate and add noise
+    x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
+    return C, x_1, x_2
+
