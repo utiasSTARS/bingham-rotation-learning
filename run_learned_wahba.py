@@ -4,6 +4,7 @@ import numpy as np
 from nets_and_solvers import ANetwork, QuadQuatSolver
 from helpers import quat_norm_diff, gen_sim_data
 from liegroups.torch import SO3
+import time
 
 class ExperimentalData():
     def __init__(self, x_train, y_train, x_test, y_test):
@@ -45,7 +46,7 @@ def quat_loss(q_in, q_target):
     losses = d#0.5*d*d
     return losses.mean()
 
-def create_experimental_data(N_train=1000, N_test=50, N_matches_per_sample=10):
+def create_experimental_data(N_train=5000, N_test=100, N_matches_per_sample=10):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
@@ -71,14 +72,14 @@ def create_experimental_data(N_train=1000, N_test=50, N_matches_per_sample=10):
 
 def main():
     #Parameters
-    num_epochs = 25
+    num_epochs = 50
     batch_size = 10
 
     torch.manual_seed(42)
     model = ANetwork(num_inputs=60, num_outputs=16)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     exp_data = create_experimental_data()
 
     N_train = exp_data.x_train.shape[0]
@@ -86,6 +87,8 @@ def main():
 
 
     for e in range(num_epochs):
+        start_time = time.time()
+
         #Train model
         print('Training...')
         num_batches = N_train // batch_size
@@ -102,8 +105,9 @@ def main():
             start, end = k * batch_size, (k + 1) * batch_size
             (y_test, test_loss_k) = test_model(model, loss_fn, exp_data.x_test[start:end], exp_data.y_test[start:end])
             test_loss += (1/num_batches)*test_loss_k
-        if e%1 == 0:
-            print('Epoch: {}/{}. Train Loss {:.5E} | Test Loss: {:.5E}.'.format(e+1, num_epochs, train_loss, test_loss))
+
+        elapsed_time = time.time() - start_time
+        print('Epoch: {}/{}. Train Loss {:.5E} | Test Loss: {:.5E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
 
 
 if __name__=='__main__':
