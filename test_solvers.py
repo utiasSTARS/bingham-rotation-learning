@@ -7,14 +7,14 @@ from helpers import matrix_diff, so3_diff, gen_sim_data, solve_horn
 from liegroups.numpy import SO3
 
 def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=5):
-    print('Checking PyTorch gradients...')
+    print('Checking PyTorch gradients (random A)...')
     qcqp_solver = QuadQuatSolver.apply
     for i in range(num_samples):
         A = torch.randn((4,4), dtype=torch.double, requires_grad=True)
         input = (A,)
         grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
         assert(grad_test == True)
-        print('PyTorch gradcheck A sample {}/{}...Passed.'.format(i+1, num_samples))
+        print('Sample {}/{}...Passed.'.format(i+1, num_samples))
 
 
 def numerical_grad(A, eps):
@@ -29,7 +29,7 @@ def numerical_grad(A, eps):
     return G_numerical
 
 def test_numpy_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=5):
-    print('Checking NumPy gradients...')
+    print('Checking NumPy gradients (random A)...')
     A = np.random.randn(4,4)
     q_opt, nu_opt, _, _ = solve_wahba(A, redundant_constraints=True)
 
@@ -38,16 +38,16 @@ def test_numpy_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=5):
         G_analytic = compute_grad(A, nu_opt, q_opt)
         rel_diff = matrix_diff(G_analytic, G_numerical)
         assert(rel_diff < tol)
-        print('NumPy gradcheck A sample {}/{}...Passed.'.format(i+1, num_samples))
+        print('Sample {}/{}...Passed.'.format(i+1, num_samples))
 
 def test_numpy_solver(N=500, sigma=0.01, tol=1.):
     #Tolerance in terms of degrees
-    
+
     C, x_1, x_2 = gen_sim_data(N, sigma)
     redundant_constraints = True
 
     ## Solver
-    print('Checking single solve...')
+    print('Checking single solve with synthetic data...')
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
     #A = np.random.randn(4,4)
     q_opt, _, t_solve, gap = solve_wahba(A, redundant_constraints=redundant_constraints)
