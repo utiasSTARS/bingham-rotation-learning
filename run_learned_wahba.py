@@ -47,25 +47,23 @@ def quat_loss(q_in, q_target):
 
 def create_experimental_data(N_train=1000, N_test=50, N_matches_per_sample=10):
 
-    C, x_1, x_2 = gen_sim_data(N=100, sigma=0.001, torch_vars=True)
-    q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
     y_train = torch.zeros(N_train, 4)
     y_test = torch.zeros(N_test, 4)
     
     for n in range(N_train):
-        sample_ids = np.random.choice(x_1.shape[0], N_matches_per_sample, replace=False)
-        sample_ids = torch.from_numpy(sample_ids)
-
-        x_train[n, :] = torch.cat([x_1[sample_ids].flatten(), x_2[sample_ids].flatten()])
+        # sample_ids = np.random.choice(x_1.shape[0], N_matches_per_sample, replace=False)
+        # sample_ids = torch.from_numpy(sample_ids)
+        C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
+        q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
+        x_train[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
         y_train[n, :] = q
 
     for n in range(N_test):
-        sample_ids = np.random.choice(x_1.shape[0], N_matches_per_sample, replace=False)
-        sample_ids = torch.from_numpy(sample_ids)
-        x_test[n, :] = torch.cat([x_1[sample_ids].flatten(), x_2[sample_ids].flatten()])
+        C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
+        q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
+        x_test[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
         y_test[n, :] = q
             
     return ExperimentalData(x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)
