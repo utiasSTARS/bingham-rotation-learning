@@ -46,9 +46,9 @@ def quat_loss(q_in, q_target):
     losses = 0.5*d*d
     return losses.mean()
 
-def create_experimental_data(N_train=1000, N_test=100, N_matches_per_sample=10):
+def create_experimental_data(N_train=2000, N_test=100, N_matches_per_sample=10):
 
-    C, x_1, x_2 = gen_sim_data(N=100, sigma=0.01, torch_vars=True)
+    C, x_1, x_2 = gen_sim_data(N=100, sigma=0.001, torch_vars=True)
     q = torch.from_numpy(SO3.from_matrix(C.numpy()).to_quaternion(ordering='xyzw'))
 
     x_train = torch.empty(N_train, N_matches_per_sample*2*3)
@@ -75,14 +75,14 @@ def create_experimental_data(N_train=1000, N_test=100, N_matches_per_sample=10):
 
 def main():
     #Parameters
-    num_epochs = 10
+    num_epochs = 100
     batch_size = 1
 
     torch.manual_seed(42)
     model = ANetwork(num_inputs=60, num_outputs=16)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     exp_data = create_experimental_data()
 
     N_train = exp_data.x_train.shape[0]

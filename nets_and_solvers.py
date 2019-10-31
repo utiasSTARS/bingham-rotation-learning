@@ -9,9 +9,11 @@ class ANetwork(torch.nn.Module):
         super(ANetwork, self).__init__()
         self.net = torch.nn.Sequential(
             torch.nn.Linear(num_inputs, 128),
-            torch.nn.ReLU(),
+            torch.nn.LayerNorm(128),
+            torch.nn.PReLU(),
             torch.nn.Linear(128, 128),
-            torch.nn.ReLU(),
+            torch.nn.LayerNorm(128),
+            torch.nn.PReLU(),
             torch.nn.Linear(128, num_outputs)
         )
 
@@ -35,9 +37,17 @@ class QuadQuatSolver(torch.autograd.Function):
         to stash information for backward computation. You can cache arbitrary
         objects for use in the backward pass using the ctx.save_for_backward method.
         """
-        q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
-        q = torch.from_numpy(q_opt)
-        nu = nu_opt*torch.ones(1, dtype=torch.double)
+        if A.dim > 2:
+            # minibatch size > 1
+            # Iterate for now, maybe speed this up later
+            for i in range(A.shape[0]):
+                q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
+                q = torch.from_numpy(q_opt)
+                nu = nu_opt*torch.ones(1, dtype=torch.double)
+        else:
+            q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
+            q = torch.from_numpy(q_opt)
+            nu = nu_opt*torch.ones(1, dtype=torch.double)
         ctx.save_for_backward(A, q, nu)
         return q
 
