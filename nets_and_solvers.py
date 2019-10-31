@@ -6,18 +6,19 @@ from convex_wahba import solve_wahba, compute_grad, gen_sim_data, build_A
 
 class ANetwork(torch.nn.Module):
     def __init__(self, num_inputs, num_outputs):
-        super(SimpleNetwork, self).__init__()
+        super(ANetwork, self).__init__()
         self.net = torch.nn.Sequential(
             torch.nn.Linear(num_inputs, 128),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(128, 128),
-            torch.nn.LeakyReLU(),
+            torch.nn.ReLU(),
             torch.nn.Linear(128, num_outputs)
         )
 
     def forward(self, x):
         A = self.net(x).view(-1, 4, 4)
         return A
+
 
 class QuadQuatSolver(torch.autograd.Function):
     """
