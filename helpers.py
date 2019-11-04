@@ -1,8 +1,9 @@
 import numpy as np
+import torch
 from liegroups import SO3
 from numpy.linalg import norm
 
-#Helpers
+#NUMPY
 ##########
 def Omega_l(q):
     Om = np.zeros((4,4)) * np.nan
@@ -72,8 +73,6 @@ def normalized(a, axis=-1, order=2):
     l2[l2==0] = 1
     return a / np.expand_dims(l2, axis)
 
-
-
 def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
     #Returns C in SO(3), such that b_1 = C*a_1 and b_2 = C*a_2
     
@@ -140,7 +139,7 @@ def matrix_diff(X,Y):
     
 
 
-def gen_sim_data(N=100, sigma=0.01):
+def gen_sim_data(N=100, sigma=0.01, torch_vars=False):
     ##Simulation
     #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
@@ -148,5 +147,20 @@ def gen_sim_data(N=100, sigma=0.01):
     x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
     #Rotate and add noise
     x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
+
+    if torch_vars:
+        C = torch.from_numpy(C)
+        x_1 = torch.from_numpy(x_1)
+        x_2 = torch.from_numpy(x_2)
+        
     return C, x_1, x_2
 
+## PYTORCH
+
+#Quaternion difference of two unit quaternions
+def quat_norm_diff(q_a, q_b):
+    if q_a.dim() < 2:
+        q_a = q_a.unsqueeze(0)
+    if q_b.dim() < 2:
+        q_b = q_b.unsqueeze(0)
+    return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze_()
