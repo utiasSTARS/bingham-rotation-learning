@@ -111,7 +111,7 @@ def compute_mean_horn_error(data):
 def main():
     
     #Sim parameters
-    N_train = 2000
+    N_train = 1000
     N_test = 100
     N_matches_per_sample = 100
 
