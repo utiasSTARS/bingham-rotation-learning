@@ -111,9 +111,9 @@ def compute_mean_horn_error(data):
 def main():
     
     #Sim parameters
-    N_train = 1000
+    N_train = 2000
     N_test = 50
-    N_matches_per_sample = 10
+    N_matches_per_sample = 100
 
     #Learning Parameters
     num_epochs = 100
