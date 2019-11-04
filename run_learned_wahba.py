@@ -113,7 +113,7 @@ def main():
     #Sim parameters
     N_train = 1000
     N_test = 100
-    N_matches_per_sample = 100
+    N_matches_per_sample = 50
 
     #Learning Parameters
     num_epochs = 100
@@ -125,7 +125,7 @@ def main():
     model = ANet(num_pts=N_matches_per_sample)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
 
     print('Generated training data...')
