@@ -6,11 +6,21 @@ from convex_wahba import solve_wahba, compute_grad, gen_sim_data, build_A
 import torch.nn.functional as F
 
 
+class APriorNet(torch.nn.Module):
+    def __init__(self):
+        super(APriorNet, self).__init__()
+        self.fc1 = torch.nn.Linear(16,16)
+        self.bn1 = torch.nn.BatchNorm1d(16)
+
+    def forward(self, A):
+        A = F.relu(self.bn1(self.fc1(A.view(-1,16)))) + A.view(-1, 16)
+        return A.view(-1, 4, 4)
 
 class ANet(torch.nn.Module):
     def __init__(self, num_pts):
         super(ANet, self).__init__()
         self.num_pts = num_pts
+        self.A_prior_net = APriorNet()
         self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
         self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
         
@@ -21,7 +31,7 @@ class ANet(torch.nn.Module):
         self.bn2 = torch.nn.BatchNorm1d(128)
         self.qcqp_solver = QuadQuatSolver.apply
 
-    def forward(self, x):
+    def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
         x_1, x_2 = torch.chunk(x, 2, dim=1)
         #x_1, x_2 are Bx3xN where B is the minibatch size, N is num_pts
@@ -38,6 +48,11 @@ class ANet(torch.nn.Module):
         y = F.relu(self.bn2(self.fc2(y)))
         y = self.fc3(y)
         A = y.view(-1, 4, 4)
+        
+        #Prior?
+        if A_prior is not None:
+            A = A + self.A_prior_net(A_prior)
+        
         q = self.qcqp_solver(A)
         return q
 

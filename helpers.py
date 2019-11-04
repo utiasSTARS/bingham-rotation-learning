@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from liegroups import SO3
+from liegroups.numpy import SO3
 from numpy.linalg import norm
 
 #NUMPY
@@ -138,21 +138,23 @@ def matrix_diff(X,Y):
     return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
     
 
-
-def gen_sim_data(N=100, sigma=0.01, torch_vars=False):
+#Note sigma can be scalar or an N-dimensional vector of std. devs.
+def gen_sim_data(N, sigma, torch_vars=False):
     ##Simulation
     #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
     #Create two sets of vectors (normalized to unit l2 norm)
     x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
     #Rotate and add noise
-    x_2 = C.dot(x_1.T).T + sigma*np.random.randn(N,3)
+    noise = np.random.randn(N,3)
+    noise = (noise.T*sigma).T
+    x_2 = C.dot(x_1.T).T + noise
 
     if torch_vars:
         C = torch.from_numpy(C)
         x_1 = torch.from_numpy(x_1)
         x_2 = torch.from_numpy(x_2)
-        
+
     return C, x_1, x_2
 
 ## PYTORCH
