@@ -98,7 +98,7 @@ def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
 def main():
     
     #Sim parameters
-    N_train = 1000
+    N_train = 10000
     N_test = 50
     N_matches_per_sample = 10
 
