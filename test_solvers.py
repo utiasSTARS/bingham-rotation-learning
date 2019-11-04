@@ -39,7 +39,7 @@ def test_numpy_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=5):
         assert(rel_diff < tol)
         print('Sample {}/{}...Passed.'.format(i+1, num_samples))
 
-def test_numpy_solver(N=500, sigma=0.01, tol=1.):
+def test_numpy_solver(N=100, sigma=0.01, tol=1.):
     #Tolerance in terms of degrees
 
     C, x_1, x_2 = gen_sim_data(N, sigma)
