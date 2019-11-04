@@ -6,16 +6,15 @@ from nets_and_solvers import ANet, QuadQuatSolver
 from convex_wahba import build_A
 from helpers import quat_norm_diff, gen_sim_data
 
-class ExperimentalData():
-    def __init__(self, x_train, q_train, x_test, q_test):
-        self.x_train = x_train
-        self.q_train = q_train
-        self.x_test = x_test
-        self.q_test = q_test
+class SyntheticData():
+    def __init__(self, x, q, A_prior):
+        self.x = x
+        self.q = q
+        self.A_prior = A_prior
 
 
 #Generic training function
-def train_minibatch(model, loss_fn, optimizer, x, targets):
+def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     #Ensure model gradients are active
     model.train()
 
@@ -23,7 +22,7 @@ def train_minibatch(model, loss_fn, optimizer, x, targets):
     optimizer.zero_grad()
 
     # Forward
-    loss = loss_fn(model.forward(x), targets)
+    loss = loss_fn(model.forward(x, A_prior), targets)
 
     # Backward
     loss.backward()
@@ -33,12 +32,13 @@ def train_minibatch(model, loss_fn, optimizer, x, targets):
 
     return loss.item() 
 
-def test_model(model, loss_fn, x, targets):
+def test_model(model, loss_fn, x, targets, A_prior=None):
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
-    y = model.forward(x)
-    loss = loss_fn(y, targets)
-    return (y, loss)
+    # Forward
+    q = model.forward(x, A_prior)
+    loss = loss_fn(q, targets)
+    return (q, loss)
 
 
 def quat_loss(q_in, q_target):
@@ -62,25 +62,37 @@ def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     q_train = torch.zeros(N_train, 4)
+    A_prior_train = torch.zeros(N_train, 4, 4)
+
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
     q_test = torch.zeros(N_test, 4)
+    A_prior_test = torch.zeros(N_test, 4, 4)
 
+    sigma_prior = 0.01
+    sigma_sim_vec = sigma_prior*np.ones(N_matches_per_sample)
+    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 5.
+    sigma_prior_vec = 0.01*np.ones(N_matches_per_sample)
     
+
     for n in range(N_train):
-        # sample_ids = np.random.choice(x_1.shape[0], N_matches_per_sample, replace=False)
-        # sample_ids = torch.from_numpy(sample_ids)
-        C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
+
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_train[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
-        q_train[n, :] = q
+        x_train[n] = torch.cat([x_1.flatten(), x_2.flatten()])
+        q_train[n] = q
+        A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
 
     for n in range(N_test):
-        C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_test[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
-        q_test[n, :] = q
-            
-    return ExperimentalData(x_train=x_train, q_train=q_train, x_test=x_test, q_test=q_test)
+        x_test[n] = torch.cat([x_1.flatten(), x_2.flatten()])
+        q_test[n] = q
+        A_prior_test[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
+    
+    train_data = SyntheticData(x_train, q_train, A_prior_train)
+    test_data = SyntheticData(x_test, q_test, A_prior_test)
+    
+    return train_data, test_data
 
 
 def main():
@@ -93,16 +105,17 @@ def main():
     #Learning Parameters
     num_epochs = 100
     batch_size = 10
+    use_A_prior = True
+
 
     torch.manual_seed(42)
     model = ANet(num_pts=N_matches_per_sample)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-    exp_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
-    N_train = exp_data.x_train.shape[0]
-    N_test = exp_data.x_test.shape[0]
-
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
+    N_train = train_data.x.shape[0]
+    N_test = test_data.x.shape[0]
 
     for e in range(num_epochs):
         start_time = time.time()
@@ -113,7 +126,13 @@ def main():
         train_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            train_loss += (1/num_batches)*train_minibatch(model, loss_fn, optimizer, exp_data.x_train[start:end], exp_data.q_train[start:end])
+
+            if use_A_prior:
+                A_prior = train_data.A_prior[start:end]
+            else:
+                A_prior = None
+            train_loss_k = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
+            train_loss += (1/num_batches)*train_loss_k
         
         #Test model
         print('Testing...')
@@ -121,7 +140,11 @@ def main():
         test_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            (y_test, test_loss_k) = test_model(model, loss_fn, exp_data.x_test[start:end], exp_data.q_test[start:end])
+            if use_A_prior:
+                A_prior = test_data.A_prior[start:end]
+            else:
+                A_prior = None
+            (q_test, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
             test_loss += (1/num_batches)*test_loss_k
 
         elapsed_time = time.time() - start_time
