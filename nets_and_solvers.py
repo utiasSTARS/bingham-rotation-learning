@@ -11,14 +11,14 @@ class ANet(torch.nn.Module):
     def __init__(self, num_pts):
         super(ANet, self).__init__()
         self.num_pts = num_pts
-        self.feat_net1 = PointFeatNet()
-        self.feat_net2 = PointFeatNet()
+        self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
         
-        self.fc1 = torch.nn.Linear(1024, 512)
-        self.fc2 = torch.nn.Linear(512, 256)
-        self.fc3 = torch.nn.Linear(256, 16)
-        self.bn1 = torch.nn.BatchNorm1d(512)
-        self.bn2 = torch.nn.BatchNorm1d(256)
+        self.fc1 = torch.nn.Linear(256, 256)
+        self.fc2 = torch.nn.Linear(256, 128)
+        self.fc3 = torch.nn.Linear(128, 16)
+        self.bn1 = torch.nn.BatchNorm1d(256)
+        self.bn2 = torch.nn.BatchNorm1d(128)
         self.qcqp_solver = QuadQuatSolver.apply
 
     def forward(self, x):
@@ -130,6 +130,23 @@ class AffineNet(torch.nn.Module):
         #I = torch.zeros_like(x)
         #I[:,0,0] = I[:,1,1] = I[:,2,2] = 1.
         #x += I
+        return x
+
+class FCPointFeatNet(torch.nn.Module):
+    def __init__(self, num_pts):
+        super(FCPointFeatNet, self).__init__()
+        self.num_pts = num_pts
+        self.cnn_in = torch.nn.Conv2d(3, 128, 1, 1, 0)
+        self.cnn = torch.nn.Conv2d(128, 128, 1, 1, 0)
+        self.fc_out = torch.nn.Linear(128*num_pts, 128)
+        self.bn1 = torch.nn.BatchNorm2d(128)
+        self.bn2 = torch.nn.BatchNorm2d(128)
+
+    def forward(self, x):
+        x = x.unsqueeze(3)
+        x = F.relu(F.instance_norm(self.bn1(self.cnn_in(x))))
+        x = F.relu(F.instance_norm(self.bn2(self.cnn(x)))) + x
+        x = self.fc_out(x.view(-1, 128*self.num_pts))
         return x
 
 class PointFeatNet(torch.nn.Module):

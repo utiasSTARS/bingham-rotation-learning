@@ -1,17 +1,17 @@
 import torch
-from torch.autograd import gradcheck
-import numpy as np
-from nets_and_solvers import ANet, QuadQuatSolver
-from helpers import quat_norm_diff, gen_sim_data
-from liegroups.torch import SO3
 import time
+import numpy as np
+from liegroups.torch import SO3
+from nets_and_solvers import ANet, QuadQuatSolver
+from convex_wahba import build_A
+from helpers import quat_norm_diff, gen_sim_data
 
 class ExperimentalData():
-    def __init__(self, x_train, y_train, x_test, y_test):
+    def __init__(self, x_train, q_train, x_test, q_test):
         self.x_train = x_train
-        self.y_train = y_train
+        self.q_train = q_train
         self.x_test = x_test
-        self.y_test = y_test
+        self.q_test = q_test
 
 
 #Generic training function
@@ -61,9 +61,10 @@ def quat_to_angle_metric(q_met, units='deg'):
 def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
+    q_train = torch.zeros(N_train, 4)
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
-    y_train = torch.zeros(N_train, 4)
-    y_test = torch.zeros(N_test, 4)
+    q_test = torch.zeros(N_test, 4)
+
     
     for n in range(N_train):
         # sample_ids = np.random.choice(x_1.shape[0], N_matches_per_sample, replace=False)
@@ -71,15 +72,15 @@ def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
         C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
         x_train[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
-        y_train[n, :] = q
+        q_train[n, :] = q
 
     for n in range(N_test):
         C, x_1, x_2 = gen_sim_data(N=N_matches_per_sample, sigma=0.01, torch_vars=True)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
         x_test[n, :] = torch.cat([x_1.flatten(), x_2.flatten()])
-        y_test[n, :] = q
+        q_test[n, :] = q
             
-    return ExperimentalData(x_train=x_train, x_test=x_test, y_train=y_train, y_test=y_test)
+    return ExperimentalData(x_train=x_train, q_train=q_train, x_test=x_test, q_test=q_test)
 
 
 def main():
@@ -112,7 +113,7 @@ def main():
         train_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            train_loss += (1/num_batches)*train_minibatch(model, loss_fn, optimizer, exp_data.x_train[start:end], exp_data.y_train[start:end])
+            train_loss += (1/num_batches)*train_minibatch(model, loss_fn, optimizer, exp_data.x_train[start:end], exp_data.q_train[start:end])
         
         #Test model
         print('Testing...')
@@ -120,7 +121,7 @@ def main():
         test_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            (y_test, test_loss_k) = test_model(model, loss_fn, exp_data.x_test[start:end], exp_data.y_test[start:end])
+            (y_test, test_loss_k) = test_model(model, loss_fn, exp_data.x_test[start:end], exp_data.q_test[start:end])
             test_loss += (1/num_batches)*test_loss_k
 
         elapsed_time = time.time() - start_time
