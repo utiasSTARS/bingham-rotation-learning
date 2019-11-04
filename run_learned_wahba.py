@@ -58,7 +58,7 @@ def quat_to_angle_metric(q_met, units='deg'):
     return angle
 
 
-def create_experimental_data(N_train=1000, N_test=50, N_matches_per_sample=10):
+def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
@@ -91,13 +91,13 @@ def main():
 
     #Learning Parameters
     num_epochs = 100
-    batch_size = 20
+    batch_size = 10
 
     torch.manual_seed(42)
     model = ANet(num_pts=N_matches_per_sample)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     exp_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
     N_train = exp_data.x_train.shape[0]
     N_test = exp_data.x_test.shape[0]

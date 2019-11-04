@@ -127,9 +127,9 @@ class AffineNet(torch.nn.Module):
         x = F.relu(self.bn4(self.fc1(x)))
         x = F.relu(self.bn5(self.fc2(x)))
         x = self.fc3(x).view(-1,3,3) 
-        I = torch.zeros_like(x)
-        I[:,0,0] = I[:,1,1] = I[:,2,2] = 1.
-        x += I
+        #I = torch.zeros_like(x)
+        #I[:,0,0] = I[:,1,1] = I[:,2,2] = 1.
+        #x += I
         return x
 
 class PointFeatNet(torch.nn.Module):
