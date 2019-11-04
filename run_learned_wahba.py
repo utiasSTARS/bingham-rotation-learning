@@ -4,7 +4,7 @@ import numpy as np
 from liegroups.torch import SO3
 from nets_and_solvers import ANet, QuadQuatSolver
 from convex_wahba import build_A
-from helpers import quat_norm_diff, gen_sim_data
+from helpers import quat_norm_diff, gen_sim_data, solve_horn
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -58,7 +58,7 @@ def quat_to_angle_metric(q_met, units='deg'):
     return angle
 
 
-def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
+def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     q_train = torch.zeros(N_train, 4)
@@ -95,6 +95,19 @@ def create_experimental_data(N_train=500, N_test=50, N_matches_per_sample=10):
     return train_data, test_data
 
 
+def compute_mean_horn_error(data):
+    N = data.x.shape[0]
+    err = torch.empty(N)
+    for i in range(N):
+        x = data.x[i]
+        x_1, x_2 = torch.chunk(x, 2)
+        x_1 = x_1.view(-1, 3).numpy()
+        x_2 = x_2.view(-1, 3).numpy()
+        C = torch.from_numpy(solve_horn(x_1, x_2))
+        q_est = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
+        err[i] = quat_loss(q_est, data.q[i])
+    return quat_to_angle_metric(err.mean())
+
 def main():
     
     #Sim parameters
@@ -114,6 +127,10 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
+
+    print('Generated training data...')
+    print('Mean Horn error | Train (deg): {:.3f}. Test: {:.3f} (deg).'.format(compute_mean_horn_error(train_data), compute_mean_horn_error(test_data)))
+
     N_train = train_data.x.shape[0]
     N_test = test_data.x.shape[0]
 

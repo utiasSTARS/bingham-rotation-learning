@@ -107,12 +107,15 @@ def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
 
 
 
-def so3_diff(C_1, C_2):
+def so3_diff(C_1, C_2, unit='deg'):
     A = SO3.from_matrix(C_1)
     B = SO3.from_matrix(C_2)
-    err = A.dot(B.inv()).log()    
-    return norm(err)*180./np.pi
-
+    err = A.dot(B.inv()).log()
+    if unit=='deg':
+        return norm(err)*180./np.pi
+    else:
+        return norm(err)
+        
 
 def solve_horn(x_1, x_2):
     x_1 = normalized(x_1, axis=1)

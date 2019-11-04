@@ -45,6 +45,7 @@ def test_numpy_solver(N=100, sigma=0.01, tol=1.):
     C, x_1, x_2 = gen_sim_data(N, sigma)
     redundant_constraints = True
 
+
     ## Solver
     print('Checking single solve with synthetic data...')
     A = build_A(x_1, x_2, sigma*sigma*np.ones(N))
