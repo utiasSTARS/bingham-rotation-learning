@@ -3,25 +3,41 @@ import torch
 from torch.autograd import gradcheck
 import numpy as np
 from convex_wahba import solve_wahba, compute_grad, gen_sim_data, build_A
+import torch.nn.functional as F
 
-class ANetwork(torch.nn.Module):
-    def __init__(self, num_inputs, num_outputs):
-        super(ANetwork, self).__init__()
-        self.net = torch.nn.Sequential(
-            torch.nn.Linear(num_inputs, 128),
-            torch.nn.LayerNorm(128),
-            torch.nn.BatchNorm1d(128),
-            torch.nn.PReLU(),
-            torch.nn.Linear(128, 128),
-            torch.nn.LayerNorm(128),
-            torch.nn.BatchNorm1d(128),
-            torch.nn.PReLU(),
-            torch.nn.Linear(128, num_outputs)
-        )
+
+
+class ANet(torch.nn.Module):
+    def __init__(self, num_pts):
+        super(ANet, self).__init__()
+        self.num_pts = num_pts
+        self.feat_net1 = PointFeatNet()
+        self.feat_net2 = PointFeatNet()
+        
+        self.fc1 = torch.nn.Linear(1024, 512)
+        self.fc2 = torch.nn.Linear(512, 256)
+        self.fc3 = torch.nn.Linear(256, 16)
+        self.bn1 = torch.nn.BatchNorm1d(512)
+        self.bn2 = torch.nn.BatchNorm1d(256)
         self.qcqp_solver = QuadQuatSolver.apply
 
     def forward(self, x):
-        A = self.net(x).view(-1, 4, 4)
+        #Decompose input into two point clouds
+        x_1, x_2 = torch.chunk(x, 2, dim=1)
+        #x_1, x_2 are Bx3xN where B is the minibatch size, N is num_pts
+        x_1 = x_1.view(-1, self.num_pts, 3).transpose(1,2)
+        x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
+        
+        #Collect and concatenate features
+        x_1_feats = self.feat_net1(x_1)
+        x_2_feats = self.feat_net2(x_2)
+        y = torch.cat([x_1_feats, x_2_feats], dim=1)
+
+        #Pass through final network
+        y = F.relu(self.bn1(self.fc1(y)))
+        y = F.relu(self.bn2(self.fc2(y)))
+        y = self.fc3(y)
+        A = y.view(-1, 4, 4)
         q = self.qcqp_solver(A)
         return q
 
@@ -53,10 +69,8 @@ class QuadQuatSolver(torch.autograd.Function):
                     q[i] = torch.from_numpy(q_opt)
                     nu[i,0] = nu_opt
                 except:
-                    print('Solve failed!')
-                    print(A[i].detach().numpy())
-                    return 
-
+                    raise RuntimeError('Wahba Solve failed!')
+                    
         else:
             q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
             q = torch.from_numpy(q_opt)
@@ -86,3 +100,56 @@ class QuadQuatSolver(torch.autograd.Function):
             outgrad = torch.einsum('kij,k->ij', grad_qcqp, grad_output) 
 
         return outgrad
+
+#Modelled after PointNet, see https://github.com/kentsyx/pointnet-pytorch/blob/master/pointnet.py
+#Outputs a 3x3 affine transformation
+class AffineNet(torch.nn.Module):
+    def __init__(self):
+        super(AffineNet, self).__init__()
+        self.conv1 = torch.nn.Conv1d(3, 64, 1)
+        self.conv2 = torch.nn.Conv1d(64, 128, 1)
+        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
+        self.fc1 = torch.nn.Linear(1024, 512)
+        self.fc2 = torch.nn.Linear(512, 256)
+        self.fc3 = torch.nn.Linear(256, 9)
+        self.bn1 = torch.nn.BatchNorm1d(64)
+        self.bn2 = torch.nn.BatchNorm1d(128)
+        self.bn3 = torch.nn.BatchNorm1d(1024)
+        self.bn4 = torch.nn.BatchNorm1d(512)
+        self.bn5 = torch.nn.BatchNorm1d(256)
+
+    def forward(self, x):
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = F.relu(self.bn3(self.conv3(x)))
+        x = torch.max(x, 2, keepdim=True)[0]
+        x = x.view(-1, 1024)
+        x = F.relu(self.bn4(self.fc1(x)))
+        x = F.relu(self.bn5(self.fc2(x)))
+        x = self.fc3(x).view(-1,3,3) 
+        I = torch.zeros_like(x)
+        I[:,0,0] = I[:,1,1] = I[:,2,2] = 1.
+        x += I
+        return x
+
+class PointFeatNet(torch.nn.Module):
+    def __init__(self):
+        super(PointFeatNet, self).__init__()
+        self.affine_net = AffineNet()
+        self.conv1 = torch.nn.Conv1d(3, 64, 1)
+        self.conv2 = torch.nn.Conv1d(64, 128, 1)
+        self.conv3 = torch.nn.Conv1d(128, 512, 1)
+        self.bn1 = torch.nn.BatchNorm1d(64)
+        self.bn2 = torch.nn.BatchNorm1d(128)
+        self.bn3 = torch.nn.BatchNorm1d(512)
+
+    def forward(self, x):
+        M = self.affine_net(x)
+        #Apply affine transform
+        x = M.bmm(x)   
+        x = F.relu(self.bn1(self.conv1(x)))
+        x = F.relu(self.bn2(self.conv2(x)))
+        x = self.bn3(self.conv3(x))
+        x = torch.max(x, 2, keepdim=True)[0]
+        x = x.view(-1, 512)
+        return x

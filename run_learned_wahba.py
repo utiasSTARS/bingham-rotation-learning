@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import gradcheck
 import numpy as np
-from nets_and_solvers import ANetwork, QuadQuatSolver
+from nets_and_solvers import ANet, QuadQuatSolver
 from helpers import quat_norm_diff, gen_sim_data
 from liegroups.torch import SO3
 import time
@@ -43,10 +43,22 @@ def test_model(model, loss_fn, x, targets):
 
 def quat_loss(q_in, q_target):
     d = quat_norm_diff(q_in, q_target)
-    losses = d#0.5*d*d
+    losses =  d
     return losses.mean()
 
-def create_experimental_data(N_train=5000, N_test=100, N_matches_per_sample=10):
+#See Rotation Averaging by Hartley et al. (2013)
+def quat_to_angle_metric(q_met, units='deg'):
+    angle = 4.*torch.asin(0.5*q_met)
+    if units == 'deg':
+        angle = (180./np.pi)*angle
+    elif units == 'rad':
+        pass
+    else:
+        raise RuntimeError('Unknown units in metric conversion.')
+    return angle
+
+
+def create_experimental_data(N_train=1000, N_test=50, N_matches_per_sample=10):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3)
     x_test = torch.zeros(N_test, N_matches_per_sample*2*3)
@@ -71,17 +83,22 @@ def create_experimental_data(N_train=5000, N_test=100, N_matches_per_sample=10):
 
 
 def main():
-    #Parameters
-    num_epochs = 50
-    batch_size = 10
+    
+    #Sim parameters
+    N_train = 1000
+    N_test = 50
+    N_matches_per_sample = 10
+
+    #Learning Parameters
+    num_epochs = 100
+    batch_size = 20
 
     torch.manual_seed(42)
-    model = ANetwork(num_inputs=60, num_outputs=16)
+    model = ANet(num_pts=N_matches_per_sample)
     loss_fn = quat_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    exp_data = create_experimental_data()
-
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    exp_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
     N_train = exp_data.x_train.shape[0]
     N_test = exp_data.x_test.shape[0]
 
@@ -92,7 +109,7 @@ def main():
         #Train model
         print('Training...')
         num_batches = N_train // batch_size
-        train_loss = 0.
+        train_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             train_loss += (1/num_batches)*train_minibatch(model, loss_fn, optimizer, exp_data.x_train[start:end], exp_data.y_train[start:end])
@@ -100,14 +117,22 @@ def main():
         #Test model
         print('Testing...')
         num_batches = N_test // batch_size
-        test_loss = 0.
+        test_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             (y_test, test_loss_k) = test_model(model, loss_fn, exp_data.x_test[start:end], exp_data.y_test[start:end])
             test_loss += (1/num_batches)*test_loss_k
 
         elapsed_time = time.time() - start_time
-        print('Epoch: {}/{}. Train Loss {:.5E} | Test Loss: {:.5E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
+
+        #test_angle = quat_to_angle_metric(torch.sqrt(2*test_loss))
+        #train_angle = quat_to_angle_metric(torch.sqrt(2*train_loss))
+        
+        test_angle = quat_to_angle_metric(test_loss)
+        train_angle = quat_to_angle_metric(train_loss)
+
+
+        print('Epoch: {}/{}. Train Loss {:.3f} (deg) | Test Loss: {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_angle, test_angle, elapsed_time))
 
 
 if __name__=='__main__':
