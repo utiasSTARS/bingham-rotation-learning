@@ -70,7 +70,7 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100):
 
     sigma_prior = 0.01
     sigma_sim_vec = sigma_prior*np.ones(N_matches_per_sample)
-    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 5.
+    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10.
     sigma_prior_vec = 0.01*np.ones(N_matches_per_sample)
     
 
@@ -112,7 +112,7 @@ def main():
     
     #Sim parameters
     N_train = 2000
-    N_test = 50
+    N_test = 100
     N_matches_per_sample = 100
 
     #Learning Parameters
