@@ -16,6 +16,13 @@ class APriorNet(torch.nn.Module):
         A = F.relu(self.bn1(self.fc1(A.view(-1,16)))) + A.view(-1, 16)
         return A.view(-1, 4, 4)
 
+class Identity(torch.nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
+
 class ANet(torch.nn.Module):
     def __init__(self, num_pts):
         super(ANet, self).__init__()
@@ -42,18 +49,16 @@ class ANet(torch.nn.Module):
         x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
         
         #Collect and concatenate features
-        x_1_feats = self.feat_net1(x_1)
-        x_2_feats = self.feat_net2(x_2)
-
         #x_1 -> x_2
-        feats = torch.cat([x_1_feats, x_2_feats], dim=1)
-        A1 = self.feats_to_A(feats)
+        feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_1)], dim=1)
+        A1 = self.feats_to_A(feats_12)
 
-        feats = torch.cat([x_2_feats, x_1_feats], dim=1)
-        A2 = self.feats_to_A(feats)
+        #x_2 -> x_1
+        feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
+        A2 = self.feats_to_A(feats_21)
 
         
-        #Prior?
+        #Prior? Doesn't make sense with backward/forward unless we give two priors
         if A_prior is not None:
             A1 = A1 + self.A_prior_net(A_prior)
             A2 = A2 + self.A_prior_net(A_prior)

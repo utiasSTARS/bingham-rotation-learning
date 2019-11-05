@@ -54,10 +54,10 @@ def quat_norm_to_angle(q_met, units='deg'):
 
 def quat_consistency_loss(q, q_inv, q_target, reduce=True):
     assert(q.shape == q_inv.shape == q_target.shape)
-    d1 = quat_loss(q, q_target)
-    d2 = quat_loss(q_inv, quat_inv(q_target))
-    d3 = quat_loss(q, quat_inv(q_inv))
-    losses = d1 + d2 + d3
+    d1 = quat_loss(q, q_target, reduce=False)
+    d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
+    d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
+    losses = d1*d1 + d2*d2 + d3*d3
     return losses.mean() if reduce else losses
     
 
@@ -145,7 +145,7 @@ def main():
     model = ANet(num_pts=N_matches_per_sample).double()
     loss_fn = quat_consistency_loss
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
 
     print('Generated training data...')
