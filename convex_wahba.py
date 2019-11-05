@@ -4,6 +4,7 @@ from liegroups.numpy import SO3
 import cvxpy as cp
 import time
 from helpers import *
+import torch
 
 def build_A(x_1, x_2, sigma_2):
     N = x_1.shape[0]
@@ -49,6 +50,33 @@ def solve_wahba(A, redundant_constraints=False):
     return q_opt, nu_opt, t_solve, gap 
 
 
+def solve_wahba_fast(A, redundant_constraints=False):
+    """
+    Use a fast eigenvalue solution to the dual of the 'generalized Wahba' problem to solve the primal.
+    :param A: quadratic cost matrix
+    :param redundant_constraints: boolean indicating whether to use redundand constraints
+    :return: Optimal q, optimal dual var. nu, time to solve, duality gap
+    """
+    start = time.time()
+    nus, qs = torch.eig(A, eigenvectors=True)
+    print('Nus: {:}'.format(nus))
+    print('qs: {:}'.format(qs))
+    real_ids = nus[:, 1] == 0
+    print('Real_ids: {:}'.format(real_ids))
+    print(nus[real_ids, 0])
+    nus = nus[real_ids, 0]
+    qs = qs[:, real_ids]
+    # id_min = torch.argmin(nus[:, 0]) # Only check real part
+    id_min = torch.argmin(nus)
+    nu_opt = -nus[id_min]
+    q = -qs[:, id_min]
+    q_opt = q/torch.norm(q, 2)
+    t_solve = time.time() - start
+    # gap = torch.einsum('bnk,bkl,bnl->b', q.unsqueeze(0), A, q.unsqueeze(0)) - nu_opt
+    gap = q@A@q - nu_opt
+    return q_opt, nu_opt, t_solve, gap
+
+
 def compute_grad(A, nu, q):
     #Returns 4x4x4 gradient tensor G where G[:,i,j] is dq/dA_ij
     G = np.zeros((4, 4, 4))
@@ -56,6 +84,7 @@ def compute_grad(A, nu, q):
         for j in range(4):
             G[:, i, j] = compute_grad_ij(A, nu, q, i, j)
     return G
+
 
 def compute_grad_ij(A, nu, q, i, j):
     #Computes 4x1 gradient, dq/dA_ij where A_ij is A[i,j]s

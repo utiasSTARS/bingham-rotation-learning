@@ -6,7 +6,7 @@ from liegroups import SO3
 import shelve
 
 if __name__=='__main__':
-    N_vec = np.array([10])
+    N_vec = np.array([500])
     outlier_rate_vec = np.array([0.1])#, 0.9])
     N_runs = 2
     # Problem data parameters
@@ -52,14 +52,14 @@ if __name__=='__main__':
                     outlier_inds_true.sort()
 
                     # Run quasar
-                    print('Run QUASAR')
-                    q_est, est_outlier_indices, t_solve, gap, obj_cost = solve_quasar(q1, q2, c_bar_2,
-                                                                                      redundant_constraints=False)#True)
-                    t_quasar[idx, jdx, kdx, ldx] = t_solve
-                    frob_quasar[idx, jdx, kdx, ldx] = np.linalg.norm(C_true - SO3.from_quaternion(q_est, ordering='xyzw').as_matrix())
-                    gap_quasar[idx, jdx, kdx, ldx] = gap
-                    obj_quasar[idx, jdx, kdx, ldx] = obj_cost
-                    outliers_quasar[idx, jdx, kdx, ldx] = outlier_inds_true == est_outlier_indices
+                    # print('Run QUASAR')
+                    # q_est, est_outlier_indices, t_solve, gap, obj_cost = solve_quasar(q1, q2, c_bar_2,
+                    #                                                                   redundant_constraints=False)#True)
+                    # t_quasar[idx, jdx, kdx, ldx] = t_solve
+                    # frob_quasar[idx, jdx, kdx, ldx] = np.linalg.norm(C_true - SO3.from_quaternion(q_est, ordering='xyzw').as_matrix())
+                    # gap_quasar[idx, jdx, kdx, ldx] = gap
+                    # obj_quasar[idx, jdx, kdx, ldx] = obj_cost
+                    # outliers_quasar[idx, jdx, kdx, ldx] = outlier_inds_true == est_outlier_indices
 
                     # Run quasar sparse
                     print('Run QUASAR Sparse')

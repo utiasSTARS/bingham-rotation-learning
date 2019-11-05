@@ -2,7 +2,7 @@
 import torch
 from torch.autograd import gradcheck
 import numpy as np
-from convex_wahba import solve_wahba, compute_grad, gen_sim_data, build_A
+from convex_wahba import solve_wahba, solve_wahba_fast, compute_grad, gen_sim_data, build_A
 import torch.nn.functional as F
 
 #Utility module to replace BatchNorms without affecting structure
@@ -90,6 +90,70 @@ class ANet(torch.nn.Module):
             return [A1, A2]
 
         return A1
+
+class QuadQuatFastSolver(torch.autograd.Function):
+    """
+    TODO: - pytorch tutorial,
+          - fast eigenvalue solution forward solve,
+          - remove numpy dependencies in backwards pass
+    Differentiable QCQP solver
+    Input: 4x4 matrix A
+    Output: q that minimizes q^T A q s.t. |q| = 1
+    """
+
+    @staticmethod
+    def forward(ctx, A):
+        """
+        In the forward pass we receive a Tensor containing the input and return
+        a Tensor containing the output. ctx is a context object that can be used
+        to stash information for backward computation. You can cache arbitrary
+        objects for use in the backward pass using the ctx.save_for_backward method.
+        """
+
+        if A.dim() > 2:
+            # minibatch size > 1
+            # Iterate for now, maybe speed this up later
+            q = torch.empty(A.shape[0], 4, dtype=torch.double)
+            nu = torch.empty(A.shape[0], 1, dtype=torch.double)
+            for i in range(A.shape[0]):
+                try:
+                    q_opt, nu_opt, _, _ = solve_wahba_fast(A[i], redundant_constraints=True)
+                    # q[i] = torch.from_numpy(q_opt)
+                    nu[i, 0] = nu_opt
+                    q[i] = q_opt
+                except:
+                    raise RuntimeError('Wahba Solve failed!')
+
+        else:
+            q_opt, nu_opt, _, _ = solve_wahba_fast(A, redundant_constraints=True)
+            # q = torch.from_numpy(q_opt)
+            # nu = nu_opt * torch.ones(1, dtype=torch.double)
+            q = q_opt
+            nu = nu_opt
+        ctx.save_for_backward(A, q, nu)
+        return q
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        """
+        In the backward pass we receive a Tensor containing the gradient of the loss
+        with respect to the output, and we need to compute the gradient of the loss
+        with respect to the input.
+        """
+        A, q, nu = ctx.saved_tensors
+
+        if A.dim() > 2:
+            # minibatch size > 1
+            # Iterate for now, maybe speed this up later
+            grad_qcqp = torch.empty(A.shape[0], 4, 4, 4, dtype=torch.double)
+            for i in range(A.shape[0]):
+                grad_qcqp[i] = torch.from_numpy(compute_grad(A[i].detach().numpy(), nu[i].detach().numpy()[0], q[i].detach().numpy())).double()
+            outgrad = torch.einsum('bkij,bk->bij', grad_qcqp, grad_output)
+        else:
+            grad_qcqp = torch.from_numpy(compute_grad(A.detach().numpy(), nu.detach().numpy()[0], q.detach().numpy())).double()
+            outgrad = torch.einsum('kij,k->ij', grad_qcqp, grad_output)
+
+        return outgrad
 
 class QuadQuatSolver(torch.autograd.Function):
     """
