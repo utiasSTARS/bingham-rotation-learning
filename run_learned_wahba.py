@@ -57,7 +57,7 @@ def quat_consistency_loss(q, q_inv, q_target, reduce=True):
     d1 = quat_loss(q, q_target, reduce=False)
     d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
     d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
-    losses = d1*d1 + d2*d2 + d3*d3
+    losses =  d1*d1 + d2*d2 + d3*d3
     return losses.mean() if reduce else losses
     
 

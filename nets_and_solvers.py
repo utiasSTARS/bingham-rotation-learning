@@ -5,6 +5,14 @@ import numpy as np
 from convex_wahba import solve_wahba, compute_grad, gen_sim_data, build_A
 import torch.nn.functional as F
 
+#Utility module to replace BatchNorms without affecting structure
+class Identity(torch.nn.Module):
+    def __init__(self):
+        super(Identity, self).__init__()
+
+    def forward(self, x):
+        return x
+
 
 class APriorNet(torch.nn.Module):
     def __init__(self):
@@ -15,13 +23,6 @@ class APriorNet(torch.nn.Module):
     def forward(self, A):
         A = F.relu(self.bn1(self.fc1(A.view(-1,16)))) + A.view(-1, 16)
         return A.view(-1, 4, 4)
-
-class Identity(torch.nn.Module):
-    def __init__(self):
-        super(Identity, self).__init__()
-
-    def forward(self, x):
-        return x
 
 class ANet(torch.nn.Module):
     def __init__(self, num_pts):
@@ -58,7 +59,7 @@ class ANet(torch.nn.Module):
         A2 = self.feats_to_A(feats_21)
 
         
-        #Prior? Doesn't make sense with backward/forward unless we give two priors
+        #Prior? Doesn't make sense with consistency loss unless we give two priors
         if A_prior is not None:
             A1 = A1 + self.A_prior_net(A_prior)
             A2 = A2 + self.A_prior_net(A_prior)
