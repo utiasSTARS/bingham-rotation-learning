@@ -2,7 +2,7 @@ import torch
 import time
 import numpy as np
 from liegroups.torch import SO3
-from nets_and_solvers import ANet, QuadQuatSolver
+from nets_and_solvers import ANet, QuatNet
 from convex_wahba import build_A
 from helpers import quat_norm_diff, gen_sim_data, solve_horn, quat_inv
 
@@ -22,8 +22,8 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     optimizer.zero_grad()
 
     # Forward
-    (q1, q2) = model.forward(x, A_prior)
-    loss = loss_fn(q1, q2, targets)
+    q = model.forward(x, A_prior)
+    loss = loss_fn(q, targets)
 
     # Backward
     loss.backward()
@@ -31,15 +31,15 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     # Update parameters
     optimizer.step()
 
-    return (q1, loss.item())
+    return (q, loss.item())
 
 def test_model(model, loss_fn, x, targets, A_prior=None):
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
     # Forward
-    (q1, q2) = model.forward(x, A_prior)
-    loss = loss_fn(q1, q2, targets)
-    return (q1, loss.item())
+    q = model.forward(x, A_prior)
+    loss = loss_fn(q, targets)
+    return (q, loss.item())
 
 #See Rotation Averaging by Hartley et al. (2013)
 def quat_norm_to_angle(q_met, units='deg'):
@@ -52,26 +52,31 @@ def quat_norm_to_angle(q_met, units='deg'):
         raise RuntimeError('Unknown units in metric conversion.')
     return angle
 
-def quat_consistency_loss(q, q_inv, q_target, reduce=True):
+def quat_consistency_loss(qs, q_target, reduce=True):
+    q = qs[0]
+    q_inv = qs[1]
     assert(q.shape == q_inv.shape == q_target.shape)
     d1 = quat_loss(q, q_target, reduce=False)
     d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
     d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
     losses =  d1*d1 + d2*d2 + d3*d3
-    return losses.mean() if reduce else losses
+    loss = losses.mean() if reduce else losses
+    return loss
     
 
 def quat_squared_loss(q, q_target, reduce=True):
     assert(q.shape == q_target.shape)
     d = quat_norm_diff(q, q_target)
     losses =  0.5*d*d
-    return losses.mean() if reduce else losses
+    loss = losses.mean() if reduce else losses
+    return loss
 
 def quat_loss(q, q_target, reduce=True):
     assert(q.shape == q_target.shape)
     d = quat_norm_diff(q, q_target)
     losses = d
-    return losses.mean() if reduce else losses
+    loss = losses.mean() if reduce else losses
+    return loss
 
 def quat_angle_diff(q, q_target, units='deg', reduce=True):
     assert(q.shape == q_target.shape)
@@ -140,10 +145,16 @@ def main():
     #Learning Parameters
     num_epochs = 100
     batch_size = 10
-    use_A_prior = False
+    use_A_prior = False #Only meaningful with symmetric_loss=False
+    symmetric_loss = False
 
-    model = ANet(num_pts=N_matches_per_sample).double()
-    loss_fn = quat_consistency_loss
+    A_net = ANet(num_pts=N_matches_per_sample, symmetric=symmetric_loss).double()
+    model = QuatNet(A_net=A_net)
+
+    if symmetric_loss:
+        loss_fn = quat_consistency_loss
+    else:
+        loss_fn = quat_squared_loss
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
@@ -170,7 +181,8 @@ def main():
             else:
                 A_prior = None
             
-            (q_train, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
+            (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
+            q_train = q_est[0] if symmetric_loss else q_est
             train_loss += (1/num_batches)*train_loss_k
             train_mean_err += (1/num_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
@@ -187,7 +199,8 @@ def main():
                 A_prior = test_data.A_prior[start:end]
             else:
                 A_prior = None
-            (q_test, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
+            (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
+            q_test = q_est[0] if symmetric_loss else q_est
             test_loss += (1/num_batches)*test_loss_k
             test_mean_err += (1/num_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
