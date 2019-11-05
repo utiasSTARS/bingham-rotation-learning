@@ -54,6 +54,15 @@ def pure_quat(v):
     q[:3] = v
     return q
 
+def quat_inv(q):
+    #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
+    if q.dim() < 2:
+        q = q.unsqueeze()
+    q_inv = torch.empty_like(q)
+    q_inv[:, :3] = -1*q[:, :3]
+    q_inv[:, 3] = q[:, 3]
+    return q_inv.squeeze()
+
 def q_from_qqT(qqT):
     #Returns unit quaternion q from q * q^T 4x4 matrix
     #Assumes scalar is the last value and it is positive (can make this choice since q = -q)

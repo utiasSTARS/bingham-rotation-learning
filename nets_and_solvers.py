@@ -21,13 +21,17 @@ class ANet(torch.nn.Module):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.A_prior_net = APriorNet()
-        self.feat_net = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net1 = PointFeatNet()
+        self.feat_net2 = PointFeatNet()
+        
         #self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
         #self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
         
-        self.fc1 = torch.nn.Linear(256, 128)
-        self.fc_out = torch.nn.Linear(128, 16)
-        self.bn1 = torch.nn.BatchNorm1d(128)
+        self.fc1 = torch.nn.Linear(1024, 512)
+        self.fc2 = torch.nn.Linear(512, 256)
+        self.fc_out = torch.nn.Linear(256, 16)
+        self.bn1 = torch.nn.BatchNorm1d(512)
+        self.bn2 = torch.nn.BatchNorm1d(256)
         self.qcqp_solver = QuadQuatSolver.apply
 
     def forward(self, x, A_prior=None):
@@ -38,22 +42,33 @@ class ANet(torch.nn.Module):
         x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
         
         #Collect and concatenate features
-        x_1_feats = self.feat_net(x_1)
-        x_2_feats = self.feat_net(x_2)
-        y = torch.cat([x_1_feats, x_2_feats], dim=1)
+        x_1_feats = self.feat_net1(x_1)
+        x_2_feats = self.feat_net2(x_2)
 
-        #Pass through final network
-        y = F.relu(self.bn1(self.fc1(y)))
-        y = self.fc_out(y)
-        A = y.view(-1, 4, 4)
+        #x_1 -> x_2
+        feats = torch.cat([x_1_feats, x_2_feats], dim=1)
+        A1 = self.feats_to_A(feats)
+
+        feats = torch.cat([x_2_feats, x_1_feats], dim=1)
+        A2 = self.feats_to_A(feats)
+
         
         #Prior?
         if A_prior is not None:
-            A = A + self.A_prior_net(A_prior)
+            A1 = A1 + self.A_prior_net(A_prior)
+            A2 = A2 + self.A_prior_net(A_prior)
+            
+        q1 = self.qcqp_solver(A1)
+        q2 = self.qcqp_solver(A2)
         
-        q = self.qcqp_solver(A)
-        return q
+        return (q1, q2)
 
+    def feats_to_A(self, x):
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = self.fc_out(x)
+        A = x.view(-1, 4, 4)
+        return A
 
 class QuadQuatSolver(torch.autograd.Function):
     """
@@ -151,7 +166,7 @@ class FCPointFeatNet(torch.nn.Module):
         self.num_pts = num_pts
         self.cnn_in = torch.nn.Conv2d(3, 128, 1, 1, 0)
         self.cnn = torch.nn.Conv2d(128, 128, 1, 1, 0)
-        self.fc_out = torch.nn.Linear(128*num_pts, 128)
+        self.fc_out = torch.nn.Linear(128*num_pts, 512)
         self.bn1 = torch.nn.BatchNorm2d(128)
         self.bn2 = torch.nn.BatchNorm2d(128)
 

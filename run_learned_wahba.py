@@ -4,7 +4,7 @@ import numpy as np
 from liegroups.torch import SO3
 from nets_and_solvers import ANet, QuadQuatSolver
 from convex_wahba import build_A
-from helpers import quat_norm_diff, gen_sim_data, solve_horn
+from helpers import quat_norm_diff, gen_sim_data, solve_horn, quat_inv
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -22,8 +22,8 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     optimizer.zero_grad()
 
     # Forward
-    q = model.forward(x, A_prior)
-    loss = loss_fn(q, targets)
+    (q1, q2) = model.forward(x, A_prior)
+    loss = loss_fn(q1, q2, targets)
 
     # Backward
     loss.backward()
@@ -31,15 +31,15 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     # Update parameters
     optimizer.step()
 
-    return (q, loss.item())
+    return (q1, loss.item())
 
 def test_model(model, loss_fn, x, targets, A_prior=None):
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
     # Forward
-    q = model.forward(x, A_prior)
-    loss = loss_fn(q, targets)
-    return (q, loss.item())
+    (q1, q2) = model.forward(x, A_prior)
+    loss = loss_fn(q1, q2, targets)
+    return (q1, loss.item())
 
 #See Rotation Averaging by Hartley et al. (2013)
 def quat_norm_to_angle(q_met, units='deg'):
@@ -52,21 +52,30 @@ def quat_norm_to_angle(q_met, units='deg'):
         raise RuntimeError('Unknown units in metric conversion.')
     return angle
 
-def quat_squared_loss(q_in, q_target, reduce=True):
-    assert(q_in.shape == q_target.shape)
-    d = quat_norm_diff(q_in, q_target)
+def quat_consistency_loss(q, q_inv, q_target, reduce=True):
+    assert(q.shape == q_inv.shape == q_target.shape)
+    d1 = quat_loss(q, q_target)
+    d2 = quat_loss(q_inv, quat_inv(q_target))
+    d3 = quat_loss(q, quat_inv(q_inv))
+    losses = d1 + d2 + d3
+    return losses.mean() if reduce else losses
+    
+
+def quat_squared_loss(q, q_target, reduce=True):
+    assert(q.shape == q_target.shape)
+    d = quat_norm_diff(q, q_target)
     losses =  0.5*d*d
     return losses.mean() if reduce else losses
 
-def quat_loss(q_in, q_target, reduce=True):
-    assert(q_in.shape == q_target.shape)
-    d = quat_norm_diff(q_in, q_target)
+def quat_loss(q, q_target, reduce=True):
+    assert(q.shape == q_target.shape)
+    d = quat_norm_diff(q, q_target)
     losses = d
     return losses.mean() if reduce else losses
 
-def quat_angle_diff(q_in, q_target, units='deg', reduce=True):
-    assert(q_in.shape == q_target.shape)
-    diffs = quat_norm_to_angle(quat_norm_diff(q_in, q_target), units=units)
+def quat_angle_diff(q, q_target, units='deg', reduce=True):
+    assert(q.shape == q_target.shape)
+    diffs = quat_norm_to_angle(quat_norm_diff(q, q_target), units=units)
     return diffs.mean() if reduce else diffs
 
 
@@ -134,9 +143,9 @@ def main():
     use_A_prior = False
 
     model = ANet(num_pts=N_matches_per_sample).double()
-    loss_fn = quat_squared_loss
+    loss_fn = quat_consistency_loss
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=5e-3) #torch.optim.Adam(model.parameters(), lr=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
 
     print('Generated training data...')
