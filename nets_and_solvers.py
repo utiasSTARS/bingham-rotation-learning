@@ -45,28 +45,26 @@ class APriorNet(torch.nn.Module):
         return A.view(-1, 4, 4)
 
 class ANet(torch.nn.Module):
-    def __init__(self, num_pts, symmetric=True):
+    def __init__(self, num_pts, symmetric=True, scale_factor=1):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.symmetric = symmetric #Evaluate both forward and backward directions
+        self.scale_factor = scale_factor
         self.A_prior_net = APriorNet()
-        self.feat_net1 = PointFeatNet()
-        self.feat_net2 = PointFeatNet()
-        
-        #self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
-        #self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
         
         self.fc1 = torch.nn.Linear(1024, 512)
         self.fc2 = torch.nn.Linear(512, 256)
         self.fc_out = torch.nn.Linear(256, 16)
-        self.bn1 = torch.nn.BatchNorm1d(512)
-        self.bn2 = torch.nn.BatchNorm1d(256)
+        self.bn1 = Identity()#torch.nn.BatchNorm1d(512)
+        self.bn2 = Identity()#torch.nn.BatchNorm1d(256)
     
     def feats_to_A(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.fc2(x)))
         x = self.fc_out(x)
-        A = x.view(-1, 4, 4)
+        A = self.scale_factor*x.view(-1, 4, 4)
         return A
 
     def forward(self, x, A_prior=None):

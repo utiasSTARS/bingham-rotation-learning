@@ -22,8 +22,8 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     optimizer.zero_grad()
 
     # Forward
-    q = model.forward(x, A_prior)
-    loss = loss_fn(q, targets)
+    out = model.forward(x, A_prior)
+    loss = loss_fn(out, targets)
 
     # Backward
     loss.backward()
@@ -31,15 +31,17 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     # Update parameters
     optimizer.step()
 
-    return (q, loss.item())
+    return (out, loss.item())
 
-def test_model(model, loss_fn, x, targets, A_prior=None):
+def test_model(model, loss_fn, x, targets, **kwargs):
+    
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
     # Forward
-    q = model.forward(x, A_prior)
-    loss = loss_fn(q, targets)
-    return (q, loss.item())
+    out = model.forward(x, **kwargs)
+    loss = loss_fn(out, targets)
+
+    return (out, loss.item())
 
 #See Rotation Averaging by Hartley et al. (2013)
 def quat_norm_to_angle(q_met, units='deg'):
@@ -85,7 +87,7 @@ def quat_angle_diff(q, q_target, units='deg', reduce=True):
 
 
 
-def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, dtype=torch.double):
+def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, dtype=torch.double):
 
     x_train = torch.zeros(N_train, N_matches_per_sample*2*3, dtype=dtype)
     q_train = torch.zeros(N_train, 4, dtype=dtype)
@@ -95,10 +97,9 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
     q_test = torch.zeros(N_test, 4, dtype=dtype)
     A_prior_test = torch.zeros(N_test, 4, 4, dtype=dtype)
 
-    sigma_prior = 0.01
-    sigma_sim_vec = sigma_prior*np.ones(N_matches_per_sample)
-    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10.
-    sigma_prior_vec = 0.01*np.ones(N_matches_per_sample)
+    sigma_sim_vec = sigma*np.ones(N_matches_per_sample)
+    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10. #Artificially scale half the noise
+    sigma_prior_vec = sigma*np.ones(N_matches_per_sample)
     
 
     for n in range(N_train):
@@ -135,9 +136,44 @@ def compute_mean_horn_error(data):
         err[i] = quat_angle_diff(q_est, data.q[i])
     return err.mean()
 
+def pretrain(A_net, train_data, test_data):
+    loss_fn = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(A_net.parameters(), lr=1e-1)
+    batch_size = 10
+    num_epochs = 50
+
+    print('Pre-training A network...')
+    N_train = train_data.x.shape[0]
+    N_test = test_data.x.shape[0]
+    num_batches = N_train // batch_size
+    for e in range(num_epochs):
+        start_time = time.time()
+
+        #Train model
+        train_loss = torch.tensor(0.)
+        for k in range(num_batches):
+            start, end = k * batch_size, (k + 1) * batch_size
+            _, train_loss_k = train_minibatch(A_net, loss_fn, optimizer,  train_data.x[start:end], train_data.A_prior[start:end])
+            train_loss += (1/num_batches)*train_loss_k
+    
+        elapsed_time = time.time() - start_time
+
+        #Test model
+        num_batches = N_test // batch_size
+        test_loss = torch.tensor(0.)
+        for k in range(num_batches):
+            start, end = k * batch_size, (k + 1) * batch_size
+            _, test_loss_k = test_model(A_net, loss_fn, test_data.x[start:end], test_data.A_prior[start:end])
+            test_loss += (1/num_batches)*test_loss_k
+
+        print('Epoch: {}/{}. Train: Loss {:.3E} | Test: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
+
+    return
+
 def main():
     
     #Sim parameters
+    sigma = 1
     N_train = 500
     N_test = 100
     N_matches_per_sample = 50
@@ -147,8 +183,18 @@ def main():
     batch_size = 10
     use_A_prior = False #Only meaningful with symmetric_loss=False
     symmetric_loss = False
+    pretrain_A_net = True
+
+
+    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample, sigma=sigma)
+    print('Generated training data...')
+    print('Mean Horn Error. Train (deg): {:.3f} | Test: {:.3f} (deg).'.format(compute_mean_horn_error(train_data), compute_mean_horn_error(test_data)))
+
 
     A_net = ANet(num_pts=N_matches_per_sample, symmetric=symmetric_loss).double()
+    if pretrain_A_net:
+        pretrain(A_net, train_data, test_data)
+
     model = QuatNet(A_net=A_net)
 
     if symmetric_loss:
@@ -157,11 +203,6 @@ def main():
         loss_fn = quat_squared_loss
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample)
-
-    print('Generated training data...')
-    print('Mean Horn Error. Train (deg): {:.3f} | Test: {:.3f} (deg).'.format(compute_mean_horn_error(train_data), compute_mean_horn_error(test_data)))
-
     N_train = train_data.x.shape[0]
     N_test = test_data.x.shape[0]
 
