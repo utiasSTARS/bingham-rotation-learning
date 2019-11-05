@@ -21,14 +21,13 @@ class ANet(torch.nn.Module):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.A_prior_net = APriorNet()
-        self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
-        self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net = FCPointFeatNet(num_pts=num_pts)
+        #self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
+        #self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
         
-        self.fc1 = torch.nn.Linear(256, 256)
-        self.fc2 = torch.nn.Linear(256, 128)
-        self.fc3 = torch.nn.Linear(128, 16)
-        self.bn1 = torch.nn.BatchNorm1d(256)
-        self.bn2 = torch.nn.BatchNorm1d(128)
+        self.fc1 = torch.nn.Linear(256, 128)
+        self.fc_out = torch.nn.Linear(128, 16)
+        self.bn1 = torch.nn.BatchNorm1d(128)
         self.qcqp_solver = QuadQuatSolver.apply
 
     def forward(self, x, A_prior=None):
@@ -39,14 +38,13 @@ class ANet(torch.nn.Module):
         x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
         
         #Collect and concatenate features
-        x_1_feats = self.feat_net1(x_1)
-        x_2_feats = self.feat_net2(x_2)
+        x_1_feats = self.feat_net(x_1)
+        x_2_feats = self.feat_net(x_2)
         y = torch.cat([x_1_feats, x_2_feats], dim=1)
 
         #Pass through final network
         y = F.relu(self.bn1(self.fc1(y)))
-        y = F.relu(self.bn2(self.fc2(y)))
-        y = self.fc3(y)
+        y = self.fc_out(y)
         A = y.view(-1, 4, 4)
         
         #Prior?
