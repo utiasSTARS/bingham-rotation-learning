@@ -1,10 +1,13 @@
 import torch
 from torch.autograd import gradcheck
 import numpy as np
-from nets_and_solvers import QuadQuatSolver
+from nets_and_solvers import QuadQuatSolver, QuadQuatFastSolver
 from convex_wahba import solve_wahba, compute_grad, build_A
 from helpers import matrix_diff, so3_diff, gen_sim_data, solve_horn
 from liegroups.numpy import SO3
+
+import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Checking PyTorch gradients (random A, batch_size: {})'.format(num_samples))
@@ -17,9 +20,27 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
 
 
 def test_pytorch_fast_analytic_Gradient(eps=1e-6, tol=1e-4, num_samples=3):
+    print('Checking PyTorch sped-up gradients (random A, batch_size: {})'.format(num_samples))
+    qcqp_solver = QuadQuatFastSolver.apply
+    A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
+    A = 0.5 * (A.transpose(1, 2) + A)
+    input = (A,)
+    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    assert (grad_test == True)
+    print('Batch...Passed.')
 
-    pass
 
+def test_compare_fast_and_slow_solvers(eps=1e-6, tol=1e-4, num_samples=3):
+    print('Checking accuracy of fast solver')
+    # qcqp_solver = QuadQuatSolver.apply
+    # qcqp_solver_fast = QuadQuatFastSolver.apply
+    A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
+    A = 0.5*(A.transpose(1, 2) + A)
+    # input = (A,)
+    q_out  = QuadQuatSolver.apply(A)
+    q_out_fast  = QuadQuatFastSolver.apply(A)
+    print(q_out)
+    print(q_out_fast)
 
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
@@ -73,3 +94,8 @@ if __name__=='__main__':
     test_numpy_analytic_gradient()
     print("=============")
     test_pytorch_analytic_gradient()
+    print("=============")
+    test_pytorch_fast_analytic_Gradient()
+    # print("=============")
+    # test_compare_fast_and_slow_solvers()
+
