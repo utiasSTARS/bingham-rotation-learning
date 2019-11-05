@@ -14,6 +14,26 @@ class Identity(torch.nn.Module):
         return x
 
 
+
+class QuatNet(torch.nn.Module):
+    def __init__(self, A_net=None):
+        super(QuatNet, self).__init__()
+        if A_net is None:
+            raise RuntimeError('Must pass in an ANet to QuatNet')
+        self.A_net = A_net
+        self.qcqp_solver = QuadQuatSolver.apply
+
+    def forward(self, x, A_prior=None):
+        A = self.A_net(x, A_prior)
+        if self.A_net.symmetric:
+            q = self.qcqp_solver(A[0])
+            q_inv = self.qcqp_solver(A[1])
+            return [q, q_inv]
+        else:
+            q = self.qcqp_solver(A)
+            return q
+
+
 class APriorNet(torch.nn.Module):
     def __init__(self):
         super(APriorNet, self).__init__()
@@ -25,9 +45,10 @@ class APriorNet(torch.nn.Module):
         return A.view(-1, 4, 4)
 
 class ANet(torch.nn.Module):
-    def __init__(self, num_pts):
+    def __init__(self, num_pts, symmetric=True):
         super(ANet, self).__init__()
         self.num_pts = num_pts
+        self.symmetric = symmetric #Evaluate both forward and backward directions
         self.A_prior_net = APriorNet()
         self.feat_net1 = PointFeatNet()
         self.feat_net2 = PointFeatNet()
@@ -40,7 +61,13 @@ class ANet(torch.nn.Module):
         self.fc_out = torch.nn.Linear(256, 16)
         self.bn1 = torch.nn.BatchNorm1d(512)
         self.bn2 = torch.nn.BatchNorm1d(256)
-        self.qcqp_solver = QuadQuatSolver.apply
+    
+    def feats_to_A(self, x):
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.fc2(x)))
+        x = self.fc_out(x)
+        A = x.view(-1, 4, 4)
+        return A
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
@@ -53,28 +80,18 @@ class ANet(torch.nn.Module):
         #x_1 -> x_2
         feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_1)], dim=1)
         A1 = self.feats_to_A(feats_12)
-
-        #x_2 -> x_1
-        feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
-        A2 = self.feats_to_A(feats_21)
-
         
-        #Prior? Doesn't make sense with consistency loss unless we give two priors
+        #Prior? Doesn't make sense with symmetric loss unless we give two priors...TODO
         if A_prior is not None:
             A1 = A1 + self.A_prior_net(A_prior)
-            A2 = A2 + self.A_prior_net(A_prior)
-            
-        q1 = self.qcqp_solver(A1)
-        q2 = self.qcqp_solver(A2)
-        
-        return (q1, q2)
 
-    def feats_to_A(self, x):
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.fc2(x)))
-        x = self.fc_out(x)
-        A = x.view(-1, 4, 4)
-        return A
+        if self.symmetric:
+            #x_2 -> x_1
+            feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
+            A2 = self.feats_to_A(feats_21)
+            return [A1, A2]
+
+        return A1
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """
