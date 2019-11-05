@@ -54,6 +54,15 @@ def pure_quat(v):
     q[:3] = v
     return q
 
+def quat_inv(q):
+    #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
+    if q.dim() < 2:
+        q = q.unsqueeze()
+    q_inv = torch.empty_like(q)
+    q_inv[:, :3] = -1*q[:, :3]
+    q_inv[:, 3] = q[:, 3]
+    return q_inv.squeeze()
+
 def q_from_qqT(qqT):
     #Returns unit quaternion q from q * q^T 4x4 matrix
     #Assumes scalar is the last value and it is positive (can make this choice since q = -q)
@@ -107,12 +116,15 @@ def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
 
 
 
-def so3_diff(C_1, C_2):
+def so3_diff(C_1, C_2, unit='deg'):
     A = SO3.from_matrix(C_1)
     B = SO3.from_matrix(C_2)
-    err = A.dot(B.inv()).log()    
-    return norm(err)*180./np.pi
-
+    err = A.dot(B.inv()).log()
+    if unit=='deg':
+        return norm(err)*180./np.pi
+    else:
+        return norm(err)
+        
 
 def solve_horn(x_1, x_2):
     x_1 = normalized(x_1, axis=1)
