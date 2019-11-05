@@ -57,6 +57,15 @@ class ANet(torch.nn.Module):
         return q
 
 
+class QuadQuatFastSolver(torch.autograd.Function):
+    """
+    TODO: - pytorch tutorial,
+          - fast eigenvalue solution forward solve,
+          - remove numpy dependencies in backwards pass
+    """
+    pass
+
+
 class QuadQuatSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver

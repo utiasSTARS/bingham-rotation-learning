@@ -16,6 +16,11 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Batch...Passed.')
 
 
+def test_pytorch_fast_analytic_Gradient(eps=1e-6, tol=1e-4, num_samples=3):
+
+    pass
+
+
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
     for i in range(4):
