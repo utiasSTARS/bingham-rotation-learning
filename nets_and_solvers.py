@@ -57,8 +57,8 @@ class ANet(torch.nn.Module):
         self.fc1 = torch.nn.Linear(1024, 512)
         self.fc2 = torch.nn.Linear(512, 256)
         self.fc_out = torch.nn.Linear(256, 16)
-        self.bn1 = Identity()#torch.nn.BatchNorm1d(512)
-        self.bn2 = Identity()#torch.nn.BatchNorm1d(256)
+        self.bn1 = torch.nn.BatchNorm1d(512)
+        self.bn2 = torch.nn.BatchNorm1d(256)
     
     def feats_to_A(self, x):
         x = F.relu(self.bn1(self.fc1(x)))

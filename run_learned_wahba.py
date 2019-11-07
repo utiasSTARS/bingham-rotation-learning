@@ -34,7 +34,6 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     return (out, loss.item())
 
 def test_model(model, loss_fn, x, targets, **kwargs):
-    
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
     # Forward
