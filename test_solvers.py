@@ -2,7 +2,7 @@ import torch
 from torch.autograd import gradcheck
 import numpy as np
 from nets_and_solvers import QuadQuatSolver, QuadQuatFastSolver
-from convex_wahba import solve_wahba, compute_grad, build_A
+from convex_wahba import solve_wahba, solve_wahba_fast, compute_grad, build_A
 from helpers import matrix_diff, so3_diff, gen_sim_data, solve_horn
 from liegroups.numpy import SO3
 
@@ -30,17 +30,28 @@ def test_pytorch_fast_analytic_Gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Batch...Passed.')
 
 
-def test_compare_fast_and_slow_solvers(eps=1e-6, tol=1e-4, num_samples=3):
+def test_duality_gap_wahba_Solver(num_samples=100):
+    print('Checking duality gap on the fast Wahba solver')
+    A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
+    A = 0.5 * (A.transpose(1, 2) + A)
+    _, _, _, gap = solve_wahba_fast(A)
+    assert np.allclose(gap.detach().numpy(), 0.0)
+    print('Done')
+
+
+def test_compare_fast_and_slow_solvers(eps=1e-6, tol=1e-4, num_samples=10):
     print('Checking accuracy of fast solver')
     # qcqp_solver = QuadQuatSolver.apply
     # qcqp_solver_fast = QuadQuatFastSolver.apply
     A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
     A = 0.5*(A.transpose(1, 2) + A)
     # input = (A,)
-    q_out  = QuadQuatSolver.apply(A)
-    q_out_fast  = QuadQuatFastSolver.apply(A)
-    print(q_out)
-    print(q_out_fast)
+    q_out = QuadQuatSolver.apply(A).detach().numpy()
+    q_out_fast = QuadQuatFastSolver.apply(A).detach().numpy()
+    q_out_diff = np.minimum(np.abs(q_out_fast-q_out), np.abs(q_out_fast+q_out))
+    assert np.allclose(q_out_diff, 0., atol=1e-6)
+    # print(q_out)
+    # print(q_out_fast)
 
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
@@ -89,13 +100,15 @@ def test_numpy_solver(N=100, sigma=0.01, tol=1.):
     assert(so3_diff(C_opt, C) < tol)
 
 if __name__=='__main__':
-    test_numpy_solver()
-    print("=============")
-    test_numpy_analytic_gradient()
-    print("=============")
-    test_pytorch_analytic_gradient()
-    print("=============")
-    test_pytorch_fast_analytic_Gradient()
+    # test_numpy_solver()
     # print("=============")
-    # test_compare_fast_and_slow_solvers()
+    # test_numpy_analytic_gradient()
+    # print("=============")
+    # test_pytorch_analytic_gradient()
+    print("=============")
+    # test_pytorch_fast_analytic_Gradient()
+    print("=============")
+    test_compare_fast_and_slow_solvers()
+    print("=============")
+    test_duality_gap_wahba_Solver()
 

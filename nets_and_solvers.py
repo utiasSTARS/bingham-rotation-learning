@@ -113,24 +113,24 @@ class QuadQuatFastSolver(torch.autograd.Function):
         if A.dim() > 2:
             # minibatch size > 1
             # Iterate for now, maybe speed this up later
-            q = torch.empty(A.shape[0], 4, dtype=torch.double)
-            nu = torch.empty(A.shape[0], 1, dtype=torch.double)
-            for i in range(A.shape[0]):
-                try:
-                    q_opt, nu_opt, _, _ = solve_wahba_fast(A[i], redundant_constraints=True)
-                    # q[i] = torch.from_numpy(q_opt)
-                    nu[i, 0] = nu_opt
-                    q[i] = q_opt
-                except:
-                    raise RuntimeError('Wahba Solve failed!')
+            # q = torch.empty(A.shape[0], 4, dtype=torch.double)
+            # nu = torch.empty(A.shape[0], 1, dtype=torch.double)
+            q, nu, _, _ = solve_wahba_fast(A, redundant_constraints=True)
+            # for i in range(A.shape[0]):
+            #     try:
+            #         q_opt, nu_opt, _, _ = solve_wahba_fast(A[i], redundant_constraints=True)
+            #         # q[i] = torch.from_numpy(q_opt)
+            #         nu[i, 0] = nu_opt
+            #         q[i] = q_opt
+            #     except:
+            #         raise RuntimeError('Wahba Solve failed!')
 
         else:
-            q_opt, nu_opt, _, _ = solve_wahba_fast(A, redundant_constraints=True)
-            # q = torch.from_numpy(q_opt)
-            # nu = nu_opt * torch.ones(1, dtype=torch.double)
-            q = q_opt
-            nu = nu_opt
-        ctx.save_for_backward(A, q, nu)
+            # Unsqueeze so that same batch calls work?
+            A = A.unsqueeze(0)
+            q, nu, _, _ = solve_wahba_fast(A, redundant_constraints=True)
+        # Negate nu because it's the negative (minimization form) of the dual
+        ctx.save_for_backward(A, q, -nu)
         return q
 
     @staticmethod

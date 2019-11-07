@@ -58,22 +58,17 @@ def solve_wahba_fast(A, redundant_constraints=False):
     :return: Optimal q, optimal dual var. nu, time to solve, duality gap
     """
     start = time.time()
-    nus, qs = torch.eig(A, eigenvectors=True)
-    print('Nus: {:}'.format(nus))
-    print('qs: {:}'.format(qs))
-    real_ids = nus[:, 1] == 0
-    print('Real_ids: {:}'.format(real_ids))
-    print(nus[real_ids, 0])
-    nus = nus[real_ids, 0]
-    qs = qs[:, real_ids]
-    # id_min = torch.argmin(nus[:, 0]) # Only check real part
-    id_min = torch.argmin(nus)
-    nu_opt = -nus[id_min]
-    q = -qs[:, id_min]
-    q_opt = q/torch.norm(q, 2)
-    t_solve = time.time() - start
-    # gap = torch.einsum('bnk,bkl,bnl->b', q.unsqueeze(0), A, q.unsqueeze(0)) - nu_opt
-    gap = q@A@q - nu_opt
+    # Returns (b,n) and (b,n,n) tensors
+    nus, qs = torch.symeig(A, eigenvectors=True)
+    nu_min, nu_argmin = torch.min(nus, 1)# , keepdim=False, out=None)
+    q_opt = qs[torch.arange(A.shape[0]), :, nu_argmin]
+    nu_opt = -nu_min.unsqueeze(1)
+    # Normalize qs (but symeig already does this!)
+    # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
+    t_solve = time.time() + start
+    p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
+    gap = p + nu_opt
+
     return q_opt, nu_opt, t_solve, gap
 
 
