@@ -64,9 +64,10 @@ def solve_wahba_fast(A, redundant_constraints=False):
     q_opt = qs[torch.arange(A.shape[0]), :, nu_argmin]
     nu_opt = -nu_min.unsqueeze(1)
     # Normalize qs (but symeig already does this!)
-    # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1)
-    t_solve = time.time() - start
-    gap = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt) + nu_opt
+    # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
+    t_solve = time.time() + start
+    p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
+    gap = p + nu_opt
 
     return q_opt, nu_opt, t_solve, gap
 

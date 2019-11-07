@@ -30,7 +30,7 @@ def test_pytorch_fast_analytic_Gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Batch...Passed.')
 
 
-def test_duality_gap_wahba_Solver(num_samples=10):
+def test_duality_gap_wahba_Solver(num_samples=100):
     print('Checking duality gap on the fast Wahba solver')
     A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
     A = 0.5 * (A.transpose(1, 2) + A)
@@ -105,10 +105,10 @@ if __name__=='__main__':
     # test_numpy_analytic_gradient()
     # print("=============")
     # test_pytorch_analytic_gradient()
-    # print("=============")
+    print("=============")
     # test_pytorch_fast_analytic_Gradient()
     print("=============")
     test_compare_fast_and_slow_solvers()
     print("=============")
-    # test_duality_gap_wahba_Solver()
+    test_duality_gap_wahba_Solver()
 

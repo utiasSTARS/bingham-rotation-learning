@@ -129,7 +129,8 @@ class QuadQuatFastSolver(torch.autograd.Function):
             # Unsqueeze so that same batch calls work?
             A = A.unsqueeze(0)
             q, nu, _, _ = solve_wahba_fast(A, redundant_constraints=True)
-        ctx.save_for_backward(A, q, nu)
+        # Negate nu because it's the negative (minimization form) of the dual
+        ctx.save_for_backward(A, q, -nu)
         return q
 
     @staticmethod
