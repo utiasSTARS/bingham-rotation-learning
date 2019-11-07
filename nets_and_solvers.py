@@ -91,6 +91,7 @@ class ANet(torch.nn.Module):
 
         return A1
 
+
 class QuadQuatFastSolver(torch.autograd.Function):
     """
     TODO: - pytorch tutorial,
@@ -130,7 +131,10 @@ class QuadQuatFastSolver(torch.autograd.Function):
             A = A.unsqueeze(0)
             q, nu, _, _ = solve_wahba_fast(A, redundant_constraints=True)
         # Negate nu because it's the negative (minimization form) of the dual
-        ctx.save_for_backward(A, q, -nu)
+        # print('Fast method q and nu')
+        # print(q)
+        # print(nu)
+        ctx.save_for_backward(A, q, nu)
         return q
 
     @staticmethod
@@ -190,6 +194,9 @@ class QuadQuatSolver(torch.autograd.Function):
             nu = nu_opt*torch.ones(1, dtype=torch.double)
 
         ctx.save_for_backward(A, q, nu)
+        # print('Slow method q and nu')
+        # print(q)
+        # print(nu)
         return q
 
     @staticmethod

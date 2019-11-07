@@ -62,6 +62,7 @@ def solve_wahba_fast(A, redundant_constraints=False):
     nus, qs = torch.symeig(A, eigenvectors=True)
     nu_min, nu_argmin = torch.min(nus, 1)# , keepdim=False, out=None)
     q_opt = qs[torch.arange(A.shape[0]), :, nu_argmin]
+    q_opt = q_opt*(torch.sign(q_opt[:, 3]).unsqueeze(1))
     nu_opt = -nu_min.unsqueeze(1)
     # Normalize qs (but symeig already does this!)
     # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
