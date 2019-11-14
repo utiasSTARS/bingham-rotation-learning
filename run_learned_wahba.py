@@ -122,17 +122,17 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
     return train_data, test_data
 
 
-def compute_mean_horn_error(data):
-    N = data.x.shape[0]
+def compute_mean_horn_error(sim_data):
+    N = sim_data.x.shape[0]
     err = torch.empty(N)
     for i in range(N):
-        x = data.x[i]
+        x = sim_data.x[i]
         x_1, x_2 = torch.chunk(x, 2)
         x_1 = x_1.view(-1, 3).numpy()
         x_2 = x_2.view(-1, 3).numpy()
         C = torch.from_numpy(solve_horn(x_1, x_2))
         q_est = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        err[i] = quat_angle_diff(q_est, data.q[i])
+        err[i] = quat_angle_diff(q_est, sim_data.q[i])
     return err.mean()
 
 def pretrain(A_net, train_data, test_data):
@@ -172,17 +172,17 @@ def pretrain(A_net, train_data, test_data):
 def main():
     
     #Sim parameters
-    sigma = 1
+    sigma = 0.01
     N_train = 500
     N_test = 100
-    N_matches_per_sample = 50
+    N_matches_per_sample = 10
 
     #Learning Parameters
     num_epochs = 100
-    batch_size = 10
+    batch_size = 100
     use_A_prior = False #Only meaningful with symmetric_loss=False
-    symmetric_loss = False
-    pretrain_A_net = True
+    bidirectional_loss = False
+    pretrain_A_net = False
 
 
     train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample, sigma=sigma)
@@ -190,13 +190,13 @@ def main():
     print('Mean Horn Error. Train (deg): {:.3f} | Test: {:.3f} (deg).'.format(compute_mean_horn_error(train_data), compute_mean_horn_error(test_data)))
 
 
-    A_net = ANet(num_pts=N_matches_per_sample, symmetric=symmetric_loss).double()
+    A_net = ANet(num_pts=N_matches_per_sample, bidirectional=bidirectional_loss).double()
     if pretrain_A_net:
         pretrain(A_net, train_data, test_data)
 
     model = QuatNet(A_net=A_net)
 
-    if symmetric_loss:
+    if bidirectional_loss:
         loss_fn = quat_consistency_loss
     else:
         loss_fn = quat_squared_loss
@@ -222,7 +222,7 @@ def main():
                 A_prior = None
             
             (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
-            q_train = q_est[0] if symmetric_loss else q_est
+            q_train = q_est[0] if bidirectional_loss else q_est
             train_loss += (1/num_batches)*train_loss_k
             train_mean_err += (1/num_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
@@ -240,7 +240,7 @@ def main():
             else:
                 A_prior = None
             (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
-            q_test = q_est[0] if symmetric_loss else q_est
+            q_test = q_est[0] if bidirectional_loss else q_est
             test_loss += (1/num_batches)*test_loss_k
             test_mean_err += (1/num_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 

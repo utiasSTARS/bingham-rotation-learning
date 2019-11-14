@@ -21,34 +21,34 @@ class QuatNet(torch.nn.Module):
         if A_net is None:
             raise RuntimeError('Must pass in an ANet to QuatNet')
         self.A_net = A_net
-        self.qcqp_solver = QuadQuatSolver.apply
+        self.qcqp_solver = QuadQuatFastSolver.apply
 
     def forward(self, x, A_prior=None):
-        A = self.A_net(x, A_prior)
-        if self.A_net.symmetric:
-            q = self.qcqp_solver(A[0])
-            q_inv = self.qcqp_solver(A[1])
+        A_vec = self.A_net(x, A_prior)
+        if self.A_net.bidirectional:
+            q = self.qcqp_solver(A_vec[0])
+            q_inv = self.qcqp_solver(A_vec[1])
             return [q, q_inv]
         else:
-            q = self.qcqp_solver(A)
+            q = self.qcqp_solver(A_vec)
             return q
 
 
 class APriorNet(torch.nn.Module):
     def __init__(self):
         super(APriorNet, self).__init__()
-        self.fc1 = torch.nn.Linear(16,16)
-        self.bn1 = torch.nn.BatchNorm1d(16)
+        self.fc1 = torch.nn.Linear(10,10)
+        self.bn1 = torch.nn.BatchNorm1d(10)
 
-    def forward(self, A):
-        A = F.relu(self.bn1(self.fc1(A.view(-1,16)))) + A.view(-1, 16)
-        return A.view(-1, 4, 4)
+    def forward(self, A_vec):
+        A_vec = F.relu(self.bn1(self.fc1(A_vec))) + A_vec
+        return A_vec
 
 class ANet(torch.nn.Module):
-    def __init__(self, num_pts, symmetric=True, scale_factor=1):
+    def __init__(self, num_pts, bidirectional=True, scale_factor=1):
         super(ANet, self).__init__()
         self.num_pts = num_pts
-        self.symmetric = symmetric #Evaluate both forward and backward directions
+        self.bidirectional = bidirectional #Evaluate both forward and backward directions
         self.scale_factor = scale_factor
         self.A_prior_net = APriorNet()
         self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
@@ -56,16 +56,15 @@ class ANet(torch.nn.Module):
         
         self.fc1 = torch.nn.Linear(1024, 512)
         self.fc2 = torch.nn.Linear(512, 256)
-        self.fc_out = torch.nn.Linear(256, 16)
+        self.fc_out = torch.nn.Linear(256, 10)
         self.bn1 = torch.nn.BatchNorm1d(512)
         self.bn2 = torch.nn.BatchNorm1d(256)
     
     def feats_to_A(self, x):
         x = F.relu(self.bn1(self.fc1(x)))
         x = F.relu(self.bn2(self.fc2(x)))
-        x = self.fc_out(x)
-        A = self.scale_factor*x.view(-1, 4, 4)
-        return A
+        A_vec = self.fc_out(x)
+        return A_vec
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
@@ -83,7 +82,7 @@ class ANet(torch.nn.Module):
         if A_prior is not None:
             A1 = A1 + self.A_prior_net(A_prior)
 
-        if self.symmetric:
+        if self.bidirectional:
             #x_2 -> x_1
             feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
             A2 = self.feats_to_A(feats_21)
