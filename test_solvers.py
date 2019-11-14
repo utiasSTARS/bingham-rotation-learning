@@ -20,18 +20,17 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Batch...Passed.')
 
 
-def test_pytorch_fast_analytic_Gradient(eps=1e-6, tol=1e-4, num_samples=3):
+def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=10):
     print('Checking PyTorch sped-up gradients (random A, batch_size: {})'.format(num_samples))
     qcqp_solver = QuadQuatFastSolver.apply
-    A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
-    A = 0.5 * (A.transpose(1, 2) + A)
-    input = (A,)
+    A_vec = torch.randn((num_samples, 10), dtype=torch.double, requires_grad=True)
+    input = (A_vec,)
     grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
     assert (grad_test == True)
     print('Batch...Passed.')
 
 
-def test_duality_gap_wahba_Solver(num_samples=100):
+def test_duality_gap_wahba_solver(num_samples=100):
     print('Checking duality gap on the fast Wahba solver')
     A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
     A = 0.5 * (A.transpose(1, 2) + A)
@@ -54,6 +53,36 @@ def test_compare_fast_and_slow_solvers(eps=1e-6, tol=1e-4, num_samples=5):
     assert np.allclose(q_out_diff, 0., atol=1e-5)
     # print(q_out)
     # print(q_out_fast)
+
+def test_pytorch_manual_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=1):
+    A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=False)
+    A = 0.5*(A.transpose(1, 2) + A)
+    q_opt, nu_opt, _, _ = solve_wahba_fast(A, redundant_constraints=True)
+
+    for i in range(num_samples):
+        G_numerical = numerical_grad_fast(A[i], eps)
+        G_analytic = torch.from_numpy(compute_grad(A[i].detach().numpy(), nu_opt[i].detach().numpy(), q_opt[i].detach().numpy()))
+        
+        rel_diff = matrix_diff(G_analytic.numpy(), G_numerical.numpy())
+
+        print(G_numerical - G_analytic)
+        assert(rel_diff < tol)
+        print('Sample {}/{}...Passed.'.format(i+1, num_samples))
+
+def numerical_grad_fast(A, eps):
+    if A.dim() < 3:
+        A = A.unsqueeze(0)
+
+    G_numerical = torch.zeros((4, 4, 4))
+    for i in range(4):
+        for j in range(4):
+            dA_ij = torch.zeros((1,4,4))
+            dA_ij[0,i,j] = eps
+            dA_ij[0,j,i] = eps
+            q_plus,_,_,_ =  solve_wahba_fast(A+dA_ij, redundant_constraints=True)
+            q_minus,_,_,_ =  solve_wahba_fast(A-dA_ij, redundant_constraints=True)
+            G_numerical[:,i,j] = (q_plus.squeeze() - q_minus.squeeze())/(2.*eps)
+    return G_numerical
 
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
@@ -105,12 +134,14 @@ if __name__=='__main__':
     # test_numpy_solver()
     # print("=============")
     # test_numpy_analytic_gradient()
-    print("=============")
-    test_pytorch_analytic_gradient()
-    print("=============")
-    # test_pytorch_fast_analytic_Gradient()
-    print("=============")
-    test_compare_fast_and_slow_solvers()
     # print("=============")
-    test_duality_gap_wahba_Solver()
+    # test_pytorch_analytic_gradient()
+    # print("=============")
+    # test_pytorch_fast_analytic_Gradient()
+    # # print("=============")
+    # test_compare_fast_and_slow_solvers()
+    # # print("=============")
+    # test_duality_gap_wahba_Solver()
 
+    test_pytorch_fast_analytic_gradient()
+    #test_pytorch_manual_analytic_gradient()

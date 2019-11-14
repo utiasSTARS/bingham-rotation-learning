@@ -63,14 +63,57 @@ def solve_wahba_fast(A, redundant_constraints=False):
     nu_min, nu_argmin = torch.min(nus, 1)# , keepdim=False, out=None)
     q_opt = qs[torch.arange(A.shape[0]), :, nu_argmin]
     q_opt = q_opt*(torch.sign(q_opt[:, 3]).unsqueeze(1))
-    nu_opt = -nu_min.unsqueeze(1)
+    nu_opt = -1.*nu_min.unsqueeze(1)
     # Normalize qs (but symeig already does this!)
     # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
-    t_solve = time.time() + start
+    t_solve = time.time() - start
     p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
     gap = p + nu_opt
 
     return q_opt, nu_opt, t_solve, gap
+
+
+def compute_grad_fast(A, nu, q):
+    """
+    Input: A_vec: (B,4,4) tensor (parametrices B symmetric 4x4 matrices)
+           nu: (B,) tensor (optimal lagrange multipliers)
+           q: (B,4) tensor (optimal unit quaternions)
+    
+    Output: grad: (B, 4, 10) tensor (gradient)
+           
+    Applies the implicit function theorem to compute gradients of qT*A*q s.t |q| = 1, assuming A is symmetric 
+    """
+
+    assert(A.dim() > 2 and nu.dim() > 0 and q.dim() > 1)
+    
+
+    M = A.new_zeros((A.shape[0], 5, 5))
+    I = A.new_zeros((A.shape[0], 4, 4))
+
+    I[:,0,0] = I[:,1,1] = I[:,2,2] = I[:,3,3] = 1.
+
+    M[:, :4, :4] = 2*A + 2.*I*nu.view(-1,1,1)
+    M[:, 4,:4] = 2.*q
+    M[:, :4,4] = 2.*q
+
+    b = A.new_zeros((A.shape[0], 5, 10))
+
+    #symmetric matrix indices
+    idx = torch.triu_indices(4,4)
+
+    i = torch.arange(10)
+    I_ij = A.new_zeros((10, 4, 4))
+
+    I_ij[i, idx[0], idx[1]] = 2.
+    I_ij[i, idx[1], idx[0]] = 2.
+    
+    I_ij = I_ij.expand(A.shape[0], 10, 4, 4)
+
+    b[:, :4, :] = torch.einsum('bkij,bi->bjk',I_ij, q) 
+
+    X, _ = torch.solve(b, M)
+    grad = -1*X[:,:4,:]
+    return grad
 
 
 def compute_grad(A, nu, q):
