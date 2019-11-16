@@ -97,7 +97,7 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
     A_prior_test = torch.zeros(N_test, 4, 4, dtype=dtype)
 
     sigma_sim_vec = sigma*np.ones(N_matches_per_sample)
-    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10. #Artificially scale half the noise
+    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 1. #Artificially scale half the noise
     sigma_prior_vec = sigma*np.ones(N_matches_per_sample)
     
 
@@ -135,11 +135,20 @@ def compute_mean_horn_error(sim_data):
         err[i] = quat_angle_diff(q_est, sim_data.q[i])
     return err.mean()
 
+def convert_A_to_Avec(A):
+    if A.dim() < 3:
+        A = A.unsqueeze()
+    idx = torch.triu_indices(4,4)
+    A_vec = A[:, idx[0], idx[1]]
+
+    return A_vec.squeeze()
+
+
 def pretrain(A_net, train_data, test_data):
     loss_fn = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(A_net.parameters(), lr=1e-1)
-    batch_size = 10
-    num_epochs = 50
+    optimizer = torch.optim.SGD(A_net.parameters(), lr=1e-3)
+    batch_size = 100
+    num_epochs = 500
 
     print('Pre-training A network...')
     N_train = train_data.x.shape[0]
@@ -152,7 +161,7 @@ def pretrain(A_net, train_data, test_data):
         train_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            _, train_loss_k = train_minibatch(A_net, loss_fn, optimizer,  train_data.x[start:end], train_data.A_prior[start:end])
+            _, train_loss_k = train_minibatch(A_net, loss_fn, optimizer,  train_data.x[start:end], convert_A_to_Avec(train_data.A_prior[start:end]))
             train_loss += (1/num_batches)*train_loss_k
     
         elapsed_time = time.time() - start_time
@@ -162,7 +171,7 @@ def pretrain(A_net, train_data, test_data):
         test_loss = torch.tensor(0.)
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
-            _, test_loss_k = test_model(A_net, loss_fn, test_data.x[start:end], test_data.A_prior[start:end])
+            _, test_loss_k = test_model(A_net, loss_fn, test_data.x[start:end], convert_A_to_Avec(test_data.A_prior[start:end]))
             test_loss += (1/num_batches)*test_loss_k
 
         print('Epoch: {}/{}. Train: Loss {:.3E} | Test: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
@@ -173,8 +182,8 @@ def main():
     
     #Sim parameters
     sigma = 0.01
-    N_train = 500
-    N_test = 100
+    N_train = 50000
+    N_test = 1000
     N_matches_per_sample = 10
 
     #Learning Parameters

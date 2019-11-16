@@ -45,11 +45,10 @@ class APriorNet(torch.nn.Module):
         return A_vec
 
 class ANet(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=True, scale_factor=1):
+    def __init__(self, num_pts, bidirectional=True):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.bidirectional = bidirectional #Evaluate both forward and backward directions
-        self.scale_factor = scale_factor
         self.A_prior_net = APriorNet()
         self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
         self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
@@ -59,10 +58,13 @@ class ANet(torch.nn.Module):
         self.fc_out = torch.nn.Linear(256, 10)
         self.bn1 = torch.nn.BatchNorm1d(512)
         self.bn2 = torch.nn.BatchNorm1d(256)
-    
+        self.activ1 = torch.nn.ELU()
+        self.activ2 = torch.nn.ELU()
+
+
     def feats_to_A(self, x):
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.fc2(x)))
+        x = self.activ1(self.bn1(self.fc1(x)))
+        x = self.activ2(self.bn2(self.fc2(x)))
         A_vec = self.fc_out(x)
         return A_vec
 
