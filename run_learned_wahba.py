@@ -88,31 +88,33 @@ def quat_angle_diff(q, q_target, units='deg', reduce=True):
 
 def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, dtype=torch.double):
 
-    x_train = torch.zeros(N_train, N_matches_per_sample*2*3, dtype=dtype)
-    q_train = torch.zeros(N_train, 4, dtype=dtype)
-    A_prior_train = torch.zeros(N_train, 4, 4, dtype=dtype)
+    x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype)
+    q_train = torch.empty(N_train, 4, dtype=dtype)
+    A_prior_train = torch.empty(N_train, 4, 4, dtype=dtype)
 
-    x_test = torch.zeros(N_test, N_matches_per_sample*2*3, dtype=dtype)
-    q_test = torch.zeros(N_test, 4, dtype=dtype)
-    A_prior_test = torch.zeros(N_test, 4, 4, dtype=dtype)
+    x_test = torch.empty(N_test, 2, N_matches_per_sample, 3, dtype=dtype)
+    q_test = torch.empty(N_test, 4, dtype=dtype)
+    A_prior_test = torch.empty(N_test, 4, 4, dtype=dtype)
 
     sigma_sim_vec = sigma*np.ones(N_matches_per_sample)
-    sigma_sim_vec[:int(N_matches_per_sample/2)] *= 1. #Artificially scale half the noise
+    #sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10 #Artificially scale half the noise
     sigma_prior_vec = sigma*np.ones(N_matches_per_sample)
     
 
     for n in range(N_train):
 
-        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True)
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_train[n] = torch.cat([x_1.flatten(), x_2.flatten()])
+        x_train[n, 0, :, :] = x_1
+        x_train[n, 1, :, :] = x_2
         q_train[n] = q
         A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
 
     for n in range(N_test):
-        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True)
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_test[n] = torch.cat([x_1.flatten(), x_2.flatten()])
+        x_test[n, 0, :, :] = x_1
+        x_test[n, 1, :, :] = x_2
         q_test[n] = q
         A_prior_test[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
     
@@ -127,9 +129,8 @@ def compute_mean_horn_error(sim_data):
     err = torch.empty(N)
     for i in range(N):
         x = sim_data.x[i]
-        x_1, x_2 = torch.chunk(x, 2)
-        x_1 = x_1.view(-1, 3).numpy()
-        x_2 = x_2.view(-1, 3).numpy()
+        x_1 = x[0,:,:].numpy()
+        x_2 = x[1,:,:].numpy()
         C = torch.from_numpy(solve_horn(x_1, x_2))
         q_est = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
         err[i] = quat_angle_diff(q_est, sim_data.q[i])
@@ -182,8 +183,8 @@ def main():
     
     #Sim parameters
     sigma = 0.01
-    N_train = 50000
-    N_test = 1000
+    N_train = 1000
+    N_test = 100
     N_matches_per_sample = 10
 
     #Learning Parameters
@@ -226,7 +227,7 @@ def main():
             start, end = k * batch_size, (k + 1) * batch_size
 
             if use_A_prior:
-                A_prior = train_data.A_prior[start:end]
+                A_prior = convert_A_to_Avec(train_data.A_prior[start:end])
             else:
                 A_prior = None
             
@@ -245,7 +246,7 @@ def main():
         for k in range(num_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             if use_A_prior:
-                A_prior = test_data.A_prior[start:end]
+                A_prior = convert_A_to_Avec(test_data.A_prior[start:end])
             else:
                 A_prior = None
             (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
@@ -258,6 +259,8 @@ def main():
 
         print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
+        A_pred = model.A_net.forward(train_data.x[[start]])
+        A_pp = convert_A_to_Avec(train_data.A_prior[[start]])
 
 if __name__=='__main__':
     main()

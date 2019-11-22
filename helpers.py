@@ -151,7 +151,7 @@ def matrix_diff(X,Y):
     
 
 #Note sigma can be scalar or an N-dimensional vector of std. devs.
-def gen_sim_data(N, sigma, torch_vars=False):
+def gen_sim_data(N, sigma, torch_vars=False, shuffle_points=False):
     ##Simulation
     #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
@@ -161,6 +161,10 @@ def gen_sim_data(N, sigma, torch_vars=False):
     noise = np.random.randn(N,3)
     noise = (noise.T*sigma).T
     x_2 = C.dot(x_1.T).T + noise
+
+    if shuffle_points:
+        np.random.shuffle(x_1)
+        np.random.shuffle(x_2) 
 
     if torch_vars:
         C = torch.from_numpy(C)

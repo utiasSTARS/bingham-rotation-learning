@@ -58,22 +58,26 @@ class ANet(torch.nn.Module):
         self.fc_out = torch.nn.Linear(256, 10)
         self.bn1 = torch.nn.BatchNorm1d(512)
         self.bn2 = torch.nn.BatchNorm1d(256)
-        self.activ1 = torch.nn.ELU()
-        self.activ2 = torch.nn.ELU()
+        self.activ1 = torch.nn.LeakyReLU()
+        self.activ2 = torch.nn.LeakyReLU()
 
 
     def feats_to_A(self, x):
         x = self.activ1(self.bn1(self.fc1(x)))
         x = self.activ2(self.bn2(self.fc2(x)))
         A_vec = self.fc_out(x)
+        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
+
         return A_vec
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
-        x_1, x_2 = torch.chunk(x, 2, dim=1)
-        #x_1, x_2 are Bx3xN where B is the minibatch size, N is num_pts
-        x_1 = x_1.view(-1, self.num_pts, 3).transpose(1,2)
-        x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
+        x_1 = x[:, 0, :, :].transpose(1,2)
+        x_2 = x[:, 1, :, :].transpose(1,2)
+        
+        # #x_1, x_2 are Bx3xN where B is the minibatch size, N is num_pts
+        # x_1 = x_1.view(-1, self.num_pts, 3).transpose(1,2)
+        # x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
         
         #Collect and concatenate features
         #x_1 -> x_2
