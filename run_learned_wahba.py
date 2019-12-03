@@ -2,9 +2,10 @@ import torch
 import time
 import numpy as np
 from liegroups.torch import SO3
-from nets_and_solvers import ANet, QuatNet
+from nets_and_solvers import *
 from convex_wahba import build_A
-from helpers import quat_norm_diff, gen_sim_data, solve_horn, quat_inv
+from helpers import quat_norm_diff, gen_sim_data, gen_sim_data_grid, solve_horn, quat_inv
+from tensorboardX import SummaryWriter
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -37,8 +38,9 @@ def test_model(model, loss_fn, x, targets, **kwargs):
     #model.eval() speeds things up because it turns off gradient computation
     model.eval()
     # Forward
-    out = model.forward(x, **kwargs)
-    loss = loss_fn(out, targets)
+    with torch.no_grad():
+        out = model.forward(x, **kwargs)
+        loss = loss_fn(out, targets)
 
     return (out, loss.item())
 
@@ -103,7 +105,7 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
 
     for n in range(N_train):
 
-        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
         x_train[n, 0, :, :] = x_1
         x_train[n, 1, :, :] = x_2
@@ -111,12 +113,15 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
         A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
 
     for n in range(N_test):
-        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
         x_test[n, 0, :, :] = x_1
         x_test[n, 1, :, :] = x_2
         q_test[n] = q
         A_prior_test[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
+
+        # A_vec = convert_A_to_Avec(A_prior_test[n]).unsqueeze(dim=0)
+        # print(q - QuadQuatFastSolver.apply(A_vec).squeeze())
     
     train_data = SyntheticData(x_train, q_train, A_prior_train)
     test_data = SyntheticData(x_test, q_test, A_prior_test)
@@ -138,42 +143,46 @@ def compute_mean_horn_error(sim_data):
 
 def convert_A_to_Avec(A):
     if A.dim() < 3:
-        A = A.unsqueeze()
+        A = A.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
     A_vec = A[:, idx[0], idx[1]]
+
+    A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
+
 
     return A_vec.squeeze()
 
 
 def pretrain(A_net, train_data, test_data):
     loss_fn = torch.nn.MSELoss()
-    optimizer = torch.optim.SGD(A_net.parameters(), lr=1e-3)
-    batch_size = 100
+    optimizer = torch.optim.Adam(A_net.parameters(), lr=1e-2)
+    batch_size = 50
     num_epochs = 500
 
     print('Pre-training A network...')
     N_train = train_data.x.shape[0]
     N_test = test_data.x.shape[0]
-    num_batches = N_train // batch_size
+    num_train_batches = N_train // batch_size
     for e in range(num_epochs):
         start_time = time.time()
 
         #Train model
         train_loss = torch.tensor(0.)
-        for k in range(num_batches):
+        for k in range(num_train_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             _, train_loss_k = train_minibatch(A_net, loss_fn, optimizer,  train_data.x[start:end], convert_A_to_Avec(train_data.A_prior[start:end]))
-            train_loss += (1/num_batches)*train_loss_k
+            train_loss += (1/num_train_batches)*train_loss_k
     
         elapsed_time = time.time() - start_time
 
         #Test model
-        num_batches = N_test // batch_size
+        num_test_batches = N_test // batch_size
         test_loss = torch.tensor(0.)
-        for k in range(num_batches):
+        for k in range(num_test_batches):
             start, end = k * batch_size, (k + 1) * batch_size
             _, test_loss_k = test_model(A_net, loss_fn, test_data.x[start:end], convert_A_to_Avec(test_data.A_prior[start:end]))
-            test_loss += (1/num_batches)*test_loss_k
+            test_loss += (1/num_test_batches)*test_loss_k
+
 
         print('Epoch: {}/{}. Train: Loss {:.3E} | Test: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
 
@@ -182,29 +191,32 @@ def pretrain(A_net, train_data, test_data):
 def main():
     
     #Sim parameters
-    sigma = 0.01
-    N_train = 1000
-    N_test = 100
-    N_matches_per_sample = 10
+    sigma = 1e-2
+    N_train = 5000
+    N_test = 500
+    N_matches_per_sample = 49
 
     #Learning Parameters
     num_epochs = 100
-    batch_size = 100
+    batch_size_train = 250
+    batch_size_test = 250
     use_A_prior = False #Only meaningful with symmetric_loss=False
     bidirectional_loss = False
     pretrain_A_net = False
 
 
-    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample, sigma=sigma)
-    print('Generated training data...')
-    print('Mean Horn Error. Train (deg): {:.3f} | Test: {:.3f} (deg).'.format(compute_mean_horn_error(train_data), compute_mean_horn_error(test_data)))
 
+
+    #print('Generated training data...')
+    #print('Mean Horn Error. Test: {:.3f} (deg).'.format(compute_mean_horn_error(test_data)))
+    
 
     A_net = ANet(num_pts=N_matches_per_sample, bidirectional=bidirectional_loss).double()
-    if pretrain_A_net:
-        pretrain(A_net, train_data, test_data)
-
     model = QuatNet(A_net=A_net)
+    
+    #model = QuatNetDirect(num_pts=N_matches_per_sample).double()
+    #Keep track
+    writer = SummaryWriter(comment='-quatrep')
 
     if bidirectional_loss:
         loss_fn = quat_consistency_loss
@@ -212,19 +224,25 @@ def main():
         loss_fn = quat_squared_loss
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    N_train = train_data.x.shape[0]
-    N_test = test_data.x.shape[0]
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
+
+
+    #Generate new data
+    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample, sigma=sigma)
+    # if pretrain_A_net:
+    #     pretrain(A_net, train_data, test_data)
 
     for e in range(num_epochs):
         start_time = time.time()
 
+
         #Train model
-        print('Training...')
-        num_batches = N_train // batch_size
+        print('Training... lr: {:.3E}'.format(scheduler.get_lr()[0]))
+        num_train_batches = N_train // batch_size_train
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
-        for k in range(num_batches):
-            start, end = k * batch_size, (k + 1) * batch_size
+        for k in range(num_train_batches):
+            start, end = k * batch_size_train, (k + 1) * batch_size_train
 
             if use_A_prior:
                 A_prior = convert_A_to_Avec(train_data.A_prior[start:end])
@@ -233,34 +251,50 @@ def main():
             
             (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
             q_train = q_est[0] if bidirectional_loss else q_est
-            train_loss += (1/num_batches)*train_loss_k
-            train_mean_err += (1/num_batches)*quat_angle_diff(q_train, train_data.q[start:end])
+            train_loss += (1/num_train_batches)*train_loss_k
+            train_mean_err += (1/num_train_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
+        scheduler.step()
+
+
         #Test model
         print('Testing...')
-        num_batches = N_test // batch_size
+        num_test_batches = N_test // batch_size_test
         test_loss = torch.tensor(0.)
         test_mean_err = torch.tensor(0.)
 
 
-        for k in range(num_batches):
-            start, end = k * batch_size, (k + 1) * batch_size
+        for k in range(num_test_batches):
+            start, end = k * batch_size_test, (k + 1) * batch_size_test
             if use_A_prior:
                 A_prior = convert_A_to_Avec(test_data.A_prior[start:end])
             else:
                 A_prior = None
             (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
             q_test = q_est[0] if bidirectional_loss else q_est
-            test_loss += (1/num_batches)*test_loss_k
-            test_mean_err += (1/num_batches)*quat_angle_diff(q_test, test_data.q[start:end])
+            test_loss += (1/num_test_batches)*test_loss_k
+            test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
+
+        writer.add_scalar('training/loss', train_loss, e)
+        writer.add_scalar('training/mean_err', train_mean_err, e)
+
+        writer.add_scalar('validation/loss', test_loss, e)
+        writer.add_scalar('validation/mean_err', test_mean_err, e)
+        
 
         elapsed_time = time.time() - start_time
 
 
         print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
-        A_pred = model.A_net.forward(train_data.x[[start]])
-        A_pp = convert_A_to_Avec(train_data.A_prior[[start]])
+        # with torch.no_grad():
+        #     A_pred = model.A_net.forward(train_data.x[[start]])
+        #     A_pp = convert_A_to_Avec(train_data.A_prior[[start]])
+        #     print(A_pred)
+        #     print(A_pp/A_pp.norm())
+    
+    writer.close()
+            
 
 if __name__=='__main__':
     main()

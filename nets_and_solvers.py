@@ -15,6 +15,17 @@ class Identity(torch.nn.Module):
 
 
 
+class QuatNetDirect(torch.nn.Module):
+    def __init__(self, num_pts):
+        super(QuatNetDirect, self).__init__()        
+        self.net = ANet(num_pts=num_pts, num_dim_out=4)
+
+    def forward(self, x, A_prior=None):
+        vecs = self.net(x)
+        q = vecs/vecs.norm(dim=1).view(-1, 1)
+        return q
+
+
 class QuatNet(torch.nn.Module):
     def __init__(self, A_net=None):
         super(QuatNet, self).__init__()
@@ -44,49 +55,93 @@ class APriorNet(torch.nn.Module):
         A_vec = F.relu(self.bn1(self.fc1(A_vec))) + A_vec
         return A_vec
 
+class PointFeatCNN(torch.nn.Module):
+    def __init__(self):
+        super(PointFeatCNN, self).__init__()
+        self.net = torch.nn.Sequential(
+                torch.nn.Conv1d(3, 64, kernel_size=1),
+                torch.nn.LeakyReLU(),
+                torch.nn.Conv1d(64, 128, kernel_size=1),
+                torch.nn.LeakyReLU(),
+                torch.nn.Conv1d(128, 1024, kernel_size=1),
+                torch.nn.AdaptiveMaxPool1d(output_size=1)
+                )
+
+    def forward(self, x):
+        x = self.net(x)
+        return x.squeeze()
+
+class PointFeatMLP(torch.nn.Module):
+    def __init__(self, num_pts):
+        super(PointFeatMLP, self).__init__()
+
+        self.num_pts = num_pts
+        self.net = torch.nn.Sequential(
+                torch.nn.Linear(3*num_pts, 3*num_pts),
+                #torch.nn.BatchNorm1d(128),
+                torch.nn.PReLU(),
+                torch.nn.Linear(3*num_pts, 1024),
+                #torch.nn.BatchNorm1d(128),
+                torch.nn.PReLU(),
+                torch.nn.Linear(1024, 512),
+                )
+
+    def forward(self, x):
+        x = self.net(x)
+        return x.squeeze()
+
+        
 class ANet(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=True):
+    def __init__(self, num_pts, num_dim_out=10, bidirectional=False):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.bidirectional = bidirectional #Evaluate both forward and backward directions
         self.A_prior_net = APriorNet()
-        self.feat_net1 = FCPointFeatNet(num_pts=num_pts)
-        self.feat_net2 = FCPointFeatNet(num_pts=num_pts)
+        self.feat_net1 = PointFeatMLP(num_pts=num_pts)
+        self.feat_net2 = PointFeatMLP(num_pts=num_pts)
         
-        self.fc1 = torch.nn.Linear(1024, 512)
-        self.fc2 = torch.nn.Linear(512, 256)
-        self.fc_out = torch.nn.Linear(256, 10)
-        self.bn1 = torch.nn.BatchNorm1d(512)
-        self.bn2 = torch.nn.BatchNorm1d(256)
-        self.activ1 = torch.nn.LeakyReLU()
-        self.activ2 = torch.nn.LeakyReLU()
+
+        self.head = torch.nn.Sequential(
+          torch.nn.Linear(1024, 256),
+          #torch.nn.BatchNorm1d(128),
+          torch.nn.PReLU(),
+          torch.nn.Linear(256, 128),
+          #torch.nn.BatchNorm1d(128),
+          torch.nn.PReLU(),
+          torch.nn.Linear(128, num_dim_out)
+        )
 
 
     def feats_to_A(self, x):
-        x = self.activ1(self.bn1(self.fc1(x)))
-        x = self.activ2(self.bn2(self.fc2(x)))
-        A_vec = self.fc_out(x)
+        A_vec = self.head(x)
         A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
 
         return A_vec
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
-        x_1 = x[:, 0, :, :].transpose(1,2)
-        x_2 = x[:, 1, :, :].transpose(1,2)
-        
-        # #x_1, x_2 are Bx3xN where B is the minibatch size, N is num_pts
-        # x_1 = x_1.view(-1, self.num_pts, 3).transpose(1,2)
-        # x_2 = x_2.view(-1, self.num_pts, 3).transpose(1,2)
-        
+        # x_1 = x[:, 0, :, :].transpose(1,2)
+        # x_2 = x[:, 1, :, :].transpose(1,2)
+
+        x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
+        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
+
         #Collect and concatenate features
         #x_1 -> x_2
-        feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_1)], dim=1)
+        feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
+        #feats_12 = self.feat_net1(x_2)
+
         A1 = self.feats_to_A(feats_12)
         
         #Prior? Doesn't make sense with symmetric loss unless we give two priors...TODO
-        if A_prior is not None:
-            A1 = A1 + self.A_prior_net(A_prior)
+        # if A_prior is not None:
+        #     pass
+            # print((A1 - A_prior)[:,0])
+            # print((A1 - A_prior)[:,0].sum())
+            # return
+            #A1 = 0.*A1 + A_prior
+        # if A_prior is not None:
+        #     A1 = A1 + self.A_prior_net(A_prior)
 
         if self.bidirectional:
             #x_2 -> x_1
@@ -96,6 +151,44 @@ class ANet(torch.nn.Module):
 
         return A1
 
+class ADummyNet(torch.nn.Module):
+    def __init__(self, num_pts, bidirectional=False):
+        super(ADummyNet, self).__init__()
+        self.bidirectional = bidirectional
+        self.num_pts = num_pts
+
+    def forward(self, x):
+        return 0
+
+class ANetSingle(torch.nn.Module):
+    def __init__(self, num_pts, bidirectional=False):
+        super(ANetSingle, self).__init__()
+        self.num_pts = num_pts
+        self.bidirectional = bidirectional
+
+        self.body = torch.nn.Sequential(
+          torch.nn.Linear(num_pts*3, 512),
+          #torch.nn.BatchNorm1d(128),
+          torch.nn.ELU(),
+          torch.nn.Linear(512, 256),
+          #torch.nn.BatchNorm1d(128),
+          torch.nn.ELU(),
+          torch.nn.Linear(256, 128),
+          #torch.nn.BatchNorm1d(64),
+          torch.nn.ELU(),
+          torch.nn.Linear(128, 10)
+        )
+
+
+
+    def forward(self, x, A_prior=None):
+        #Decompose input into two point clouds
+        #x_1 = x[:, 0, :, :].transpose(1,2)
+        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
+
+        A_vec = self.body(x_2)
+        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
+        return A_vec
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """
@@ -194,72 +287,5 @@ class QuadQuatSolver(torch.autograd.Function):
 
         return outgrad
 
-#Modelled after PointNet, see https://github.com/kentsyx/pointnet-pytorch/blob/master/pointnet.py
-#Outputs a 3x3 affine transformation
-class AffineNet(torch.nn.Module):
-    def __init__(self):
-        super(AffineNet, self).__init__()
-        self.conv1 = torch.nn.Conv1d(3, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 1024, 1)
-        self.fc1 = torch.nn.Linear(1024, 512)
-        self.fc2 = torch.nn.Linear(512, 256)
-        self.fc3 = torch.nn.Linear(256, 9)
-        self.bn1 = torch.nn.BatchNorm1d(64)
-        self.bn2 = torch.nn.BatchNorm1d(128)
-        self.bn3 = torch.nn.BatchNorm1d(1024)
-        self.bn4 = torch.nn.BatchNorm1d(512)
-        self.bn5 = torch.nn.BatchNorm1d(256)
 
-    def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 1024)
-        x = F.relu(self.bn4(self.fc1(x)))
-        x = F.relu(self.bn5(self.fc2(x)))
-        x = self.fc3(x).view(-1,3,3) 
-        #I = torch.zeros_like(x)
-        #I[:,0,0] = I[:,1,1] = I[:,2,2] = 1.
-        #x += I
-        return x
 
-class FCPointFeatNet(torch.nn.Module):
-    def __init__(self, num_pts):
-        super(FCPointFeatNet, self).__init__()
-        self.num_pts = num_pts
-        self.cnn_in = torch.nn.Conv2d(3, 128, 1, 1, 0)
-        self.cnn = torch.nn.Conv2d(128, 128, 1, 1, 0)
-        self.fc_out = torch.nn.Linear(128*num_pts, 512)
-        self.bn1 = torch.nn.BatchNorm2d(128)
-        self.bn2 = torch.nn.BatchNorm2d(128)
-
-    def forward(self, x):
-        x = x.unsqueeze(3)
-        x = F.relu(F.instance_norm(self.bn1(self.cnn_in(x))))
-        x = F.relu(F.instance_norm(self.bn2(self.cnn(x)))) + x
-        x = self.fc_out(x.view(-1, 128*self.num_pts))
-        return x
-
-class PointFeatNet(torch.nn.Module):
-    def __init__(self):
-        super(PointFeatNet, self).__init__()
-        self.affine_net = AffineNet()
-        self.conv1 = torch.nn.Conv1d(3, 64, 1)
-        self.conv2 = torch.nn.Conv1d(64, 128, 1)
-        self.conv3 = torch.nn.Conv1d(128, 512, 1)
-        self.bn1 = torch.nn.BatchNorm1d(64)
-        self.bn2 = torch.nn.BatchNorm1d(128)
-        self.bn3 = torch.nn.BatchNorm1d(512)
-
-    def forward(self, x):
-        M = self.affine_net(x)
-        #Apply affine transform
-        x = M.bmm(x)   
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = self.bn3(self.conv3(x))
-        x = torch.max(x, 2, keepdim=True)[0]
-        x = x.view(-1, 512)
-        return x

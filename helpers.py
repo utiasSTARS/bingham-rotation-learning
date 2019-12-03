@@ -156,15 +156,14 @@ def gen_sim_data(N, sigma, torch_vars=False, shuffle_points=False):
     #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
     #Create two sets of vectors (normalized to unit l2 norm)
-    x_1 = normalized(np.random.rand(N, 3) - 0.5, axis=1)
+    x_1 = normalized(np.random.randn(N, 3), axis=1)
     #Rotate and add noise
     noise = np.random.randn(N,3)
     noise = (noise.T*sigma).T
     x_2 = C.dot(x_1.T).T + noise
 
     if shuffle_points:
-        np.random.shuffle(x_1)
-        np.random.shuffle(x_2) 
+        x_1, x_2 = unison_shuffled_copies(x_1,x_2)
 
     if torch_vars:
         C = torch.from_numpy(C)
@@ -173,6 +172,39 @@ def gen_sim_data(N, sigma, torch_vars=False, shuffle_points=False):
 
     return C, x_1, x_2
 
+def unison_shuffled_copies(a, b):
+    assert len(a) == len(b)
+    p = np.random.permutation(len(a))
+    return a[p], b[p]
+
+
+def gen_sim_data_grid(N, sigma, torch_vars=False, shuffle_points=False):
+    ##Simulation
+    #Create a random rotation
+    C = SO3.exp(np.random.randn(3)).as_matrix()
+    
+    #Grid is fixed
+    xlims = np.linspace(-1., 1., np.sqrt(N))
+    ylims = np.linspace(-1., 1., np.sqrt(N))
+    x, y = np.meshgrid(xlims, ylims)
+    z = 0.1*x*y
+    x_1 =  normalized(np.hstack((x.reshape(N, 1), y.reshape(N, 1), z.reshape(N, 1))), axis=1)
+
+    #Rotate and add noise
+    noise = np.random.randn(N,3)
+    noise = (noise.T*sigma).T
+    x_2 = C.dot(x_1.T).T + noise
+
+    if shuffle_points:
+        x_1, x_2 = unison_shuffled_copies(x_1,x_2)
+
+
+    if torch_vars:
+        C = torch.from_numpy(C)
+        x_1 = torch.from_numpy(x_1)
+        x_2 = torch.from_numpy(x_2)
+
+    return C, x_1, x_2
 ## PYTORCH
 
 #Quaternion difference of two unit quaternions
