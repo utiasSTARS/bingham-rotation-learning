@@ -288,7 +288,7 @@ def main():
     parser.add_argument('--total_epochs', type=int, default=100)
     parser.add_argument('--batch_size_train', type=int, default=250)
     parser.add_argument('--batch_size_test', type=int, default=250)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
 
     parser.add_argument('--num_heads', type=int, default=25)
     parser.add_argument('--bidirectional_loss', action='store_true', default=False)
@@ -314,15 +314,15 @@ def main():
     (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
 
     
-    saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(str(datetime.now()))
+    saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
     torch.save({
             'model_rep': model_rep.state_dict(),
             'model_direct': model_direct.state_dict(),
-            'train_stats_direct': train_stats_direct,
-            'test_stats_direct': test_stats_direct,
-            'train_stats_rep': train_stats_rep,
-            'test_stats_rep': test_stats_rep,
+            'train_stats_direct': train_stats_direct.detach().cpu(),
+            'test_stats_direct': test_stats_direct.detach().cpu(),
+            'train_stats_rep': train_stats_rep.detach().cpu(),
+            'test_stats_rep': test_stats_rep.detach().cpu(),
             'args': args,
         }, full_saved_path)
 
