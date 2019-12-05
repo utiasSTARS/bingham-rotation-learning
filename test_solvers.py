@@ -20,7 +20,7 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     print('Batch...Passed.')
 
 
-def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=10):
+def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=100):
     print('Checking PyTorch sped-up gradients (random A, batch_size: {})'.format(num_samples))
     qcqp_solver = QuadQuatFastSolver.apply
     A_vec = torch.randn((num_samples, 10), dtype=torch.double, requires_grad=True)

@@ -6,6 +6,8 @@ from nets_and_solvers import *
 from convex_wahba import build_A
 from helpers import quat_norm_diff, gen_sim_data, gen_sim_data_grid, solve_horn, quat_inv
 from tensorboardX import SummaryWriter
+from datetime import datetime
+import argparse
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -188,113 +190,143 @@ def pretrain(A_net, train_data, test_data):
 
     return
 
-def main():
-    
-    #Sim parameters
-    sigma = 1e-2
-    N_train = 5000
-    N_test = 500
-    N_matches_per_sample = 49
+def train_test_model(args, train_data, test_data, model, tensorboard_output=True):
 
-    #Learning Parameters
-    num_epochs = 100
-    batch_size_train = 250
-    batch_size_test = 250
-    use_A_prior = False #Only meaningful with symmetric_loss=False
-    bidirectional_loss = False
-    pretrain_A_net = False
-
-
-
-
-    #print('Generated training data...')
-    #print('Mean Horn Error. Test: {:.3f} (deg).'.format(compute_mean_horn_error(test_data)))
-    
-
-    A_net = ANet(num_pts=N_matches_per_sample, bidirectional=bidirectional_loss).double()
-    model = QuatNet(A_net=A_net)
-    
-    #model = QuatNetDirect(num_pts=N_matches_per_sample).double()
-    #Keep track
-    writer = SummaryWriter(comment='-quatrep')
-
-    if bidirectional_loss:
+    if args.bidirectional_loss:
         loss_fn = quat_consistency_loss
     else:
         loss_fn = quat_squared_loss
+    
+    if tensorboard_output:
+        writer = SummaryWriter()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
 
-
-    #Generate new data
-    train_data, test_data = create_experimental_data(N_train, N_test, N_matches_per_sample, sigma=sigma)
     # if pretrain_A_net:
     #     pretrain(A_net, train_data, test_data)
 
-    for e in range(num_epochs):
+    #Save stats
+    train_stats = torch.empty(args.total_epochs, 2)
+    test_stats = torch.empty(args.total_epochs, 2)
+    
+    for e in range(args.total_epochs):
         start_time = time.time()
 
 
         #Train model
         print('Training... lr: {:.3E}'.format(scheduler.get_lr()[0]))
-        num_train_batches = N_train // batch_size_train
+        num_train_batches = args.N_train // args.batch_size_train
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
         for k in range(num_train_batches):
-            start, end = k * batch_size_train, (k + 1) * batch_size_train
+            start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
 
-            if use_A_prior:
+            if args.use_A_prior:
                 A_prior = convert_A_to_Avec(train_data.A_prior[start:end])
             else:
                 A_prior = None
             
             (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
-            q_train = q_est[0] if bidirectional_loss else q_est
+            q_train = q_est[0] if args.bidirectional_loss else q_est
             train_loss += (1/num_train_batches)*train_loss_k
             train_mean_err += (1/num_train_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
         scheduler.step()
 
-
         #Test model
         print('Testing...')
-        num_test_batches = N_test // batch_size_test
+        num_test_batches = args.N_test // args.batch_size_test
         test_loss = torch.tensor(0.)
         test_mean_err = torch.tensor(0.)
 
 
         for k in range(num_test_batches):
-            start, end = k * batch_size_test, (k + 1) * batch_size_test
-            if use_A_prior:
+            start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
+            if args.use_A_prior:
                 A_prior = convert_A_to_Avec(test_data.A_prior[start:end])
             else:
                 A_prior = None
             (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
-            q_test = q_est[0] if bidirectional_loss else q_est
+            q_test = q_est[0] if args.bidirectional_loss else q_est
             test_loss += (1/num_test_batches)*test_loss_k
             test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
-        writer.add_scalar('training/loss', train_loss, e)
-        writer.add_scalar('training/mean_err', train_mean_err, e)
 
-        writer.add_scalar('validation/loss', test_loss, e)
-        writer.add_scalar('validation/mean_err', test_mean_err, e)
+        if tensorboard_output:
+            writer.add_scalar('training/loss', train_loss, e)
+            writer.add_scalar('training/mean_err', train_mean_err, e)
+
+            writer.add_scalar('validation/loss', test_loss, e)
+            writer.add_scalar('validation/mean_err', test_mean_err, e)
         
+        #History tracking
+        train_stats[e, 0] = train_loss
+        train_stats[e, 1] = train_mean_err
+        test_stats[e, 0] = test_loss
+        test_stats[e, 1] = test_mean_err
 
         elapsed_time = time.time() - start_time
 
+        print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.total_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
-        print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
+    if tensorboard_output:
+        writer.close()
 
-        # with torch.no_grad():
-        #     A_pred = model.A_net.forward(train_data.x[[start]])
-        #     A_pp = convert_A_to_Avec(train_data.A_prior[[start]])
-        #     print(A_pred)
-        #     print(A_pp/A_pp.norm())
+    return train_stats, test_stats
+
+
+def main():
+
+
+    parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
+    parser.add_argument('--sim_sigma', type=float, default=1e-2)
+    parser.add_argument('--N_train', type=int, default=5000)
+    parser.add_argument('--N_test', type=int, default=500)
+    parser.add_argument('--matches_per_sample', type=int, default=49)
+
+    parser.add_argument('--total_epochs', type=int, default=100)
+    parser.add_argument('--batch_size_train', type=int, default=250)
+    parser.add_argument('--batch_size_test', type=int, default=250)
+    parser.add_argument('--lr', type=float, default=1e-4)
+
+    parser.add_argument('--num_heads', type=int, default=25)
+    parser.add_argument('--bidirectional_loss', action='store_true', default=False)
+    parser.add_argument('--pretrain_A_net', action='store_true', default=False)
+    parser.add_argument('--use_A_prior', action='store_true', default=False)
+
+
+    args = parser.parse_args()
+    print(args)
+
+    #Generate data
+    train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma)
     
-    writer.close()
-            
+    #Train and test direct model
+    print('===================TRAINING DIRECT MODEL=======================')
+    model_direct = QuatNetDirect(num_pts=args.matches_per_sample).double()
+    (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
+
+    #Train and test with new representation
+    print('===================TRAINING REP MODEL=======================')
+    A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).double()
+    model_rep = QuatNet(A_net=A_net)
+    (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
+
+    
+    saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(str(datetime.now()))
+    full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
+    torch.save({
+            'model_rep': model_rep.state_dict(),
+            'model_direct': model_direct.state_dict(),
+            'train_stats_direct': train_stats_direct,
+            'test_stats_direct': test_stats_direct,
+            'train_stats_rep': train_stats_rep,
+            'test_stats_rep': test_stats_rep,
+            'args': args,
+        }, full_saved_path)
+
+    print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()

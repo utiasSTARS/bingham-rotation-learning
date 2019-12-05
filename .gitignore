@@ -1,6 +1,11 @@
 # Mac
 .DS_Store
+.pytest_cache
+.vscode/
+__pycache__/
+runs/
 
+127.0.0.1	reddit.com  #reddit
 # Pycharm
 .idea/
 

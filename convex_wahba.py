@@ -92,9 +92,9 @@ def compute_grad_fast(A, nu, q):
 
     I[:,0,0] = I[:,1,1] = I[:,2,2] = I[:,3,3] = 1.
 
-    M[:, :4, :4] = 2*A + 2.*I*nu.view(-1,1,1)
-    M[:, 4,:4] = 2.*q
-    M[:, :4,4] = 2.*q
+    M[:, :4, :4] = A + I*nu.view(-1,1,1)
+    M[:, 4,:4] = q
+    M[:, :4,4] = q
 
     b = A.new_zeros((A.shape[0], 5, 10))
 
@@ -104,13 +104,14 @@ def compute_grad_fast(A, nu, q):
     i = torch.arange(10)
     I_ij = A.new_zeros((10, 4, 4))
 
-    I_ij[i, idx[0], idx[1]] = 2.
-    I_ij[i, idx[1], idx[0]] = 2.
+    I_ij[i, idx[0], idx[1]] = 1.
+    I_ij[i, idx[1], idx[0]] = 1.
     
     I_ij = I_ij.expand(A.shape[0], 10, 4, 4)
 
     b[:, :4, :] = torch.einsum('bkij,bi->bjk',I_ij, q) 
 
+    #This solves all gradients simultaneously!
     X, _ = torch.solve(b, M)
     grad = -1*X[:,:4,:]
     return grad
