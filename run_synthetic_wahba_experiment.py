@@ -1,13 +1,15 @@
 import torch
 import time
 import numpy as np
-from liegroups.torch import SO3
-from nets_and_solvers import *
-from convex_wahba import build_A
-from helpers import quat_norm_diff, gen_sim_data, gen_sim_data_grid, solve_horn, quat_inv
+from sim_models import *
+from quaternions import *
+from sim_helpers import *
+from convex_layers import QuadQuatFastSolver
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import argparse
+from liegroups.torch import SO3
+
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -45,48 +47,6 @@ def test_model(model, loss_fn, x, targets, **kwargs):
         loss = loss_fn(out, targets)
 
     return (out, loss.item())
-
-#See Rotation Averaging by Hartley et al. (2013)
-def quat_norm_to_angle(q_met, units='deg'):
-    angle = 4.*torch.asin(0.5*q_met)
-    if units == 'deg':
-        angle = (180./np.pi)*angle
-    elif units == 'rad':
-        pass
-    else:
-        raise RuntimeError('Unknown units in metric conversion.')
-    return angle
-
-def quat_consistency_loss(qs, q_target, reduce=True):
-    q = qs[0]
-    q_inv = qs[1]
-    assert(q.shape == q_inv.shape == q_target.shape)
-    d1 = quat_loss(q, q_target, reduce=False)
-    d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
-    d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
-    losses =  d1*d1 + d2*d2 + d3*d3
-    loss = losses.mean() if reduce else losses
-    return loss
-    
-
-def quat_squared_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses =  0.5*d*d
-    loss = losses.mean() if reduce else losses
-    return loss
-
-def quat_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses = d
-    loss = losses.mean() if reduce else losses
-    return loss
-
-def quat_angle_diff(q, q_target, units='deg', reduce=True):
-    assert(q.shape == q_target.shape)
-    diffs = quat_norm_to_angle(quat_norm_diff(q, q_target), units=units)
-    return diffs.mean() if reduce else diffs
 
 
 
@@ -281,16 +241,15 @@ def main():
 
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
     parser.add_argument('--sim_sigma', type=float, default=1e-2)
-    parser.add_argument('--N_train', type=int, default=5000)
+    parser.add_argument('--N_train', type=int, default=1000)
     parser.add_argument('--N_test', type=int, default=500)
-    parser.add_argument('--matches_per_sample', type=int, default=49)
+    parser.add_argument('--matches_per_sample', type=int, default=100)
 
-    parser.add_argument('--total_epochs', type=int, default=150)
+    parser.add_argument('--total_epochs', type=int, default=10)
     parser.add_argument('--batch_size_train', type=int, default=250)
     parser.add_argument('--batch_size_test', type=int, default=250)
-    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--lr', type=float, default=1e-4)
 
-    parser.add_argument('--num_heads', type=int, default=25)
     parser.add_argument('--bidirectional_loss', action='store_true', default=False)
     parser.add_argument('--pretrain_A_net', action='store_true', default=False)
     parser.add_argument('--use_A_prior', action='store_true', default=False)

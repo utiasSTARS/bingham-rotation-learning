@@ -58,7 +58,7 @@ def _create_training_fig_combined(train_stats_direct, train_stats_rep, test_stat
     return fig
 
 def plot_wahba_training_comparisons(individual=True, combined=False):
-    datafile = './saved_data/synthetic/synthetic_wahba_experiment_12-05-2019-18-24-14.pt'
+    datafile = './saved_data/synthetic/synthetic_wahba_experiment_12-06-2019-01-20-24.pt'
     data = torch.load(datafile, map_location=lambda storage, loc: storage)
 
     train_stats_direct = data['train_stats_direct'].detach().numpy()
