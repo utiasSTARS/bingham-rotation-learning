@@ -1,9 +1,7 @@
-
 import torch
-from torch.autograd import gradcheck
 import numpy as np
-from convex_wahba import solve_wahba, solve_wahba_fast, compute_grad, gen_sim_data, build_A, compute_grad_fast
 import torch.nn.functional as F
+from convex_layers import QuadQuatFastSolver
 
 #Utility module to replace BatchNorms without affecting structure
 class Identity(torch.nn.Module):
@@ -12,8 +10,6 @@ class Identity(torch.nn.Module):
 
     def forward(self, x):
         return x
-
-
 
 class QuatNetDirect(torch.nn.Module):
     def __init__(self, num_pts):
@@ -151,15 +147,6 @@ class ANet(torch.nn.Module):
 
         return A1
 
-class ADummyNet(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=False):
-        super(ADummyNet, self).__init__()
-        self.bidirectional = bidirectional
-        self.num_pts = num_pts
-
-    def forward(self, x):
-        return 0
-
 class ANetSingle(torch.nn.Module):
     def __init__(self, num_pts, bidirectional=False):
         super(ANetSingle, self).__init__()
@@ -190,102 +177,9 @@ class ANetSingle(torch.nn.Module):
         A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
         return A_vec
 
-class QuadQuatFastSolver(torch.autograd.Function):
-    """
-    TODO: - pytorch tutorial,
-          - fast eigenvalue solution forward solve,
-          - remove numpy dependencies in backwards pass
-    Differentiable QCQP solver
-    Input: Bx10 tensor 'A_vec' which encodes symmetric 4x4 matrices, A
-    Output: q that minimizes q^T A q s.t. |q| = 1
-    """
 
 
-    @staticmethod
-    def forward(ctx, A_vec):
 
-        if A_vec.dim() < 2:
-            A_vec = A_vec.unsqueeze()
-
-        #Convert Bx10 tensor to Bx4x4 symmetric matrices
-        idx = torch.triu_indices(4,4)
-        A = A_vec.new_zeros((A_vec.shape[0],4,4))   
-        A[:, idx[0], idx[1]] = A_vec
-        A[:, idx[1], idx[0]] = A_vec
-
-        q, nu, _, _ = solve_wahba_fast(A)
-        ctx.save_for_backward(A, q, nu)
-
-        return q
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        A, q, nu = ctx.saved_tensors
-        grad_qcqp = compute_grad_fast(A, nu, q)
-        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
-        return outgrad
-
-class QuadQuatSolver(torch.autograd.Function):
-    """
-    Differentiable QCQP solver
-    Input: 4x4 matrix A
-    Output: q that minimizes q^T A q s.t. |q| = 1
-    """
-
-    @staticmethod
-    def forward(ctx, A):
-        """
-        In the forward pass we receive a Tensor containing the input and return
-        a Tensor containing the output. ctx is a context object that can be used
-        to stash information for backward computation. You can cache arbitrary
-        objects for use in the backward pass using the ctx.save_for_backward method.
-        """
-
-        if A.dim() > 2:
-            # minibatch size > 1
-            # Iterate for now, maybe speed this up later
-            q = torch.empty(A.shape[0], 4, dtype=torch.double)
-            nu = torch.empty(A.shape[0], 1, dtype=torch.double)
-            for i in range(A.shape[0]):
-                try:
-                    q_opt, nu_opt, _, _ = solve_wahba(A[i].detach().numpy(),redundant_constraints=True)
-                    q[i] = torch.from_numpy(q_opt)
-                    nu[i,0] = nu_opt
-                except:
-                    raise RuntimeError('Wahba Solve failed!')
-                    
-        else:
-            q_opt, nu_opt, _, _ = solve_wahba(A.detach().numpy(),redundant_constraints=True)
-            q = torch.from_numpy(q_opt)
-            nu = nu_opt*torch.ones(1, dtype=torch.double)
-
-        ctx.save_for_backward(A, q, nu)
-        # print('Slow method q and nu')
-        # print(q)
-        # print(nu)
-        return q
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        """
-        In the backward pass we receive a Tensor containing the gradient of the loss
-        with respect to the output, and we need to compute the gradient of the loss
-        with respect to the input.
-        """
-        A, q, nu = ctx.saved_tensors
-
-        if A.dim() > 2:
-            # minibatch size > 1
-            # Iterate for now, maybe speed this up later
-            grad_qcqp = torch.empty(A.shape[0], 4, 4, 4, dtype=torch.double)
-            for i in range(A.shape[0]):
-                grad_qcqp[i] = torch.from_numpy(compute_grad(A[i].detach().numpy(), nu[i].detach().numpy()[0], q[i].detach().numpy())).double()
-            outgrad = torch.einsum('bkij,bk->bij', grad_qcqp, grad_output) 
-        else:
-            grad_qcqp = torch.from_numpy(compute_grad(A.detach().numpy(), nu.detach().numpy()[0], q.detach().numpy())).double()
-            outgrad = torch.einsum('kij,k->ij', grad_qcqp, grad_output) 
-
-        return outgrad
 
 
 

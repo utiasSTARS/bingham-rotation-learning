@@ -1,15 +1,10 @@
 import torch
 import time
 import numpy as np
-from sim_models import *
-from quaternions import *
-from sim_helpers import *
-from convex_layers import QuadQuatFastSolver
+from liegroups.torch import SO3
 from tensorboardX import SummaryWriter
 from datetime import datetime
 import argparse
-from liegroups.torch import SO3
-
 
 class SyntheticData():
     def __init__(self, x, q, A_prior):
@@ -47,72 +42,6 @@ def test_model(model, loss_fn, x, targets, **kwargs):
         loss = loss_fn(out, targets)
 
     return (out, loss.item())
-
-
-
-def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, dtype=torch.double):
-
-    x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype)
-    q_train = torch.empty(N_train, 4, dtype=dtype)
-    A_prior_train = torch.empty(N_train, 4, 4, dtype=dtype)
-
-    x_test = torch.empty(N_test, 2, N_matches_per_sample, 3, dtype=dtype)
-    q_test = torch.empty(N_test, 4, dtype=dtype)
-    A_prior_test = torch.empty(N_test, 4, 4, dtype=dtype)
-
-    sigma_sim_vec = sigma*np.ones(N_matches_per_sample)
-    #sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10 #Artificially scale half the noise
-    sigma_prior_vec = sigma*np.ones(N_matches_per_sample)
-    
-
-    for n in range(N_train):
-
-        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
-        q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_train[n, 0, :, :] = x_1
-        x_train[n, 1, :, :] = x_2
-        q_train[n] = q
-        A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
-
-    for n in range(N_test):
-        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
-        q = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        x_test[n, 0, :, :] = x_1
-        x_test[n, 1, :, :] = x_2
-        q_test[n] = q
-        A_prior_test[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
-
-        # A_vec = convert_A_to_Avec(A_prior_test[n]).unsqueeze(dim=0)
-        # print(q - QuadQuatFastSolver.apply(A_vec).squeeze())
-    
-    train_data = SyntheticData(x_train, q_train, A_prior_train)
-    test_data = SyntheticData(x_test, q_test, A_prior_test)
-    
-    return train_data, test_data
-
-
-def compute_mean_horn_error(sim_data):
-    N = sim_data.x.shape[0]
-    err = torch.empty(N)
-    for i in range(N):
-        x = sim_data.x[i]
-        x_1 = x[0,:,:].numpy()
-        x_2 = x[1,:,:].numpy()
-        C = torch.from_numpy(solve_horn(x_1, x_2))
-        q_est = SO3.from_matrix(C).to_quaternion(ordering='xyzw')
-        err[i] = quat_angle_diff(q_est, sim_data.q[i])
-    return err.mean()
-
-def convert_A_to_Avec(A):
-    if A.dim() < 3:
-        A = A.unsqueeze(dim=0)
-    idx = torch.triu_indices(4,4)
-    A_vec = A[:, idx[0], idx[1]]
-
-    A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-
-
-    return A_vec.squeeze()
 
 
 def pretrain(A_net, train_data, test_data):
@@ -241,11 +170,11 @@ def main():
 
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
     parser.add_argument('--sim_sigma', type=float, default=1e-2)
-    parser.add_argument('--N_train', type=int, default=1000)
+    parser.add_argument('--N_train', type=int, default=5000)
     parser.add_argument('--N_test', type=int, default=500)
     parser.add_argument('--matches_per_sample', type=int, default=100)
 
-    parser.add_argument('--total_epochs', type=int, default=10)
+    parser.add_argument('--total_epochs', type=int, default=100)
     parser.add_argument('--batch_size_train', type=int, default=250)
     parser.add_argument('--batch_size_test', type=int, default=250)
     parser.add_argument('--lr', type=float, default=1e-4)

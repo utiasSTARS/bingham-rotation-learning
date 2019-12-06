@@ -54,29 +54,6 @@ def pure_quat(v):
     q[:3] = v
     return q
 
-def quat_inv(q):
-    #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
-    if q.dim() < 2:
-        q = q.unsqueeze()
-    q_inv = torch.empty_like(q)
-    q_inv[:, :3] = -1*q[:, :3]
-    q_inv[:, 3] = q[:, 3]
-    return q_inv.squeeze()
-
-def q_from_qqT(qqT):
-    #Returns unit quaternion q from q * q^T 4x4 matrix
-    #Assumes scalar is the last value and it is positive (can make this choice since q = -q)
-
-    q = np.sqrt(np.diag(qqT))
-    if qqT[0,3] < 0.:
-        q[0] *=  -1.
-    if qqT[1,3] < 0.:
-        q[1] *=  -1.
-    if qqT[2,3] < 0.:
-        q[2] *=  -1.
-
-    return q
-
 def normalized(a, axis=-1, order=2):
     l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
     l2[l2==0] = 1
@@ -149,7 +126,18 @@ def solve_horn(x_1, x_2):
 def matrix_diff(X,Y):
     return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
     
-
+def build_A(x_1, x_2, sigma_2):
+    N = x_1.shape[0]
+    A = np.zeros((4, 4), dtype=np.float64)
+    for i in range(N):
+        # Block diagonal indices
+        I = np.eye(4, dtype=np.float64)
+        t1 = (x_2[i].dot(x_2[i]) + x_1[i].dot(x_1[i]))*I
+        t2 = 2.*Omega_l(pure_quat(x_2[i])).dot(
+            Omega_r(pure_quat(x_1[i])))
+        A_i = (t1 + t2)/(sigma_2[i])
+        A += A_i
+    return A 
 #Note sigma can be scalar or an N-dimensional vector of std. devs.
 def gen_sim_data(N, sigma, torch_vars=False, shuffle_points=False):
     ##Simulation
@@ -205,12 +193,4 @@ def gen_sim_data_grid(N, sigma, torch_vars=False, shuffle_points=False):
         x_2 = torch.from_numpy(x_2)
 
     return C, x_1, x_2
-## PYTORCH
 
-#Quaternion difference of two unit quaternions
-def quat_norm_diff(q_a, q_b):
-    if q_a.dim() < 2:
-        q_a = q_a.unsqueeze(0)
-    if q_b.dim() < 2:
-        q_b = q_b.unsqueeze(0)
-    return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze_()
