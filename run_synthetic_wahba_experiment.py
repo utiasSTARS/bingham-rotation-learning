@@ -285,7 +285,7 @@ def main():
     parser.add_argument('--N_test', type=int, default=500)
     parser.add_argument('--matches_per_sample', type=int, default=49)
 
-    parser.add_argument('--total_epochs', type=int, default=100)
+    parser.add_argument('--total_epochs', type=int, default=150)
     parser.add_argument('--batch_size_train', type=int, default=250)
     parser.add_argument('--batch_size_test', type=int, default=250)
     parser.add_argument('--lr', type=float, default=5e-4)
