@@ -1,7 +1,7 @@
 # Mac
 .DS_Store
 .pytest_cache
-.vscode/
+.vscode
 __pycache__/
 runs/
 
