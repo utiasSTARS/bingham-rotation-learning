@@ -53,12 +53,12 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     device = next(model.parameters()).device
 
     
-    for e in range(args.total_epochs):
+    for e in range(args.epochs):
         start_time = time.time()
 
         
         #Train model
-        print('Epoch {} / {} | Training with lr: {:.3E}'.format(e+1, args.total_epochs, scheduler.get_lr()[0]))
+        print('Epoch {} / {} | Training with lr: {:.3E}'.format(e+1, args.epochs, scheduler.get_lr()[0]))
         model.train()
         num_train_batches = len(train_loader)
         train_loss = torch.tensor(0.)
@@ -121,7 +121,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         elapsed_time = time.time() - start_time
 
-        print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.total_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
+        print('Epoch: {}/{} done. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
     if tensorboard_output:
         writer.close()
@@ -133,7 +133,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='7Scenes experiment')
     parser.add_argument('--scene', type=str, default='chess')
-    parser.add_argument('--total_epochs', type=int, default=20)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--batch_size_train', type=int, default=16)
     parser.add_argument('--batch_size_test', type=int, default=32)
     parser.add_argument('--comparison', action='store_true', default=False)
