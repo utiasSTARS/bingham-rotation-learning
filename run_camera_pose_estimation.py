@@ -151,7 +151,15 @@ def main():
 
 
     #Load datasets
-    transform = transforms.Compose([
+    transform_train = transforms.Compose([
+        transforms.Resize(256),
+        transforms.RandomCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    ])
+
+    transform_test = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
@@ -166,10 +174,10 @@ def main():
         data_folder = '/media/m2-drive/datasets/7scenes'
         device = torch.device('cuda:0')
 
-    train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform, output_first_image=args.dual_network),
+    train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform_train, output_first_image=args.dual_network),
                         batch_size=args.batch_size_train, pin_memory=True,
                         shuffle=True, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform, output_first_image=args.dual_network),
+    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform_test, output_first_image=args.dual_network),
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
