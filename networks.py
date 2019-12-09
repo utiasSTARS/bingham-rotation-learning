@@ -126,7 +126,6 @@ class ANet(torch.nn.Module):
         #Collect and concatenate features
         #x_1 -> x_2
         feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
-        #feats_12 = self.feat_net1(x_2)
 
         A1 = self.feats_to_A(feats_12)
         
@@ -234,7 +233,7 @@ class CustomResNetDual(torch.nn.Module):
 class CustomResNet(torch.nn.Module):
     def __init__(self, num_outputs, normalize_output=True):
         super(CustomResNet, self).__init__()
-        self.cnn = torchvision.models.resnet34(pretrained=True)
+        self.cnn = torchvision.models.googlenet(pretrained=True)
         num_ftrs = self.cnn.fc.in_features
         self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
