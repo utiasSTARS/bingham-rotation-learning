@@ -1,10 +1,10 @@
 import torch
 from torch.autograd import gradcheck
 import numpy as np
+from liegroups.numpy import SO3
 from convex_layers import *
 from quaternions import *
-from sim_helpers import matrix_diff, so3_diff, gen_sim_data, solve_horn, build_A
-from liegroups.numpy import SO3
+from sim_helpers import *
 
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
