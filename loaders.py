@@ -27,9 +27,8 @@ class SevenScenesData(Dataset):
         with open(split_file, 'r') as f:
             seqs = [int(l.split('sequence')[-1]) for l in f if not l.startswith('#')]
     
-          # read poses and collect image names
+        # read poses and collect image names
         self.c_imgs = []
-        self.d_imgs = []
         self.pose_files = []
         self.gt_idx = np.empty((0,), dtype=np.int)
         ps = {}
@@ -41,6 +40,7 @@ class SevenScenesData(Dataset):
             ps[seq] = np.asarray(pss)
             c_imgs = [osp.join(seq_dir, 'frame-{:06d}.color.png'.format(i)) for i in frame_idx]
             self.c_imgs.extend(c_imgs)
+        
         self.poses = np.empty((0,16))
         for seq in seqs:
             self.poses = np.vstack((self.poses,ps[seq]))
@@ -50,6 +50,7 @@ class SevenScenesData(Dataset):
         if output_first_image:
             self.first_image = self.transform(self.load_image(self.c_imgs[0]))
             self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
+            print(self.C_w_c0)
         else:
             self.first_image = None
 
@@ -57,13 +58,9 @@ class SevenScenesData(Dataset):
 
     def __getitem__(self, index):
         img = self.transform(self.load_image(self.c_imgs[index]))
-
         pose = self.poses[index].view(4,4) #Poses are camera to world
-
-        print(pose)
-        
         C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
-
+        
         if self.first_image is not None:
             return (self.first_image, img), rotmat_to_quat(C_ci_w.mm(self.C_w_c0))
         else:
