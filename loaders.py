@@ -8,7 +8,7 @@ import os
 from quaternions import rotmat_to_quat
 
 class SevenScenesData(Dataset):
-    def __init__(self, scene, data_path, train, transform=None, valid_jitter_transform=None):
+    def __init__(self, scene, data_path, train, transform=None, output_first_image=True):
         
         """
           :param scene: scene name: 'chess', 'pumpkin', ...
@@ -16,7 +16,6 @@ class SevenScenesData(Dataset):
 
         """
         self.transform = transform
-        self.valid_jitter_transform = valid_jitter_transform
         self.train = train
           # directories
         base_dir = osp.join(osp.expanduser(data_path), scene)   
@@ -48,16 +47,23 @@ class SevenScenesData(Dataset):
 
         self.poses = torch.from_numpy(self.poses).float()
 
+        if output_first_image:
+            self.first_image = self.transform(self.load_image(self.c_imgs[0]))
+            self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
+        else:
+            self.first_image = None
+
         print('Loaded {} poses'.format(self.poses.shape[0]))
 
     def __getitem__(self, index):
-        img = self.load_image(self.c_imgs[index])
-        pose = self.poses[index].view(4,4)
-        C = pose[:3,:3].transpose(0, 1) #Poses are camera to world, we need world to camera
-        if self.transform:
-            img = self.transform(img)
+        img = self.transform(self.load_image(self.c_imgs[index]))
+        pose = self.poses[index].view(4,4) #Poses are camera to world
+        C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
 
-        return img, rotmat_to_quat(C)
+        if self.first_image is not None:
+            return (self.first_image, img), rotmat_to_quat(C_ci_w.mm(self.C_w_c0))
+        else:
+            return img, rotmat_to_quat(C_ci_w)
 
     def __len__(self):
         return self.poses.shape[0]
