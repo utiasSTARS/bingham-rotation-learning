@@ -147,10 +147,10 @@ def main():
     ])
 
 
-    train_loader = DataLoader(SevenScenesData(args.scene, '/media/datasets/7scenes', train=True, transform=transform),
+    train_loader = DataLoader(SevenScenesData(args.scene, '/media/m2-drive/datasets/7scenes', train=True, transform=transform),
                         batch_size=args.batch_size_train, pin_memory=True,
                         shuffle=True, num_workers=4, drop_last=False)
-    valid_loader = DataLoader(SevenScenesData(args.scene, '/media/datasets/7scenes', train=False, transform=transform),
+    valid_loader = DataLoader(SevenScenesData(args.scene, '/media/m2-drive/datasets/7scenes', train=False, transform=transform),
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=4, drop_last=False)
     
