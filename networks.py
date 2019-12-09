@@ -233,7 +233,7 @@ class CustomResNetDual(torch.nn.Module):
 class CustomResNet(torch.nn.Module):
     def __init__(self, num_outputs, normalize_output=True):
         super(CustomResNet, self).__init__()
-        self.cnn = torchvision.models.densenet161(pretrained=True)
+        self.cnn = torchvision.models.densenet121(pretrained=True)
         num_ftrs = self.cnn.classifier.in_features
         self.cnn.classifier = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
