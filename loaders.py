@@ -6,6 +6,7 @@ import os.path as osp
 from PIL import Image
 import os
 from quaternions import rotmat_to_quat
+import cv2
 
 class SevenScenesData(Dataset):
     def __init__(self, scene, data_path, train, transform=None, output_first_image=True):
@@ -47,12 +48,17 @@ class SevenScenesData(Dataset):
 
         self.poses = torch.from_numpy(self.poses).float()
 
+
+        # self.extractor = cv2.ORB()
+        # self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
         if output_first_image:
             self.first_image = self.transform(self.load_image(self.c_imgs[0]))
             self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
-            print(self.C_w_c0)
+
         else:
             self.first_image = None
+
 
         print('Loaded {} poses'.format(self.poses.shape[0]))
 
@@ -68,6 +74,12 @@ class SevenScenesData(Dataset):
 
     def __len__(self):
         return self.poses.shape[0]
+
+
+    # def match_to_first_image(self, im):
+    #     kp2, des2 = self.extractor.detectAndCompute(im1,None)
+    #     matches = bf.match(des1,des2)
+    #     matches = sorted(matches, key = lambda x:x.distance)
 
     def load_image(self, filename, loader=default_loader):
         try:
