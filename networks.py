@@ -199,7 +199,7 @@ class CustomResNetConvex(torch.nn.Module):
 class CustomResNet(torch.nn.Module):
     def __init__(self, num_outputs, normalize_output=True):
         super(CustomResNet, self).__init__()
-        self.cnn = torchvision.models.resnet18(pretrained=True)
+        self.cnn = torchvision.models.resnet18(pretrained=False)
         num_ftrs = self.cnn.fc.in_features
         self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
