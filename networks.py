@@ -176,17 +176,23 @@ class ANetSingle(torch.nn.Module):
 
 #CNNS
 class CustomResNetDirect(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, dual=True):
         super(CustomResNetDirect, self).__init__()
-        self.cnn = CustomResNet(num_outputs=4)
+        if dual:
+            self.cnn = CustomResNetDual(num_outputs=4, normalize_output=True)
+        else:
+            self.cnn = CustomResNet(num_outputs=4, normalize_output=True)
 
     def forward(self, im):
         return self.cnn(im)
 
 class CustomResNetConvex(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, dual=True):
         super(CustomResNetConvex, self).__init__()
-        self.cnn = CustomResNet(num_outputs=10, normalize_output=True)
+        if dual:
+            self.cnn = CustomResNetDual(num_outputs=10, normalize_output=True)
+        else:
+            self.cnn = CustomResNet(num_outputs=10, normalize_output=True)
         self.qcqp_solver = QuadQuatFastSolver.apply
 
     def forward(self, im):
@@ -194,6 +200,29 @@ class CustomResNetConvex(torch.nn.Module):
         q = self.qcqp_solver(A_vec)
         return q
    
+
+class CustomResNetDual(torch.nn.Module):
+    def __init__(self, num_outputs, normalize_output=True):
+        super(CustomResNetDual, self).__init__()
+        self.cnn1 = torchvision.models.resnet34(pretrained=True)
+        self.cnn2 = torchvision.models.resnet34(pretrained=True)
+        num_ftrs = self.cnn1.fc.out_features
+        self.head = torch.nn.Sequential(
+          torch.nn.Linear(2*num_ftrs, 256),
+          torch.nn.PReLU(),
+          torch.nn.Linear(256, 128),
+          torch.nn.PReLU(),
+          torch.nn.Linear(128, num_outputs)
+        )
+
+        self.normalize_output = normalize_output
+        
+    def forward(self, ims):
+        feats = torch.cat((self.cnn1(ims[0]), self.cnn2(ims[1])), dim=1)
+        y = self.head(feats)
+        if self.normalize_output:
+            y = y/y.norm(dim=1).view(-1, 1)
+        return y
 
 
 class CustomResNet(torch.nn.Module):
@@ -203,7 +232,6 @@ class CustomResNet(torch.nn.Module):
         num_ftrs = self.cnn.fc.in_features
         self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
-        self.freeze_layers()
         
     def forward(self, x):
         y = self.cnn(x)
