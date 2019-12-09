@@ -65,7 +65,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         for batch_idx, (im, q_gt) in enumerate(train_loader):
             #Move all data to appropriate device
-            q_gt.to(device)
+            q_gt = q_gt.to(device)
             if isinstance(im, list):
                 im[0] = im[0].to(device)
                 im[1] = im[1].to(device)
@@ -89,7 +89,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         for batch_idx, (im, q_gt) in enumerate(test_loader):
             #Move all data to appropriate device
-            q_gt.to(device)
+            q_gt = q_gt.to(device)
             if isinstance(im, list):
                 im[0] = im[0].to(device)
                 im[1] = im[1].to(device)
