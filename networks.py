@@ -203,6 +203,7 @@ class CustomResNet(torch.nn.Module):
         num_ftrs = self.cnn.fc.in_features
         self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
+        self.freeze_layers()
         
     def forward(self, x):
         y = self.cnn(x)

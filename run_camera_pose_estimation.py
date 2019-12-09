@@ -43,7 +43,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     if tensorboard_output:
         writer = SummaryWriter()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=opt.lr, amsgrad=True)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
 
     #Save stats
