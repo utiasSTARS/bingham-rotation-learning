@@ -58,7 +58,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         
         #Train model
-        print('Epoch {} / {} | Training with lr: {:.3E}'.format(e, args.total_epochs, scheduler.get_lr()[0]))
+        print('Epoch {} / {} | Training with lr: {:.3E}'.format(e+1, args.total_epochs, scheduler.get_lr()[0]))
         model.train()
         num_train_batches = len(train_loader)
         train_loss = torch.tensor(0.)
