@@ -57,7 +57,11 @@ class SevenScenesData(Dataset):
 
     def __getitem__(self, index):
         img = self.transform(self.load_image(self.c_imgs[index]))
+
         pose = self.poses[index].view(4,4) #Poses are camera to world
+
+        print(pose)
+        
         C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
 
         if self.first_image is not None:
