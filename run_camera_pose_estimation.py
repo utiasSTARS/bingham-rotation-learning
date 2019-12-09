@@ -172,7 +172,7 @@ def main():
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
     #Train and test direct model
-    # print('===================TRAINING DIRECT MODEL=======================')
+    print('===================TRAINING DIRECT MODEL=======================')
     model_direct = CustomResNetDirect()
     model_direct.to(dtype=tensor_type, device=device)
     loss_fn = quat_squared_loss
