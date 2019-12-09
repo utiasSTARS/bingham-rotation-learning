@@ -123,7 +123,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='7Scenes experiment')
     parser.add_argument('--scene', type=str, default='chess')
-
+    parser.add_argument('--cuda', action='store_true', default=True)
     parser.add_argument('--total_epochs', type=int, default=20)
     parser.add_argument('--batch_size_train', type=int, default=16)
     parser.add_argument('--batch_size_test', type=int, default=16)
