@@ -128,6 +128,7 @@ def main():
     parser.add_argument('--batch_size_train', type=int, default=32)
     parser.add_argument('--batch_size_test', type=int, default=64)
     parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--cuda', action='store_true', default=False)
 
     args = parser.parse_args()
     print(args)
@@ -145,8 +146,7 @@ def main():
                              std=[0.229, 0.224, 0.225])
     ])
 
-    local_run = False
-    if local_run:
+    if not args.cuda:
         data_folder = '/Users/valentinp/Desktop/datasets/7scenes'
         device = torch.device('cpu')
     else:
@@ -162,10 +162,10 @@ def main():
     
     #Train and test direct model
     # print('===================TRAINING DIRECT MODEL=======================')
-    # model_direct = CustomResNetDirect()
-    # model_direct.to(dtype=tensor_type, device=device)
-    # loss_fn = quat_squared_loss
-    # (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, train_loader)
+    model_direct = CustomResNetDirect()
+    model_direct.to(dtype=tensor_type, device=device)
+    loss_fn = quat_squared_loss
+    (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, train_loader)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
