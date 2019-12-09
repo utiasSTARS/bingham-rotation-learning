@@ -200,13 +200,12 @@ class CustomResNet(torch.nn.Module):
     def __init__(self, num_outputs, normalize_output=True):
         super(CustomResNet, self).__init__()
         self.cnn = torchvision.models.resnet50(pretrained=True)
-        self.nonlin = torch.nn.PReLU()
-        num_ftrs = self.cnn.fc.out_features
-        self.fc_out = torch.nn.Linear(num_ftrs, num_outputs)
+        num_ftrs = self.cnn.fc.in_features
+        self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
         self.normalize_output = normalize_output
 
     def forward(self, x):
-        y = self.fc_out(self.nonlin(self.cnn(x)))
+        y = self.cnn(x)
         if self.normalize_output:
             y = y/y.norm(dim=1).view(-1, 1)
         return y

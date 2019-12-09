@@ -136,7 +136,7 @@ def main():
     parser.add_argument('--total_epochs', type=int, default=10)
     parser.add_argument('--batch_size_train', type=int, default=32)
     parser.add_argument('--batch_size_test', type=int, default=64)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--cuda', action='store_true', default=True)
     parser.add_argument('--num_workers', type=int, default=8)
     
