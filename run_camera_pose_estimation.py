@@ -136,8 +136,10 @@ def main():
     parser.add_argument('--total_epochs', type=int, default=10)
     parser.add_argument('--batch_size_train', type=int, default=32)
     parser.add_argument('--batch_size_test', type=int, default=64)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--num_workers', type=int, default=8)
+    
 
     args = parser.parse_args()
     print(args)
@@ -164,10 +166,10 @@ def main():
 
     train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform),
                         batch_size=args.batch_size_train, pin_memory=True,
-                        shuffle=True, num_workers=4, drop_last=False)
+                        shuffle=True, num_workers=args.num_workers, drop_last=False)
     valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform),
                         batch_size=args.batch_size_test, pin_memory=True,
-                        shuffle=False, num_workers=4, drop_last=False)
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
     
     #Train and test direct model
     # print('===================TRAINING DIRECT MODEL=======================')
