@@ -6,7 +6,7 @@ import os.path as osp
 from PIL import Image
 import os
 from quaternions import rotmat_to_quat
-import cv2
+#import cv2
 
 class SevenScenesData(Dataset):
     def __init__(self, scene, data_path, train, transform=None, output_first_image=True):
