@@ -133,7 +133,7 @@ def main():
 
     parser = argparse.ArgumentParser(description='7Scenes experiment')
     parser.add_argument('--scene', type=str, default='chess')
-    parser.add_argument('--total_epochs', type=int, default=10)
+    parser.add_argument('--total_epochs', type=int, default=20)
     parser.add_argument('--batch_size_train', type=int, default=16)
     parser.add_argument('--batch_size_test', type=int, default=32)
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -173,10 +173,10 @@ def main():
     
     #Train and test direct model
     # print('===================TRAINING DIRECT MODEL=======================')
-    # model_direct = CustomResNetDirect()
-    # model_direct.to(dtype=tensor_type, device=device)
-    # loss_fn = quat_squared_loss
-    # (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, valid_loader)
+    model_direct = CustomResNetDirect()
+    model_direct.to(dtype=tensor_type, device=device)
+    loss_fn = quat_squared_loss
+    (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, valid_loader)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
