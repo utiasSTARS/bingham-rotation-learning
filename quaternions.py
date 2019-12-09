@@ -136,7 +136,7 @@ def quat_norm_diff(q_a, q_b):
         q_a = q_a.unsqueeze(0)
     if q_b.dim() < 2:
         q_b = q_b.unsqueeze(0)
-    return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze_()
+    return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze()
 
 def quat_angle_diff(q, q_target, units='deg', reduce=True):
     assert(q.shape == q_target.shape)
