@@ -208,9 +208,8 @@ class CustomResNetDual(torch.nn.Module):
         num_ftrs = self.cnn.fc.in_features
         self.cnn.fc = torch.nn.Linear(num_ftrs, 512)
         self.head = torch.nn.Sequential(
-          torch.nn.Linear(1024, 256),
           torch.nn.PReLU(),
-          torch.nn.Linear(256, 128),
+          torch.nn.Linear(1024, 128),
           torch.nn.PReLU(),
           torch.nn.Linear(128, num_outputs)
         )
