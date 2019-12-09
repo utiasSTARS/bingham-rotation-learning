@@ -205,15 +205,15 @@ class CustomResNetDual(torch.nn.Module):
     def __init__(self, num_outputs, normalize_output=True):
         super(CustomResNetDual, self).__init__()
         self.cnn = torchvision.models.resnet34(pretrained=True)
-        num_ftrs = self.cnn.fc.out_features
+        num_ftrs = self.cnn.fc.in_features
+        self.cnn.fc = torch.nn.Linear(num_ftrs, 512)
         self.head = torch.nn.Sequential(
-          torch.nn.Linear(2*num_ftrs, 256),
+          torch.nn.Linear(1024, 256),
           torch.nn.PReLU(),
           torch.nn.Linear(256, 128),
           torch.nn.PReLU(),
           torch.nn.Linear(128, num_outputs)
         )
-
         self.normalize_output = normalize_output
         self.freeze_layers()
 
@@ -221,6 +221,8 @@ class CustomResNetDual(torch.nn.Module):
         # To freeze or not to freeze...
         for param in self.cnn.parameters():
             param.requires_grad = False
+        for param in self.cnn.fc.parameters():
+            param.requires_grad = True
 
     def forward(self, ims):
         feats = torch.cat((self.cnn(ims[0]), self.cnn(ims[1])), dim=1)
