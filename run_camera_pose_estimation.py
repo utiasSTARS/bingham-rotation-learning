@@ -47,8 +47,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
 
     #Save stats
-    train_stats = torch.empty(args.total_epochs, 2)
-    test_stats = torch.empty(args.total_epochs, 2)
+    train_stats = torch.empty(args.epochs, 2)
+    test_stats = torch.empty(args.epochs, 2)
     
     device = next(model.parameters()).device
 
