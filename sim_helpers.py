@@ -2,57 +2,8 @@ import numpy as np
 import torch
 from liegroups.numpy import SO3
 from numpy.linalg import norm
+from quaternions import *
 
-#NUMPY
-##########
-def Omega_l(q):
-    Om = np.zeros((4,4)) * np.nan
-    np.fill_diagonal(Om, q[3]) 
-    
-    Om[0,1] = -q[2]
-    Om[0,2] = q[1]
-    Om[0,3] = q[0]
-
-    Om[1,0] = q[2]
-    Om[1,2] = -q[0]
-    Om[1,3] = q[1]
-
-    Om[2,0] = -q[1]
-    Om[2,1] = q[0]
-    Om[2,3] = q[2]
-    
-    Om[3,0] = -q[0]
-    Om[3,1] = -q[1]
-    Om[3,2] = -q[2]
-
-    return Om
-
-def Omega_r(q):
-    Om = np.zeros((4,4)) * np.nan
-    np.fill_diagonal(Om, q[3]) 
-    
-    Om[0,1] = q[2]
-    Om[0,2] = -q[1]
-    Om[0,3] = q[0]
-
-    Om[1,0] = -q[2]
-    Om[1,2] = q[0]
-    Om[1,3] = q[1]
-
-    Om[2,0] = q[1]
-    Om[2,1] = -q[0]
-    Om[2,3] = q[2]
-    
-    Om[3,0] = -q[0]
-    Om[3,1] = -q[1]
-    Om[3,2] = -q[2]
-
-    return Om
-
-def pure_quat(v):
-    q = np.zeros(4)
-    q[:3] = v
-    return q
 
 def normalized(a, axis=-1, order=2):
     l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
@@ -90,7 +41,6 @@ def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
     C = M_b.dot(M_a)
     
     return C
-
 
 
 def so3_diff(C_1, C_2, unit='deg'):
@@ -193,4 +143,64 @@ def gen_sim_data_grid(N, sigma, torch_vars=False, shuffle_points=False):
         x_2 = torch.from_numpy(x_2)
 
     return C, x_1, x_2
+
+class SyntheticData():
+    def __init__(self, x, q, A_prior):
+        self.x = x
+        self.q = q
+        self.A_prior = A_prior
+
+
+def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, dtype=torch.double):
+
+    x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype)
+    q_train = torch.empty(N_train, 4, dtype=dtype)
+    A_prior_train = torch.empty(N_train, 4, 4, dtype=dtype)
+
+    x_test = torch.empty(N_test, 2, N_matches_per_sample, 3, dtype=dtype)
+    q_test = torch.empty(N_test, 4, dtype=dtype)
+    A_prior_test = torch.empty(N_test, 4, 4, dtype=dtype)
+
+    sigma_sim_vec = sigma*np.ones(N_matches_per_sample)
+    #sigma_sim_vec[:int(N_matches_per_sample/2)] *= 10 #Artificially scale half the noise
+    sigma_prior_vec = sigma*np.ones(N_matches_per_sample)
+    
+
+    for n in range(N_train):
+
+        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        q = rotmat_to_quat(C, ordering='xyzw')
+        x_train[n, 0, :, :] = x_1
+        x_train[n, 1, :, :] = x_2
+        q_train[n] = q
+        A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
+
+    for n in range(N_test):
+        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        q = rotmat_to_quat(C, ordering='xyzw')
+        x_test[n, 0, :, :] = x_1
+        x_test[n, 1, :, :] = x_2
+        q_test[n] = q
+        A_prior_test[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
+
+        # A_vec = convert_A_to_Avec(A_prior_test[n]).unsqueeze(dim=0)
+        # print(q - QuadQuatFastSolver.apply(A_vec).squeeze())
+    
+    train_data = SyntheticData(x_train, q_train, A_prior_train)
+    test_data = SyntheticData(x_test, q_test, A_prior_test)
+    
+    return train_data, test_data
+
+
+def compute_mean_horn_error(sim_data):
+    N = sim_data.x.shape[0]
+    err = torch.empty(N)
+    for i in range(N):
+        x = sim_data.x[i]
+        x_1 = x[0,:,:].numpy()
+        x_2 = x[1,:,:].numpy()
+        C = torch.from_numpy(solve_horn(x_1, x_2))
+        q_est = rotmat_to_quat(C, ordering='xyzw')
+        err[i] = quat_angle_diff(q_est, sim_data.q[i])
+    return err.mean()
 
