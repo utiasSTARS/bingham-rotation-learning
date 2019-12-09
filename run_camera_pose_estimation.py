@@ -73,6 +73,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             (q_est, train_loss_k) = train(model, loss_fn, optimizer, im, q_gt)
             train_loss += (1./num_train_batches)*train_loss_k
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
+            print('batch: {}/{}'.format(batch_idx, num_train_batches))
             
         scheduler.step()
 
@@ -92,9 +93,9 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
                 im = im.to(device)
 
             (q_est, test_loss_k) = test(model, loss_fn, im, q_gt)
-            test_loss += (1./num_test_batches)*train_loss_k
+            test_loss += (1./num_test_batches)*test_loss_k
             test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
-
+            print('batch: {}/{}'.format(batch_idx, num_train_batches))
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)
@@ -123,18 +124,16 @@ def main():
 
     parser = argparse.ArgumentParser(description='7Scenes experiment')
     parser.add_argument('--scene', type=str, default='chess')
-    parser.add_argument('--cuda', action='store_true', default=True)
     parser.add_argument('--total_epochs', type=int, default=20)
-    parser.add_argument('--batch_size_train', type=int, default=16)
-    parser.add_argument('--batch_size_test', type=int, default=16)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--batch_size_train', type=int, default=32)
+    parser.add_argument('--batch_size_test', type=int, default=64)
+    parser.add_argument('--lr', type=float, default=1e-4)
 
     args = parser.parse_args()
     print(args)
 
     #Float or Double?
     tensor_type = torch.float
-    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
 
 
     #Load datasets
@@ -146,20 +145,27 @@ def main():
                              std=[0.229, 0.224, 0.225])
     ])
 
+    local_run = False
+    if local_run:
+        data_folder = '/Users/valentinp/Desktop/datasets/7scenes'
+        device = torch.device('cpu')
+    else:
+        data_folder = '/media/m2-drive/datasets/7scenes'
+        device = torch.device('cuda:0')
 
-    train_loader = DataLoader(SevenScenesData(args.scene, '/media/m2-drive/datasets/7scenes', train=True, transform=transform),
+    train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform),
                         batch_size=args.batch_size_train, pin_memory=True,
                         shuffle=True, num_workers=4, drop_last=False)
-    valid_loader = DataLoader(SevenScenesData(args.scene, '/media/m2-drive/datasets/7scenes', train=False, transform=transform),
+    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform),
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=4, drop_last=False)
     
     #Train and test direct model
-    print('===================TRAINING DIRECT MODEL=======================')
-    model_direct = CustomResNetDirect()
-    model_direct.to(dtype=tensor_type, device=device)
-    loss_fn = quat_squared_loss
-    (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, train_loader)
+    # print('===================TRAINING DIRECT MODEL=======================')
+    # model_direct = CustomResNetDirect()
+    # model_direct.to(dtype=tensor_type, device=device)
+    # loss_fn = quat_squared_loss
+    # (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, train_loader)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
