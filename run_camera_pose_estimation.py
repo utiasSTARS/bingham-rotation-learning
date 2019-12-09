@@ -8,6 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 from quaternions import *
 from networks import *
+import tqdm
 
 #Generic training function
 def train(model, loss_fn, optimizer, im, q_gt):
@@ -51,18 +52,18 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     
     device = next(model.parameters()).device
 
-
+    
     for e in range(args.total_epochs):
         start_time = time.time()
 
-
+        
         #Train model
         print('Training... lr: {:.3E}'.format(scheduler.get_lr()[0]))
         model.train()
         num_train_batches = len(train_loader)
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
-
+        pbar = tqdm.tqdm(total=num_train_batches)
         for batch_idx, (im, q_gt) in enumerate(train_loader):
             #Move all data to appropriate device
             q_gt = q_gt.to(device)
@@ -75,8 +76,9 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             (q_est, train_loss_k) = train(model, loss_fn, optimizer, im, q_gt)
             train_loss += (1./num_train_batches)*train_loss_k
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
-            print('batch: {}/{}'.format(batch_idx, num_train_batches))
-            
+            #print('batch: {}/{}'.format(batch_idx, num_train_batches))
+            pbar.update(1)
+        pbar.close()
         scheduler.step()
 
         #Test model
@@ -85,6 +87,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         num_test_batches = len(test_loader)
         test_loss = torch.tensor(0.)
         test_mean_err = torch.tensor(0.)
+        pbar = tqdm.tqdm(total=num_test_batches)
 
 
         for batch_idx, (im, q_gt) in enumerate(test_loader):
@@ -99,7 +102,9 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             (q_est, test_loss_k) = test(model, loss_fn, im, q_gt)
             test_loss += (1./num_test_batches)*test_loss_k
             test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
-            print('batch: {}/{}'.format(batch_idx, num_train_batches))
+            #print('batch: {}/{}'.format(batch_idx, num_train_batches))
+            pbar.update(1)
+        pbar.close()
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)
