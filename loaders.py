@@ -92,3 +92,121 @@ class SevenScenesData(Dataset):
             return None
         return img
 
+
+class KITTIVODatasetPreTransformed(Dataset):
+    """KITTI Odometry Benchmark dataset with full memory read-ins."""
+
+    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None):
+        self.kitti_dataset_file = kitti_dataset_file
+        self.seqs_base_path = seqs_base_path
+        self.apply_blur = apply_blur
+        self.transform_img = transform_img
+        self.seq_prefix = seq_prefix
+        self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
+        self.use_flow = use_flow
+        self.reverse_images = reverse_images
+
+    def load_kitti_data(self, run_type, use_only_seq):
+        with open(self.kitti_dataset_file, 'rb') as handle:
+            kitti_data = pickle.load(handle)
+
+        if run_type == 'train':
+            self.seqs = kitti_data['train_seqs']
+            self.pose_indices = kitti_data['train_pose_indices']
+            self.T_21_gt = kitti_data['train_T_21_gt']
+            self.T_21_vo = kitti_data['train_T_21_vo']
+            self.pose_deltas = kitti_data['train_pose_deltas']
+
+        elif run_type == 'test':
+            self.seqs = kitti_data['test_seqs']
+            self.pose_indices = kitti_data['test_pose_indices']
+            self.T_21_gt = kitti_data['test_T_21_gt']
+            self.T_21_vo = kitti_data['test_T_21_vo']
+            self.pose_delta = kitti_data['test_pose_delta']
+
+        else:
+            raise ValueError('run_type must be set to `train`, or `test`. ')
+
+        if use_only_seq is not None:
+            self.pose_indices = [self.pose_indices[i] for i in range(len(self.seqs))
+                                 if self.seqs[i] ==  use_only_seq]
+            self.T_21_gt = [self.T_21_gt[i] for i in range(len(self.seqs))
+                                 if self.seqs[i] == use_only_seq]
+            self.T_21_vo = [self.T_21_vo[i] for i in range(len(self.seqs))
+                                 if self.seqs[i] == use_only_seq]
+            self.seqs = [self.seqs[i] for i in range(len(self.seqs))
+                                 if self.seqs[i] == use_only_seq]
+
+        print('Loading sequences...{}'.format(list(set(self.seqs))))
+        print('Pose delta: {}'.format(self.pose_indices[0][1] - self.pose_indices[0][0]))
+        self.seq_images = {seq: self.import_seq(seq) for seq in list(set(self.seqs))}
+        print('...done loading images into memory.')
+
+    def import_seq(self, seq):
+        file_path = self.seqs_base_path + '/' + self.seq_prefix + '{}.pt'.format(seq)
+        data = torch.load(file_path)
+        return data['im_l']
+
+    def __len__(self):
+        return len(self.T_21_gt)
+
+    def prep_img(self, img):
+        if self.transform_img is not None:
+            return self.transform_img(img.float()/255.)
+        else:
+            return img.float() / 255.
+
+    def compute_flow(self, img1, img2, idx, apply_blur = False):
+        #Convert back to W x H x C
+        np_img1 = cv2.cvtColor(img1.permute(1,2,0).numpy(), cv2.COLOR_RGB2GRAY)
+        np_img2 = cv2.cvtColor(img2.permute(1,2,0).numpy(), cv2.COLOR_RGB2GRAY)
+
+        if apply_blur:
+            np_img1 = cv2.GaussianBlur(np_img1, (13, 13), 0)
+            np_img2 = cv2.GaussianBlur(np_img2, (13, 13), 0)
+
+        flow_cv2 = cv2.calcOpticalFlowFarneback(np_img1, np_img2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+        flow_img = torch.from_numpy(flow_cv2).permute(2,0,1)
+
+        # if idx < 10:
+        #     # Obtain the flow magnitude and direction angle
+        #     hsvImg = np.zeros_like(img1.permute(1,2,0).numpy())
+        #     hsvImg[..., 1] = 255
+        #     mag, ang = cv2.cartToPolar(flow_cv2[..., 0], flow_cv2[..., 1])
+        #     # Update the color image
+        #     hsvImg[..., 0] = 0.5 * ang * 180 / np.pi
+        #     hsvImg[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        #     rgbImg = cv2.cvtColor(hsvImg, cv2.COLOR_HSV2BGR)
+        #     cv2.imwrite('{}_flow.png'.format(idx), rgbImg)
+        #gr_img1 = torch.from_numpy(np_img1).float().unsqueeze(0)
+        #gr_img2 = torch.from_numpy(np_img2).float().unsqueeze(0)
+
+        #stacked_img = torch.cat((gr_img1, gr_img2, flow_img), 0)
+        return flow_img
+
+
+    def __getitem__(self, idx):
+        seq = self.seqs[idx]
+        p_ids = self.pose_indices[idx]
+        C_21_gt = self.T_21_gt[idx].rot.as_matrix()
+
+
+        if self.reverse_images:
+            p_ids = [p_ids[1], p_ids[0]]
+            C_21_gt = self.T_21_gt[idx].rot.inv().as_matrix()
+
+        #print('Loading seq: {}. ids: {}'.format(seq, p_ids))
+
+
+        #C_21_err = self.T_21_gt[idx].rot.as_matrix().dot(self.T_21_vo[idx].rot.as_matrix().transpose())
+
+        # image_pair = [self.prep_img(self.seq_images[seq][p_ids[0]]),
+        #               self.prep_img(self.seq_images[seq][p_ids[1]])]
+        if self.use_flow:
+            img_input = self.compute_flow(self.seq_images[seq][p_ids[0]], self.seq_images[seq][p_ids[1]], idx, self.apply_blur)
+        else:
+            img_input = [self.prep_img(self.seq_images[seq][p_ids[0]]),
+                       self.prep_img(self.seq_images[seq][p_ids[1]])]
+
+        q_target = torch.from_numpy(quaternion_from_matrix(C_21_gt)).float()
+        return img_input, q_target
