@@ -9,7 +9,7 @@ from quaternions import rotmat_to_quat
 #import cv2
 
 class SevenScenesData(Dataset):
-    def __init__(self, scene, data_path, train, transform=None, output_first_image=True):
+    def __init__(self, scene, data_path, train, transform=None, output_first_image=True, tensor_type=torch.float):
         
         """
           :param scene: scene name: 'chess', 'pumpkin', ...
@@ -18,6 +18,7 @@ class SevenScenesData(Dataset):
         """
         self.transform = transform
         self.train = train
+        self.tensor_type = tensor_type
           # directories
         base_dir = osp.join(osp.expanduser(data_path), scene)   
           # decide which sequences to use
@@ -46,14 +47,14 @@ class SevenScenesData(Dataset):
         for seq in seqs:
             self.poses = np.vstack((self.poses,ps[seq]))
 
-        self.poses = torch.from_numpy(self.poses).float()
+        self.poses = torch.from_numpy(self.poses).to(dtype=tensor_type)
 
 
         # self.extractor = cv2.ORB()
         # self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
 
         if output_first_image:
-            self.first_image = self.transform(self.load_image(self.c_imgs[0]))
+            self.first_image = self.transform(self.load_image(self.c_imgs[0])).to(dtype=tensor_type)
             self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
 
         else:
@@ -63,7 +64,7 @@ class SevenScenesData(Dataset):
         print('Loaded {} poses'.format(self.poses.shape[0]))
 
     def __getitem__(self, index):
-        img = self.transform(self.load_image(self.c_imgs[index]))
+        img = self.transform(self.load_image(self.c_imgs[index])).to(dtype=self.tensor_type)
         pose = self.poses[index].view(4,4) #Poses are camera to world
         C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
         
