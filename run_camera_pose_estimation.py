@@ -147,7 +147,7 @@ def main():
     print(args)
 
     #Float or Double?
-    tensor_type = torch.single
+    tensor_type = torch.float
 
 
     #Load datasets
