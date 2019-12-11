@@ -160,12 +160,12 @@ class SyntheticData():
         self.A_prior = A_prior
 
 
-def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma):
+def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, dtype=torch.double):
     ##Simulation
     #Create a random rotation
-    C = SO3_torch.exp(torch.randn(N_rotations, 3)).as_matrix()
+    C = SO3_torch.exp(torch.randn(N_rotations, 3, dtype=dtype)).as_matrix()
     #Create two sets of vectors (normalized to unit l2 norm)
-    x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation)
+    x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation, dtype=dtype)
     x_1 = x_1/x_1.norm(dim=1,keepdim=True)    
     #Rotate and add noise
     noise = sigma*torch.randn_like(x_1)
