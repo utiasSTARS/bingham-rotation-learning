@@ -159,7 +159,7 @@ class SyntheticData():
         self.A_prior = A_prior
 
 
-def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, dtype=torch.double):
+def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, device=torch.device('cpu'), dtype=torch.double):
 
     x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype)
     q_train = torch.empty(N_train, 4, dtype=dtype)
@@ -194,6 +194,14 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
         # A_vec = convert_A_to_Avec(A_prior_test[n]).unsqueeze(dim=0)
         # print(q - QuadQuatFastSolver.apply(A_vec).squeeze())
     
+
+    x_train = x_train.to(device=device)
+    q_train = q_train.to(device=device)
+    A_prior_train = A_prior_train.to(device=device)
+    x_test = x_test.to(device=device)
+    q_test = q_test.to(device=device)
+    A_prior_test = A_prior_test.to(device=device)
+
     train_data = SyntheticData(x_train, q_train, A_prior_train)
     test_data = SyntheticData(x_test, q_test, A_prior_test)
     

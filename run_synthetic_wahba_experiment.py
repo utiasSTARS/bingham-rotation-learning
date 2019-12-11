@@ -173,36 +173,44 @@ def main():
     parser.add_argument('--total_epochs', type=int, default=100)
     parser.add_argument('--batch_size_train', type=int, default=500)
     parser.add_argument('--batch_size_test', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
 
     parser.add_argument('--bidirectional_loss', action='store_true', default=False)
     parser.add_argument('--pretrain_A_net', action='store_true', default=False)
     parser.add_argument('--use_A_prior', action='store_true', default=False)
+    parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--double', action='store_true', default=False)
 
 
     args = parser.parse_args()
     print(args)
 
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+
+
     #Generate data
-    train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma)
+    train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
     
+    
+
     #Train and test direct model
     print('===================TRAINING DIRECT MODEL=======================')
-    model_direct = QuatNetDirect(num_pts=args.matches_per_sample).double()
+    model_direct = QuatNetDirect(num_pts=args.matches_per_sample).to(device=device, dtype=tensor_type)
     (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).double()
-    model_rep = QuatNet(A_net=A_net)
+    A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
+    model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
     (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
 
     
     saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
     torch.save({
-            'model_rep': model_rep.state_dict(),
-            'model_direct': model_direct.state_dict(),
+            'model_rep': model_rep.state_dict().detach().cpu(),
+            'model_direct': model_direct.state_dict().detach().cpu(),
             'train_stats_direct': train_stats_direct.detach().cpu(),
             'test_stats_direct': test_stats_direct.detach().cpu(),
             'train_stats_rep': train_stats_rep.detach().cpu(),
