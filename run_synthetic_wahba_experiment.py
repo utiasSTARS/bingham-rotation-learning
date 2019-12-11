@@ -85,7 +85,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
         writer = SummaryWriter()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
+    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
 
     # if pretrain_A_net:
     #     pretrain(A_net, train_data, test_data)
@@ -99,7 +99,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
 
         #Train model
-        print('Training... lr: {:.3E}'.format(scheduler.get_lr()[0]))
+        print('Training...')
         num_train_batches = args.N_train // args.batch_size_train
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
@@ -116,7 +116,6 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
             train_loss += (1/num_train_batches)*train_loss_k
             train_mean_err += (1/num_train_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
-        scheduler.step()
 
         #Test model
         print('Testing...')
@@ -136,6 +135,8 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
             test_loss += (1/num_test_batches)*test_loss_k
             test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
+
+        #scheduler.step(test_loss)
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)
@@ -169,8 +170,8 @@ def main():
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
 
-    parser.add_argument('--total_epochs', type=int, default=250)
-    parser.add_argument('--batch_size_train', type=int, default=250)
+    parser.add_argument('--total_epochs', type=int, default=100)
+    parser.add_argument('--batch_size_train', type=int, default=500)
     parser.add_argument('--batch_size_test', type=int, default=100)
     parser.add_argument('--lr', type=float, default=1e-4)
 

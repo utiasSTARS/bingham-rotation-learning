@@ -56,10 +56,10 @@ class PointFeatCNN(torch.nn.Module):
     def __init__(self):
         super(PointFeatCNN, self).__init__()
         self.net = torch.nn.Sequential(
-                torch.nn.Conv1d(3, 64, kernel_size=1),
-                torch.nn.LeakyReLU(),
+                torch.nn.Conv1d(6, 64, kernel_size=1),
+                torch.nn.PReLU(),
                 torch.nn.Conv1d(64, 128, kernel_size=1),
-                torch.nn.LeakyReLU(),
+                torch.nn.PReLU(),
                 torch.nn.Conv1d(128, 1024, kernel_size=1),
                 torch.nn.AdaptiveMaxPool1d(output_size=1)
                 )
@@ -94,8 +94,8 @@ class ANet(torch.nn.Module):
         self.num_pts = num_pts
         self.bidirectional = bidirectional #Evaluate both forward and backward directions
         self.A_prior_net = APriorNet()
-        self.feat_net1 = PointFeatMLP(num_pts=num_pts)
-        self.feat_net2 = PointFeatMLP(num_pts=num_pts)
+        self.feat_net1 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
+        #self.feat_net2 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
         
 
         self.head = torch.nn.Sequential(
@@ -116,17 +116,18 @@ class ANet(torch.nn.Module):
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
-        # x_1 = x[:, 0, :, :].transpose(1,2)
-        # x_2 = x[:, 1, :, :].transpose(1,2)
         if x.dim() < 4:
             x = x.unsqueeze(dim=0)
+        x_1 = x[:, 0, :, :].transpose(1,2)
+        x_2 = x[:, 1, :, :].transpose(1,2)
             
-        x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
-        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
+        #x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
+        #x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
         
         #Collect and concatenate features
         #x_1 -> x_2
-        feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
+        #feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
+        feats_12 = self.feat_net1(torch.cat([x_1, x_2], dim=1))
 
         A1 = self.feats_to_A(feats_12)
         
