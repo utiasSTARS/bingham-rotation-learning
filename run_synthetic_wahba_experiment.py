@@ -170,7 +170,7 @@ def main():
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
 
-    parser.add_argument('--total_epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size_train', type=int, default=500)
     parser.add_argument('--batch_size_test', type=int, default=100)
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -180,6 +180,7 @@ def main():
     parser.add_argument('--use_A_prior', action='store_true', default=False)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
+    parser.add_argument('--comparison', action='store_true', default=False)
 
 
     args = parser.parse_args()
@@ -194,9 +195,10 @@ def main():
     
 
     #Train and test direct model
-    #print('===================TRAINING DIRECT MODEL=======================')
-    #model_direct = QuatNetDirect(num_pts=args.matches_per_sample).to(device=device, dtype=tensor_type)
-    #(train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
+    if args.comparison:
+        print('===================TRAINING DIRECT MODEL=======================')
+        model_direct = QuatNetDirect(num_pts=args.matches_per_sample).to(device=device, dtype=tensor_type)
+        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
@@ -205,19 +207,20 @@ def main():
     (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
 
     
-    saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
-    torch.save({
-            'model_rep': model_rep.state_dict(),
-            'model_direct': model_direct.state_dict(),
-            'train_stats_direct': train_stats_direct.detach().cpu(),
-            'test_stats_direct': test_stats_direct.detach().cpu(),
-            'train_stats_rep': train_stats_rep.detach().cpu(),
-            'test_stats_rep': test_stats_rep.detach().cpu(),
-            'args': args,
-        }, full_saved_path)
+    if args.comparison:
+        saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
+        torch.save({
+                'model_rep': model_rep.state_dict(),
+                'model_direct': model_direct.state_dict(),
+                'train_stats_direct': train_stats_direct.detach().cpu(),
+                'test_stats_direct': test_stats_direct.detach().cpu(),
+                'train_stats_rep': train_stats_rep.detach().cpu(),
+                'test_stats_rep': test_stats_rep.detach().cpu(),
+                'args': args,
+            }, full_saved_path)
 
-    print('Saved data to {}.'.format(full_saved_path))
+        print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
