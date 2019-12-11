@@ -1,1 +1,0 @@
-Robust spatial learning.
