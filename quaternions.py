@@ -57,74 +57,6 @@ def pure_quat(v):
 ##########
 
 
-#WARNING NOTE: THIS IS WXYZ
-#TODO: ADD OPTION FOR XYZW 
-#=======================
-def quat_exp(phi):
-    # input: phi: Nx3
-    # output: Exp(phi) Nx4 (see Sola eq. 101)
-
-    if phi.dim() < 2:
-        phi = phi.unsqueeze(0)
-
-    q = phi.new_empty((phi.shape[0], 4))
-    phi_norm = phi.norm(dim=1, keepdim=True)
-    q[:,0] = torch.cos(phi_norm.squeeze()/2.)
-    q[:, 1:] = (phi/phi_norm)*torch.sin(phi_norm/2.)
-    return q.squeeze(0)
-
-def quat_log(q):
-    #input: q: Nx4
-    #output: Log(q) Nx3 (see Sola eq. 105a/b)
-    if q.dim() < 2:
-        q = q.unsqueeze(0)
-
-    #Check for negative scalars first, then substitute q for -q whenever that is the case (this accounts for the double cover of S3 over SO(3))
-    neg_angle_mask = q[:, 0] < 0.
-    neg_angle_inds = neg_angle_mask.nonzero().squeeze_(dim=1)
-
-    q_w = q[:, 0].clone()
-    q_v = q[:, 1:].clone()
-
-    if len(neg_angle_inds) > 0:
-        q_w[neg_angle_inds] = -1.*q_w[neg_angle_inds]
-        q_v[neg_angle_inds] = -1.*q_v[neg_angle_inds]
-
-    q_v_norm = q_v.norm(dim=1)
-
-    # Near phi==0 (q_w ~ 1), use first order Taylor expansion
-    angles = 2. * torch.atan2(q_v_norm, q_w)
-    small_angle_mask = isclose(angles, 0.)
-    small_angle_inds = small_angle_mask.nonzero().squeeze_(dim=1)
-
-    phi = q.new_empty((q.shape[0], 3))
-
-
-
-    if len(small_angle_inds) > 0:
-        q_v_small = q_v[small_angle_inds]
-        q_v_n_small = q_v_norm[small_angle_inds].unsqueeze(1)
-        q_w_small = q_w[small_angle_inds].unsqueeze(1)
-        phi[small_angle_inds, :] = \
-            2. * ( q_v_small /  q_w_small) * \
-            (1 - ( q_v_n_small ** 2)/(3. * ( q_w_small ** 2)))
-
-
-    # Otherwise...
-    large_angle_mask = 1 - small_angle_mask  # element-wise not
-    large_angle_inds = large_angle_mask.nonzero().squeeze_(dim=1)
-
-    if len(large_angle_inds) > 0:
-        angles_large = angles[large_angle_inds]
-        #print(q_v[large_angle_inds].shape)
-        #print(q_v_norm[large_angle_inds].shape)
-
-        axes = q_v[large_angle_inds] / q_v_norm[large_angle_inds].unsqueeze(1)
-        phi[large_angle_inds, :] = \
-            angles_large.unsqueeze(1) * axes
-
-    return phi.squeeze()
-
 def quat_inv(q):
     #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
     if q.dim() < 2:
@@ -133,8 +65,6 @@ def quat_inv(q):
     q_inv[:, :3] = -1*q[:, :3]
     q_inv[:, 3] = q[:, 3]
     return q_inv.squeeze()
-
-#========================
 
 
 #Quaternion difference of two unit quaternions
