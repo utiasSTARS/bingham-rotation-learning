@@ -91,10 +91,10 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
     #     pretrain(A_net, train_data, test_data)
 
     #Save stats
-    train_stats = torch.empty(args.total_epochs, 2)
-    test_stats = torch.empty(args.total_epochs, 2)
+    train_stats = torch.empty(args.epochs, 2)
+    test_stats = torch.empty(args.epochs, 2)
     
-    for e in range(args.total_epochs):
+    for e in range(args.epochs):
         start_time = time.time()
 
 
@@ -153,7 +153,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
         elapsed_time = time.time() - start_time
 
-        print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.total_epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
+        print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
     if tensorboard_output:
         writer.close()
