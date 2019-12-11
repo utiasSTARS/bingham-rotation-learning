@@ -19,8 +19,13 @@ class QuatNetDirect(torch.nn.Module):
 
     def forward(self, x, A_prior=None):
         vecs = self.net(x)
-        q = vecs/vecs.norm(dim=1).view(-1, 1)
-        return q
+        if self.A_net.bidirectional:
+            q = vecs[0]/vecs[0].norm(dim=1).view(-1, 1)
+            q_inv =vecs[1]/vecs[1].norm(dim=1).view(-1, 1)
+            return [q, q_inv]
+        else:
+            q = vecs/vecs.norm(dim=1).view(-1, 1)
+            return q
 
 
 class QuatNet(torch.nn.Module):
