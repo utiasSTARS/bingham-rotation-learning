@@ -86,7 +86,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
     # if pretrain_A_net:
     #     pretrain(A_net, train_data, test_data)
 
@@ -142,7 +142,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
             test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
 
-        scheduler.step()
+        #scheduler.step()
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)

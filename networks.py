@@ -139,7 +139,8 @@ class ANet(torch.nn.Module):
 
         if self.bidirectional:
             #x_2 -> x_1
-            feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
+            #feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
+            feats_21 = self.feat_net1(torch.cat([x_2, x_1], dim=1))
             A2 = self.feats_to_A(feats_21)
             return [A1, A2]
 
