@@ -287,6 +287,12 @@ def rotmat_to_quat(mat, ordering='wxyz'):
 
 ## PYTORCH QUAT LOSSES
 
+#Computes q^T A q
+def quat_self_supervised_primal_loss(q, A, reduce=True):
+    losses = torch.einsum('bn,bnm,bm->b', q, A, q)
+    loss = losses.mean() if reduce else losses
+    return loss 
+
 def quat_consistency_loss(qs, q_target, reduce=True):
     q = qs[0]
     q_inv = qs[1]

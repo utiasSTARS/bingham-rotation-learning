@@ -14,6 +14,14 @@ def convert_A_to_Avec(A):
     A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
     return A_vec.squeeze()
 
+def convert_Avec_to_A(A_vec):
+    if A_vec.dim() < 2:
+        A_vec = A_vec.unsqueeze(dim=0)
+    idx = torch.triu_indices(4,4)
+    A = A_vec.new_zeros((A_vec.shape[0],4,4))   
+    A[:, idx[0], idx[1]] = A_vec
+    A[:, idx[1], idx[0]] = A_vec
+    return A.squeeze()
 
 #=========================PYTORCH (FAST) SOLVER=========================
 class QuadQuatFastSolver(torch.autograd.Function):
