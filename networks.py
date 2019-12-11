@@ -66,7 +66,7 @@ class PointFeatCNN(torch.nn.Module):
 
     def forward(self, x):
         x = self.net(x)
-        return x.squeeze()
+        return x
 
 class PointFeatMLP(torch.nn.Module):
     def __init__(self, num_pts):
