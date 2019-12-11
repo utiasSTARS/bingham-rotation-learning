@@ -204,7 +204,7 @@ def main():
     #Train and test direct model
     if args.comparison:
         print('===================TRAINING DIRECT MODEL=======================')
-        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional).to(device=device, dtype=tensor_type)
+        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
         (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
 
     #Train and test with new representation
