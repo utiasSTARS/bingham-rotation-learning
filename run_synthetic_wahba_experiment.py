@@ -208,8 +208,8 @@ def main():
     saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
     torch.save({
-            'model_rep': model_rep.state_dict().detach().cpu(),
-            'model_direct': model_direct.state_dict().detach().cpu(),
+            'model_rep': model_rep.state_dict(),
+            'model_direct': model_direct.state_dict(),
             'train_stats_direct': train_stats_direct.detach().cpu(),
             'test_stats_direct': test_stats_direct.detach().cpu(),
             'train_stats_rep': train_stats_rep.detach().cpu(),
