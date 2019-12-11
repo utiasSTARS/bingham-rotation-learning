@@ -86,7 +86,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
-
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
     # if pretrain_A_net:
     #     pretrain(A_net, train_data, test_data)
 
@@ -142,7 +142,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
             test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
 
-        #scheduler.step(test_loss)
+        scheduler.step()
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)
@@ -174,12 +174,12 @@ def main():
     parser.add_argument('--sim_sigma', type=float, default=1e-6)
     parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
-    parser.add_argument('--matches_per_sample', type=int, default=100)
+    parser.add_argument('--matches_per_sample', type=int, default=1000)
 
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=500)
     parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--lr', type=float, default=1e-3)
 
     parser.add_argument('--bidirectional_loss', action='store_true', default=False)
     parser.add_argument('--pretrain_A_net', action='store_true', default=False)
