@@ -66,7 +66,7 @@ class PointFeatCNN(torch.nn.Module):
 
     def forward(self, x):
         x = self.net(x)
-        return x
+        return x.squeeze()
 
 class PointFeatMLP(torch.nn.Module):
     def __init__(self, num_pts):
@@ -111,7 +111,6 @@ class ANet(torch.nn.Module):
 
     def feats_to_A(self, x):
         A_vec = self.head(x)
-        print(A_vec.shape)
         A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
         return A_vec
 
@@ -129,8 +128,9 @@ class ANet(torch.nn.Module):
         #x_1 -> x_2
         #feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
         feats_12 = self.feat_net1(torch.cat([x_1, x_2], dim=1))
+        if feats_12.dim() < 2:
+            feats_12 = feats_12.unsqueeze(dim=0)
 
-        print(feats_12.shape)
         A1 = self.feats_to_A(feats_12)
         
         #Prior? Doesn't make sense with symmetric loss unless we give two priors...TODO
