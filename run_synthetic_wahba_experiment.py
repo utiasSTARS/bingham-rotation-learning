@@ -102,7 +102,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
         start_time = time.time()
 
-        train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+        train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
 
         #Train model
         print('Training...')

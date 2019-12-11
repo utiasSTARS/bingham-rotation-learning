@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from liegroups.numpy import SO3
+from liegroups.torch import SO3 as SO3_torch
 from numpy.linalg import norm
 from quaternions import *
 
@@ -157,6 +158,40 @@ class SyntheticData():
         self.x = x
         self.q = q
         self.A_prior = A_prior
+
+
+def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma):
+    ##Simulation
+    #Create a random rotation
+    C = SO3_torch.exp(torch.randn(N_rotations, 3)).as_matrix()
+    #Create two sets of vectors (normalized to unit l2 norm)
+    x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation)
+    x_1 = x_1/x_1.norm(dim=1,keepdim=True)    
+    #Rotate and add noise
+    noise = sigma*torch.randn_like(x_1)
+    x_2 = C.bmm(x_1) + noise
+    return C, x_1, x_2
+
+def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, device=torch.device('cpu'), dtype=torch.double):
+    C_train, x_1_train, x_2_train = gen_sim_data_fast(N_train, N_matches_per_sample, sigma)
+    C_test, x_1_test, x_2_test = gen_sim_data_fast(N_test, N_matches_per_sample, sigma)
+
+    x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype, device=device)
+    x_train[:,0,:,:] = x_1_train.transpose(1,2)
+    x_train[:,1,:,:] = x_2_train.transpose(1,2)
+    
+    q_train = rotmat_to_quat(C_train, ordering='xyzw').to(dtype=dtype, device=device)
+
+    x_test = torch.empty(N_test, 2, N_matches_per_sample, 3, dtype=dtype, device=device)
+    x_test[:,0,:,:] = x_1_test.transpose(1,2)
+    x_test[:,1,:,:] = x_2_test.transpose(1,2)
+    
+    q_test = rotmat_to_quat(C_test, ordering='xyzw').to(dtype=dtype, device=device)
+
+    train_data = SyntheticData(x_train, q_train, None)
+    test_data = SyntheticData(x_test, q_test, None)
+    
+    return train_data, test_data    
 
 
 def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, device=torch.device('cpu'), dtype=torch.double):
