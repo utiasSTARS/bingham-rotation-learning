@@ -13,9 +13,9 @@ class Identity(torch.nn.Module):
         return x
 
 class QuatNetDirect(torch.nn.Module):
-    def __init__(self, num_pts):
+    def __init__(self, num_pts, bidirectional=False):
         super(QuatNetDirect, self).__init__()        
-        self.net = ANet(num_pts=num_pts, num_dim_out=4)
+        self.net = ANet(num_pts=num_pts, num_dim_out=4, bidirectional=bidirectional)
 
     def forward(self, x, A_prior=None):
         vecs = self.net(x)
