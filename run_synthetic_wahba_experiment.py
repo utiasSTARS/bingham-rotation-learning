@@ -93,8 +93,14 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
     #Save stats
     train_stats = torch.empty(args.epochs, 2)
     test_stats = torch.empty(args.epochs, 2)
+
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+
     
     for e in range(args.epochs):
+        train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+
         start_time = time.time()
 
 
@@ -166,12 +172,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
     parser.add_argument('--sim_sigma', type=float, default=1e-6)
-    parser.add_argument('--N_train', type=int, default=5000)
+    parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
 
     parser.add_argument('--epochs', type=int, default=100)
-    parser.add_argument('--batch_size_train', type=int, default=500)
+    parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
     parser.add_argument('--lr', type=float, default=5e-4)
 
@@ -191,8 +197,9 @@ def main():
 
 
     #Generate data
-    train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
-    
+    #train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+    train_data, test_data = create_experimental_data(1, 1, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+
 
     #Train and test direct model
     if args.comparison:
