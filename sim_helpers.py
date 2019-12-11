@@ -121,12 +121,20 @@ def gen_sim_data_grid(N, sigma, torch_vars=False, shuffle_points=False):
     #Create a random rotation
     C = SO3.exp(np.random.randn(3)).as_matrix()
     
-    #Grid is fixed
-    xlims = np.linspace(-1., 1., np.sqrt(N))
-    ylims = np.linspace(-1., 1., np.sqrt(N))
+    #Grid is fixed 
+    grid_dim = 50
+    xlims = np.linspace(-1., 1., grid_dim)
+    ylims = np.linspace(-1., 1., grid_dim)
     x, y = np.meshgrid(xlims, ylims)
-    z = 0.1*x*y
-    x_1 =  normalized(np.hstack((x.reshape(N, 1), y.reshape(N, 1), z.reshape(N, 1))), axis=1)
+    z = np.sin(x)*np.cos(y)
+    x_1 =  normalized(np.hstack((x.reshape(grid_dim**2, 1), y.reshape(grid_dim**2, 1), z.reshape(grid_dim**2, 1))), axis=1)
+    
+    #Sample N points
+    ids = np.random.permutation(x_1.shape[0])
+    x_1 = x_1[ids[:N]]
+
+    #Sort into canonical order
+    #x_1 = x_1[x_1[:,0].argsort()]
 
     #Rotate and add noise
     noise = np.random.randn(N,3)
@@ -168,7 +176,7 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
 
     for n in range(N_train):
 
-        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = rotmat_to_quat(C, ordering='xyzw')
         x_train[n, 0, :, :] = x_1
         x_train[n, 1, :, :] = x_2
@@ -176,7 +184,7 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
         A_prior_train[n] = torch.from_numpy(build_A(x_1.numpy(), x_2.numpy(), sigma_2=sigma_prior_vec**2))
 
     for n in range(N_test):
-        C, x_1, x_2 = gen_sim_data_grid(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
+        C, x_1, x_2 = gen_sim_data(N_matches_per_sample, sigma_sim_vec, torch_vars=True, shuffle_points=False)
         q = rotmat_to_quat(C, ordering='xyzw')
         x_test[n, 0, :, :] = x_1
         x_test[n, 1, :, :] = x_2
