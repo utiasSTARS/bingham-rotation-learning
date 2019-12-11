@@ -192,12 +192,11 @@ def main():
     #Generate data
     train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
     
-    
 
     #Train and test direct model
-    print('===================TRAINING DIRECT MODEL=======================')
-    model_direct = QuatNetDirect(num_pts=args.matches_per_sample).to(device=device, dtype=tensor_type)
-    (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
+    #print('===================TRAINING DIRECT MODEL=======================')
+    #model_direct = QuatNetDirect(num_pts=args.matches_per_sample).to(device=device, dtype=tensor_type)
+    #(train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')

@@ -43,7 +43,7 @@ class QuadQuatFastSolver(torch.autograd.Function):
         A[:, idx[0], idx[1]] = A_vec
         A[:, idx[1], idx[0]] = A_vec
 
-        q, nu, _, _ = solve_wahba_fast(A)
+        q, nu  = solve_wahba_fast(A)
         ctx.save_for_backward(A, q, nu)
         return q
 
@@ -54,14 +54,14 @@ class QuadQuatFastSolver(torch.autograd.Function):
         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
         return outgrad
 
-def solve_wahba_fast(A):
+def solve_wahba_fast(A, compute_gap=False):
     """
     Use a fast eigenvalue solution to the dual of the 'generalized Wahba' problem to solve the primal.
     :param A: quadratic cost matrix
     :param redundant_constraints: boolean indicating whether to use redundand constraints
     :return: Optimal q, optimal dual var. nu, time to solve, duality gap
     """
-    start = time.time()
+    #start = time.time()
     # Returns (b,n) and (b,n,n) tensors
     nus, qs = torch.symeig(A, eigenvectors=True)
     nu_min, nu_argmin = torch.min(nus, 1)# , keepdim=False, out=None)
@@ -70,11 +70,15 @@ def solve_wahba_fast(A):
     nu_opt = -1.*nu_min.unsqueeze(1)
     # Normalize qs (but symeig already does this!)
     # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
-    t_solve = time.time() - start
-    p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
-    gap = p + nu_opt
+    #t_solve = time.time() - start
+    if compute_gap:
+        p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
+        gap = p + nu_opt
+        return q_opt, nu_opt, gap
+    #t_solve = 0
+    #gap = 10
 
-    return q_opt, nu_opt, t_solve, gap
+    return q_opt, nu_opt#, t_solve, gap
 
 
 def compute_grad_fast(A, nu, q):

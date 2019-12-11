@@ -56,6 +56,10 @@ def pure_quat(v):
 #PYTORCH
 ##########
 
+
+#WARNING NOTE: THIS IS WXYZ
+#TODO: ADD OPTION FOR XYZW 
+#=======================
 def quat_exp(phi):
     # input: phi: Nx3
     # output: Exp(phi) Nx4 (see Sola eq. 101)
@@ -129,7 +133,10 @@ def quat_inv(q):
     q_inv[:, :3] = -1*q[:, :3]
     q_inv[:, 3] = q[:, 3]
     return q_inv.squeeze()
-    
+
+#========================
+
+
 #Quaternion difference of two unit quaternions
 def quat_norm_diff(q_a, q_b):
     if q_a.dim() < 2:
