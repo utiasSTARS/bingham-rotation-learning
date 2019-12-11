@@ -99,10 +99,10 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
     
     for e in range(args.epochs):
-        train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
 
         start_time = time.time()
 
+        train_data, test_data = create_experimental_data(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
 
         #Train model
         print('Training...')
