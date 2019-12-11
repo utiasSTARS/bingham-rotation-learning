@@ -85,7 +85,7 @@ class PointFeatMLP(torch.nn.Module):
 
     def forward(self, x):
         x = self.net(x)
-        return x.squeeze()
+        return x
 
         
 class ANet(torch.nn.Module):
@@ -112,17 +112,18 @@ class ANet(torch.nn.Module):
     def feats_to_A(self, x):
         A_vec = self.head(x)
         A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-
         return A_vec
 
     def forward(self, x, A_prior=None):
         #Decompose input into two point clouds
         # x_1 = x[:, 0, :, :].transpose(1,2)
         # x_2 = x[:, 1, :, :].transpose(1,2)
-
+        if x.dim() < 4:
+            x = x.unsqueeze(dim=0)
+            
         x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
         x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
-
+        
         #Collect and concatenate features
         #x_1 -> x_2
         feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
