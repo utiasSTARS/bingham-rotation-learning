@@ -52,8 +52,9 @@ def main():
         #Data will be generated on the fly
         train_data, test_data = None, None
 
-    stats_list = []
-
+    train_stats_list = []
+    test_stats_list = []
+    lrs = torch.empty(args.trials)
     for t_i in range(args.trials):
         #Train and test direct model
         print('===================TRIAL {}/{}======================='.format(t_i+1, args.trials))
@@ -62,26 +63,39 @@ def main():
         args.lr = lr
         print('Learning rate: {:.3E}'.format(lr))
 
-        print('====DIRECT MODEL====')
-        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
-        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=False)
+        print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
+        model_direct = RotMat6DDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats_6d, test_stats_6d) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=True, tensorboard_output=True)
+
+
+        print('=========TRAINING DIRECT QUAT MODEL==================')
+        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        loss_fn = quat_squared_loss
+        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=False, tensorboard_output=True)
 
         #Train and test with new representation
-        print('====REP MODEL====')
-        A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
+        print('==============TRAINING REP MODEL====================')
+        A_net = ANet(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
         model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
-        (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=False)
+        loss_fn = quat_squared_loss
+        (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
-        stats_list.append([lr, train_stats_direct, train_stats_rep, test_stats_direct, test_stats_rep])
-    
-
+        lrs[t_i] = lr
+        train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_rep])
+        test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_rep])
+        
     saved_data_file_name = 'diff_lr_synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
     torch.save({
-        'stats_list': stats_list,
+        'train_stats_list': train_stats_list,
+        'test_stats_list': test_stats_list,
+        'named_approaches': ['6D', 'Quat', 'Ours'],
+        'learning_rates': lrs,
         'args': args
     }, full_saved_path)
+
     print('Saved data to {}.'.format(full_saved_path))
 
     
