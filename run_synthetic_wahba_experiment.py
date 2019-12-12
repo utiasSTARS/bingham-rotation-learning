@@ -56,7 +56,7 @@ def main():
 
     for t_i in range(args.trials):
         #Train and test direct model
-        print('===================TRIAL #{}======================='.format(t_i))
+        print('===================TRIAL {}/{}======================='.format(t_i+1, args.trials))
 
         lr = loguniform(np.log(args.lr_min), np.log(args.lr_max))
         args.lr = lr
