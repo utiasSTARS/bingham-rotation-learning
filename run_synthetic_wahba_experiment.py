@@ -64,13 +64,13 @@ def main():
 
         print('====DIRECT MODEL====')
         model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
-        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
+        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=False)
 
         #Train and test with new representation
         print('====REP MODEL====')
         A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
         model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
-        (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
+        (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=False)
 
         stats_list.append([lr, train_stats_direct, train_stats_rep, test_stats_direct, test_stats_rep])
     
