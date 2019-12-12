@@ -113,13 +113,13 @@ def _create_learning_rate_fig_combined(args, train_err_direct, train_err_rep, te
         ax[1], x, np.quantile(test_err_rep, 0.5, axis=0),
         np.quantile(test_err_rep, 0.25, axis=0), np.quantile(test_err_rep, 0.75, axis=0),  'validation (ours)', 'tab:blue')
     
-    ax[1].set_ylabel('mean error (deg)')
     ax[0].legend()
-    ax[0].set_xlabel('epoch')
-    ax[1].set_xlabel('epoch')
+    ax[0].set_xlabel('epoch (training)')
+    ax[1].set_xlabel('epoch (validation)')
     ax[0].set_yscale('log')
     ax[1].set_yscale('log')
     ax[0].set_ylabel('mean error (deg)')
+    
     return fig
 
 def plot_learning_rate_wahba_experiment():
