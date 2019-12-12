@@ -101,7 +101,8 @@ def quat_to_rotmat(quat, ordering='xyzw'):
         quat = quat.unsqueeze(dim=0)
 
     if not utils.allclose(quat.norm(p=2, dim=1), 1.):
-        raise ValueError("Quaternions must be unit length")
+        print("Warning: Some quaternions not unit length ... normalizing.")
+        quat = quat/quat.norm(p=2, dim=1, keepdim=True)
 
     if ordering is 'xyzw':
         qx = quat[:, 0]

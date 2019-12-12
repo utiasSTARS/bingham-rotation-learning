@@ -90,59 +90,55 @@ def _plot_curve_with_bounds(ax, x, y, lower, upper, label, color):
     ax.plot(x, y, color, linewidth=1.5, label=label)
     return 
 
-def _create_learning_rate_fig_combined(args, train_err_direct, train_err_rep, test_err_direct, test_err_rep):
+def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots(1, 2, sharex='col', sharey='row')
     fig.set_size_inches(4, 2)
 
     x = np.arange(args.epochs)
+    colours = ['tab:red', 'tab:green', 'tab:blue']
 
-    _plot_curve_with_bounds(
-        ax[0], x, np.quantile(train_err_direct, 0.5, axis=0),
-        np.quantile(train_err_direct, 0.25, axis=0), np.quantile(train_err_direct, 0.75, axis=0),  'direct', 'tab:red')
-
-    _plot_curve_with_bounds(
-        ax[0], x, np.quantile(train_err_rep, 0.5, axis=0),
-        np.quantile(train_err_rep, 0.25, axis=0), np.quantile(train_err_rep, 0.75, axis=0),  'ours', 'tab:blue')
-
-    _plot_curve_with_bounds(
-        ax[1], x, np.quantile(test_err_direct, 0.5, axis=0),
-        np.quantile(test_err_direct, 0.25, axis=0), np.quantile(test_err_direct, 0.75, axis=0),  'validation (direct)', 'tab:red')
-
-    _plot_curve_with_bounds(
-        ax[1], x, np.quantile(test_err_rep, 0.5, axis=0),
-        np.quantile(test_err_rep, 0.25, axis=0), np.quantile(test_err_rep, 0.75, axis=0),  'validation (ours)', 'tab:blue')
-    
+    for i in range(len(names)):
+        _plot_curve_with_bounds(
+            ax[0], x, np.quantile(train_err[i], 0.5, axis=0),
+            np.quantile(train_err[i], 0.25, axis=0), 
+            np.quantile(train_err[i], 0.75, axis=0),  
+            names[i], colours[i])
+        _plot_curve_with_bounds(
+            ax[1], x, np.quantile(test_err[i], 0.5, axis=0),
+            np.quantile(test_err[i], 0.25, axis=0), 
+            np.quantile(test_err[i], 0.75, axis=0),  
+            names[i], colours[i])
+       
     ax[0].legend()
     ax[0].set_xlabel('epoch (training)')
     ax[1].set_xlabel('epoch (validation)')
     ax[0].set_yscale('log')
     ax[1].set_yscale('log')
     ax[0].set_ylabel('mean error (deg)')
-    
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-12-2019-07-30-04.pt'
+    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-12-2019-18-45-12.pt'
     checkpoint = torch.load(path)
     args = checkpoint['args']
-    stats_list = checkpoint['stats_list']
+    train_stats_list = checkpoint['train_stats_list']
+    test_stats_list = checkpoint['test_stats_list']
+    names = checkpoint['named_approaches']
 
     trials = args.trials
-    lrs = np.empty((trials))
-    train_err_direct = np.empty((trials, args.epochs))
-    train_err_rep = np.empty((trials, args.epochs))
-    test_err_direct = np.empty((trials, args.epochs))
-    test_err_rep = np.empty((trials, args.epochs))
-    for i in range(trials):
-        lr, train_stats_direct, train_stats_rep, test_stats_direct, test_stats_rep = stats_list[i]
-        lrs[i] = lr
-        train_err_direct[i, :] = train_stats_direct[:, 1].detach().numpy()
-        train_err_rep[i, :] = train_stats_rep[:, 1].detach().numpy()
-        test_err_direct[i, :] = test_stats_direct[:, 1].detach().numpy()
-        test_err_rep[i, :] = test_stats_rep[:, 1].detach().numpy()
-        
-    fig = _create_learning_rate_fig_combined(args, train_err_direct, train_err_rep, test_err_direct, test_err_rep)
+    train_err = np.empty((len(names), trials, args.epochs))
+    test_err = np.empty((len(names), trials, args.epochs))
+    
+    for t_i in range(trials):
+        train_stats = train_stats_list[t_i]
+        test_stats = test_stats_list[t_i]
+        for app_i in range(len(names)):
+            #Index 1 is mean angular error, index 0 is loss
+            train_err[app_i, t_i, :] = train_stats[app_i][:, 1].detach().numpy()
+            test_err[app_i, t_i, :] = test_stats[app_i][:, 1].detach().numpy()
+            
+    fig = _create_learning_rate_fig_combined(args, train_err, test_err, names)
     output_file = 'plots/' + path.replace('.pt','').replace('saved_data/synthetic/','') + '_plot.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
