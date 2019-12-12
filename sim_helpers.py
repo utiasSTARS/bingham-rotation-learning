@@ -97,7 +97,7 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
 
-    pbar = tqdm.tqdm(total=num_test_batches)
+    pbar = tqdm.tqdm(total=args.epochs)
     for e in range(args.epochs):
         start_time = time.time()
 
