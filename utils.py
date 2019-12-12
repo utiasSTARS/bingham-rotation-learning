@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from liegroups.numpy import SO3
 from numpy.linalg import norm
-
+import math
 
 #See https://github.com/utiasSTARS/liegroups
 def allclose(mat1, mat2, tol=1e-6):
@@ -52,6 +52,70 @@ def trace(mat):
     
     return tr.view(mat.shape[0])
 
+
+# N x 3 -> N x 3 (unit norm)
+def normalize_vectors(vecs):
+    if vecs.dim() < 2:
+        vecs = vecs.unsqueeze(dim=0)
+    return vecs/vecs.norm(dim=1, keepdim=True, p=2)
+    
+# N x 3, N x 3 -> N x 3 (cross product)
+def cross_product(u, v):
+    assert(u.dim() == v.dim())
+    if u.dim() < 2:
+        u = u.unsqueeze(dim=0)
+        v = v.unsqueeze(dim=0)
+    batch = u.shape[0]
+    i = u[:,1]*v[:,2] - u[:,2]*v[:,1]
+    j = u[:,2]*v[:,0] - u[:,0]*v[:,2]
+    k = u[:,0]*v[:,1] - u[:,1]*v[:,0]
+    return torch.cat((i.view(batch,1), j.view(batch,1), k.view(batch,1)),1)
+        
+# N x 6 -> N x 3 x 3 (rotation matrices)
+# @inproceedings{zhou_continuity_2019,
+#   title = {On the {{Continuity}} of {{Rotation Representations}} in {{Neural Networks}}},
+#   booktitle = CVPR,
+#   author = {Zhou, Yi and Barnes, Connelly and Lu, Jingwan and Yang, Jimei and Li, Hao},
+#   year = {2019},
+#   pages = {9}
+# }
+
+def sixdim_to_rotmat(sixdim):
+    if sixdim.dim() < 2:
+        sixdim = sixdim.unsqueeze(dim=0)
+    x_raw = sixdim[:,0:3]#batch*3
+    y_raw = sixdim[:,3:6]#batch*3
+        
+    x = normalize_vectors(x_raw)
+    z = cross_product(x,y_raw) 
+    z = normalize_vectors(z)
+    y = cross_product(z,x)
+    x = x.view(-1,3,1)
+    y = y.view(-1,3,1)
+    z = z.view(-1,3,1)
+    rotmat = torch.cat((x,y,z), 2) #batch*3*3
+    return rotmat
+
+def rotmat_angle_diff(C, C_target, units='deg', reduce=True):
+    assert(C.shape == C_target.shape)
+    if C.dim() < 3:
+        C = C.unsqueeze(dim=0)
+        C_target = C_target.unsqueeze(dim=0)
+
+    rotmat_frob_norms = (C - C_target).norm(dim=[1,2]) #torch.sqrt(6. - 2.*trace(C.bmm(C_target.transpose(1,2))))
+    diffs = rotmat_frob_norm_to_angle(rotmat_frob_norms, units=units)
+    return diffs.mean() if reduce else diffs
+
+#See Rotation Averaging by Hartley et al. (2013)
+def rotmat_frob_norm_to_angle(frob_norms, units='deg'):
+    angle = 2.*torch.asin(0.25*math.sqrt(2)*frob_norms)
+    if units == 'deg':
+        angle = (180./np.pi)*angle
+    elif units == 'rad':
+        pass
+    else:
+        raise RuntimeError('Unknown units in metric conversion.')
+    return angle
 
 def normalized(a, axis=-1, order=2):
     l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
@@ -123,3 +187,4 @@ def solve_horn(x_1, x_2):
 
 def matrix_diff(X,Y):
     return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
+    

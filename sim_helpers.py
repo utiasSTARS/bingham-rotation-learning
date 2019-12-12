@@ -4,6 +4,7 @@ from liegroups.numpy import SO3
 from liegroups.torch import SO3 as SO3_torch
 from numpy.linalg import norm
 from quaternions import *
+from losses import *
 from utils import *
 from convex_layers import QuadQuatFastSolver, convert_A_to_Avec
 from tensorboardX import SummaryWriter
@@ -74,12 +75,7 @@ def pretrain(A_net, train_data, test_data):
 
     return
 
-def train_test_model(args, train_data, test_data, model, tensorboard_output=True, verbose=False):
-
-    if args.bidirectional_loss:
-        loss_fn = quat_consistency_loss
-    else:
-        loss_fn = quat_squared_loss
+def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True, verbose=False):
     
     if tensorboard_output:
         writer = SummaryWriter()
@@ -114,16 +110,16 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
         for k in range(num_train_batches):
             start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
 
-            if args.use_A_prior:
-                A_prior = convert_A_to_Avec(train_data.A_prior[start:end])
+            if rotmat_targets:
+                targets = quat_to_rotmat(train_data.q[start:end])
+                (C_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                train_mean_err += (1/num_train_batches)*rotmat_angle_diff(C_est, targets)
             else:
-                A_prior = None
-            
-            (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
-            q_train = q_est[0] if args.bidirectional_loss else q_est
-            train_loss += (1/num_train_batches)*train_loss_k
-            train_mean_err += (1/num_train_batches)*quat_angle_diff(q_train, train_data.q[start:end])
+                targets = train_data.q[start:end]
+                (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                train_mean_err += (1/num_train_batches)*quat_angle_diff(q_est, targets)        
         
+            train_loss += (1/num_train_batches)*train_loss_k
 
         #Test model
         if verbose:
@@ -135,15 +131,17 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
 
         for k in range(num_test_batches):
             start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
-            if args.use_A_prior:
-                A_prior = convert_A_to_Avec(test_data.A_prior[start:end])
-            else:
-                A_prior = None
-            (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
-            q_test = q_est[0] if args.bidirectional_loss else q_est
-            test_loss += (1/num_test_batches)*test_loss_k
-            test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
 
+            if rotmat_targets:
+                targets = quat_to_rotmat(test_data.q[start:end])
+                (C_est, test_loss_k) =  test_model(model, loss_fn, test_data.x[start:end], targets)
+                test_mean_err += (1/num_test_batches)*rotmat_angle_diff(C_est, targets)
+            else:
+                targets = test_data.q[start:end]
+                (q_est, test_loss_k) =  test_model(model, loss_fn, test_data.x[start:end], targets)
+                test_mean_err += (1/num_test_batches)*quat_angle_diff(q_est, targets)   
+
+            test_loss += (1/num_test_batches)*test_loss_k
 
         #scheduler.step()
 

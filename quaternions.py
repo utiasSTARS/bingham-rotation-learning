@@ -56,7 +56,7 @@ def pure_quat(v):
 #PYTORCH
 ##########
 
-
+#ASSUMES XYZW
 def quat_inv(q):
     #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
     if q.dim() < 2:
@@ -92,7 +92,7 @@ def quat_norm_to_angle(q_met, units='deg'):
     return angle
 
 
-def quat_to_rotmat(quat, ordering='wxyz'):
+def quat_to_rotmat(quat, ordering='xyzw'):
     """Form a rotation matrix from a unit length quaternion.
 
         Valid orderings are 'xyzw' and 'wxyz'.
@@ -139,7 +139,7 @@ def quat_to_rotmat(quat, ordering='wxyz'):
     return mat.squeeze_()
 
 
-def rotmat_to_quat(mat, ordering='wxyz'):
+def rotmat_to_quat(mat, ordering='xyzw'):
     """Convert a rotation matrix to a unit length quaternion.
 
         Valid orderings are 'xyzw' and 'wxyz'.
@@ -221,39 +221,5 @@ def rotmat_to_quat(mat, ordering='wxyz'):
             "Valid orderings are 'xyzw' and 'wxyz'. Got '{}'.".format(ordering))
 
     return quat
-
-## PYTORCH QUAT LOSSES
-
-#Computes q^T A q
-def quat_self_supervised_primal_loss(q, A, reduce=True):
-    losses = torch.einsum('bn,bnm,bm->b', q, A, q)
-    loss = losses.mean() if reduce else losses
-    return loss 
-
-def quat_consistency_loss(qs, q_target, reduce=True):
-    q = qs[0]
-    q_inv = qs[1]
-    assert(q.shape == q_inv.shape == q_target.shape)
-    d1 = quat_loss(q, q_target, reduce=False)
-    d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
-    d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
-    losses =  d1*d1 + d2*d2 + d3*d3
-    loss = losses.mean() if reduce else losses
-    return loss
-    
-
-def quat_squared_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses =  0.5*d*d
-    loss = losses.mean() if reduce else losses
-    return loss
-
-def quat_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses = d
-    loss = losses.mean() if reduce else losses
-    return loss
 
 
