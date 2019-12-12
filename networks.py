@@ -2,15 +2,9 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from convex_layers import QuadQuatFastSolver
-import torchvision 
+from utils import sixdim_to_rotmat
+import torchvision
 
-#Utility module to replace BatchNorms without affecting structure
-class Identity(torch.nn.Module):
-    def __init__(self):
-        super(Identity, self).__init__()
-
-    def forward(self, x):
-        return x
 
 class QuatNetDirect(torch.nn.Module):
     def __init__(self, num_pts, bidirectional=False):
@@ -27,6 +21,15 @@ class QuatNetDirect(torch.nn.Module):
             q = vecs/vecs.norm(dim=1).view(-1, 1)
             return q
 
+class RotMat6DDirect(torch.nn.Module):
+    def __init__(self, num_pts, bidirectional=False):
+        super(RotMat6DDirect, self).__init__()        
+        self.net = ANet(num_pts=num_pts, num_dim_out=6, bidirectional=bidirectional)
+
+    def forward(self, x, A_prior=None):
+        vecs = self.net(x)
+        C = sixdim_to_rotmat(vecs)
+        return C
 
 class QuatNet(torch.nn.Module):
     def __init__(self, A_net=None):
@@ -46,16 +49,6 @@ class QuatNet(torch.nn.Module):
             q = self.qcqp_solver(A_vec)
             return q
 
-
-class APriorNet(torch.nn.Module):
-    def __init__(self):
-        super(APriorNet, self).__init__()
-        self.fc1 = torch.nn.Linear(10,10)
-        self.bn1 = torch.nn.BatchNorm1d(10)
-
-    def forward(self, A_vec):
-        A_vec = F.relu(self.bn1(self.fc1(A_vec))) + A_vec
-        return A_vec
 
 class PointFeatCNN(torch.nn.Module):
     def __init__(self):
@@ -98,7 +91,6 @@ class ANet(torch.nn.Module):
         super(ANet, self).__init__()
         self.num_pts = num_pts
         self.bidirectional = bidirectional #Evaluate both forward and backward directions
-        self.A_prior_net = APriorNet()
         self.feat_net1 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
         #self.feat_net2 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
         
@@ -150,36 +142,6 @@ class ANet(torch.nn.Module):
             return [A1, A2]
 
         return A1
-
-class ANetSingle(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=False):
-        super(ANetSingle, self).__init__()
-        self.num_pts = num_pts
-        self.bidirectional = bidirectional
-
-        self.body = torch.nn.Sequential(
-          torch.nn.Linear(num_pts*3, 512),
-          #torch.nn.BatchNorm1d(128),
-          torch.nn.ELU(),
-          torch.nn.Linear(512, 256),
-          #torch.nn.BatchNorm1d(128),
-          torch.nn.ELU(),
-          torch.nn.Linear(256, 128),
-          #torch.nn.BatchNorm1d(64),
-          torch.nn.ELU(),
-          torch.nn.Linear(128, 10)
-        )
-
-
-
-    def forward(self, x, A_prior=None):
-        #Decompose input into two point clouds
-        #x_1 = x[:, 0, :, :].transpose(1,2)
-        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
-
-        A_vec = self.body(x_2)
-        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-        return A_vec
 
 
 

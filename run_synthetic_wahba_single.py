@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from networks import *
-from quaternions import *
+from losses import *
 from sim_helpers import *
 from datetime import datetime
 import argparse
@@ -19,9 +19,8 @@ def main():
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=1e-4)
 
-    parser.add_argument('--bidirectional_loss', action='store_true', default=False)
     parser.add_argument('--static_data', action='store_true', default=False)
     
     parser.add_argument('--pretrain_A_net', action='store_true', default=False)
@@ -47,15 +46,23 @@ def main():
 
     #Train and test direct model
     if args.comparison:
-        print('===================TRAINING DIRECT MODEL=======================')
-        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
-        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
+        print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
+        model_direct = RotMat6DDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=True, tensorboard_output=True)
+
+
+        print('===================TRAINING DIRECT QUAT MODEL=======================')
+        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        loss_fn = quat_squared_loss
+        (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=False, tensorboard_output=True)
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
+    A_net = ANet(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
     model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
-    (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
+    loss_fn = quat_squared_loss
+    (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=True)
 
     
     if args.comparison:
