@@ -161,8 +161,13 @@ def train_test_model(args, train_data, test_data, model, tensorboard_output=True
         test_stats[e, 1] = test_mean_err
 
         elapsed_time = time.time() - start_time
+        
         if verbose:
             print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
+        
+        output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
+        pbar.set_description(output_string)
+
         pbar.update(1)
     
     pbar.close()
