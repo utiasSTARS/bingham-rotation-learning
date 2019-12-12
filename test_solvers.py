@@ -5,8 +5,8 @@ from liegroups.numpy import SO3
 from convex_layers import *
 from quaternions import *
 from sim_helpers import *
-
 import os
+
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):

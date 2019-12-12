@@ -4,78 +4,173 @@ from liegroups.numpy import SO3
 from liegroups.torch import SO3 as SO3_torch
 from numpy.linalg import norm
 from quaternions import *
+from utils import *
+from convex_layers import QuadQuatFastSolver, convert_A_to_Avec
+from tensorboardX import SummaryWriter
+import time
+import tqdm
 
+def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
+    #Ensure model gradients are active
+    model.train()
 
-def normalized(a, axis=-1, order=2):
-    l2 = np.atleast_1d(np.linalg.norm(a, order, axis))
-    l2[l2==0] = 1
-    return a / np.expand_dims(l2, axis)
+    # Reset gradient
+    optimizer.zero_grad()
 
-def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
-    #Returns C in SO(3), such that b_1 = C*a_1 and b_2 = C*a_2
+    # Forward
+    out = model.forward(x, A_prior)
+    loss = loss_fn(out, targets)
+
+    # Backward
+    loss.backward()
+
+    # Update parameters
+    optimizer.step()
+
+    return (out, loss.item())
+
+def test_model(model, loss_fn, x, targets, **kwargs):
+    #model.eval() speeds things up because it turns off gradient computation
+    model.eval()
+    # Forward
+    with torch.no_grad():
+        out = model.forward(x, **kwargs)
+        loss = loss_fn(out, targets)
+
+    return (out, loss.item())
+
+def pretrain(A_net, train_data, test_data):
+    loss_fn = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(A_net.parameters(), lr=1e-2)
+    batch_size = 50
+    num_epochs = 500
+
+    print('Pre-training A network...')
+    N_train = train_data.x.shape[0]
+    N_test = test_data.x.shape[0]
+    num_train_batches = N_train // batch_size
+    for e in range(num_epochs):
+        start_time = time.time()
+
+        #Train model
+        train_loss = torch.tensor(0.)
+        for k in range(num_train_batches):
+            start, end = k * batch_size, (k + 1) * batch_size
+            _, train_loss_k = train_minibatch(A_net, loss_fn, optimizer,  train_data.x[start:end], convert_A_to_Avec(train_data.A_prior[start:end]))
+            train_loss += (1/num_train_batches)*train_loss_k
     
-    ## Construct orthonormal basis of 'a' frame
-    a_1_u = a_1/(norm(a_1))
-    a_2_u = a_2/(norm(a_2))
-    alpha = a_1_u.dot(a_2_u)
+        elapsed_time = time.time() - start_time
 
-    a_basis_1 = a_1_u
-    a_basis_2 = a_2_u - alpha*a_1_u
-    a_basis_2 /= norm(a_basis_2)
-    a_basis_3 = np.cross(a_basis_1, a_basis_2)
-
-    ## Construct basis of 'b' frame
-    b_basis_1 = b_1/norm(b_1)
-    b_basis_2 = b_2/norm(b_2) - alpha*b_basis_1
-    b_basis_2 /= norm(b_basis_2)
-    b_basis_3 = np.cross(b_basis_1, b_basis_2)
+        #Test model
+        num_test_batches = N_test // batch_size
+        test_loss = torch.tensor(0.)
+        for k in range(num_test_batches):
+            start, end = k * batch_size, (k + 1) * batch_size
+            _, test_loss_k = test_model(A_net, loss_fn, test_data.x[start:end], convert_A_to_Avec(test_data.A_prior[start:end]))
+            test_loss += (1/num_test_batches)*test_loss_k
 
 
-    #Basis of 'a' frame as column vectors
-    M_a = np.array([a_basis_1, a_basis_2, a_basis_3])
+        print('Epoch: {}/{}. Train: Loss {:.3E} | Test: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, num_epochs, train_loss, test_loss, elapsed_time))
 
-    #Basis of 'b' frame as row vectors
-    M_b = np.array([b_basis_1, b_basis_2, b_basis_3]).T
+    return
 
+def train_test_model(args, train_data, test_data, model, tensorboard_output=True, verbose=False):
 
-    #Direction cosine matrix from a to b!
-    C = M_b.dot(M_a)
-    
-    return C
-
-
-def so3_diff(C_1, C_2, unit='deg'):
-    A = SO3.from_matrix(C_1)
-    B = SO3.from_matrix(C_2)
-    err = A.dot(B.inv()).log()
-    if unit=='deg':
-        return norm(err)*180./np.pi
+    if args.bidirectional_loss:
+        loss_fn = quat_consistency_loss
     else:
-        return norm(err)
+        loss_fn = quat_squared_loss
+    
+    if tensorboard_output:
+        writer = SummaryWriter()
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
+    # if pretrain_A_net:
+    #     pretrain(A_net, train_data, test_data)
+
+    #Save stats
+    train_stats = torch.empty(args.epochs, 2)
+    test_stats = torch.empty(args.epochs, 2)
+
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+
+    pbar = tqdm.tqdm(total=num_test_batches)
+    for e in range(args.epochs):
+        start_time = time.time()
+
+        if not args.static_data:
+            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+
+        #Train model
+        if verbose:
+            print('Training...')
+        
+        num_train_batches = args.N_train // args.batch_size_train
+        train_loss = torch.tensor(0.)
+        train_mean_err = torch.tensor(0.)
+        for k in range(num_train_batches):
+            start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
+
+            if args.use_A_prior:
+                A_prior = convert_A_to_Avec(train_data.A_prior[start:end])
+            else:
+                A_prior = None
+            
+            (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], train_data.q[start:end], A_prior=A_prior)
+            q_train = q_est[0] if args.bidirectional_loss else q_est
+            train_loss += (1/num_train_batches)*train_loss_k
+            train_mean_err += (1/num_train_batches)*quat_angle_diff(q_train, train_data.q[start:end])
         
 
-def solve_horn(x_1, x_2):
-    x_1 = normalized(x_1, axis=1)
-    x_2 = normalized(x_2, axis=1)
-    
-    if x_1.shape[0] == 2:
+        #Test model
+        if verbose:
+            print('Testing...')
+        num_test_batches = args.N_test // args.batch_size_test
+        test_loss = torch.tensor(0.)
+        test_mean_err = torch.tensor(0.)
+
+
+        for k in range(num_test_batches):
+            start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
+            if args.use_A_prior:
+                A_prior = convert_A_to_Avec(test_data.A_prior[start:end])
+            else:
+                A_prior = None
+            (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], test_data.q[start:end], A_prior=A_prior)
+            q_test = q_est[0] if args.bidirectional_loss else q_est
+            test_loss += (1/num_test_batches)*test_loss_k
+            test_mean_err += (1/num_test_batches)*quat_angle_diff(q_test, test_data.q[start:end])
+
+
+        #scheduler.step()
+
+        if tensorboard_output:
+            writer.add_scalar('training/loss', train_loss, e)
+            writer.add_scalar('training/mean_err', train_mean_err, e)
+
+            writer.add_scalar('validation/loss', test_loss, e)
+            writer.add_scalar('validation/mean_err', test_mean_err, e)
         
-        x_1 = np.append(x_1, np.expand_dims(np.cross(x_1[0], x_1[1]), axis=0), axis=0)
-        x_2 = np.append(x_2, np.expand_dims(np.cross(x_2[0], x_2[1]), axis=0), axis=0)
+        #History tracking
+        train_stats[e, 0] = train_loss
+        train_stats[e, 1] = train_mean_err
+        test_stats[e, 0] = test_loss
+        test_stats[e, 1] = test_mean_err
 
-    x_1_n = x_1 - np.mean(x_1, axis=0)
-    x_2_n = x_2 - np.mean(x_2, axis=0)
+        elapsed_time = time.time() - start_time
+        if verbose:
+            print('Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
+        pbar.update(1)
     
-    W = (1./(x_1.shape[0]))*x_2_n.T.dot(x_1_n)
+    pbar.close()
+    if tensorboard_output:
+        writer.close()
 
-    U,_,V = np.linalg.svd(W, full_matrices=False)
-    S = np.eye(3)
-    S[2,2] = np.linalg.det(U) * np.linalg.det(V)
-    C = U.dot(S).dot(V)
-    return C
+    return train_stats, test_stats
 
-def matrix_diff(X,Y):
-    return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
     
 def build_A(x_1, x_2, sigma_2):
     N = x_1.shape[0]
@@ -89,6 +184,7 @@ def build_A(x_1, x_2, sigma_2):
         A_i = (t1 + t2)/(sigma_2[i])
         A += A_i
     return A 
+
 #Note sigma can be scalar or an N-dimensional vector of std. devs.
 def gen_sim_data(N, sigma, torch_vars=False, shuffle_points=False):
     ##Simulation
@@ -242,7 +338,6 @@ def create_experimental_data(N_train=2000, N_test=50, N_matches_per_sample=100, 
     
     return train_data, test_data
 
-
 def compute_mean_horn_error(sim_data):
     N = sim_data.x.shape[0]
     err = torch.empty(N)
@@ -254,4 +349,3 @@ def compute_mean_horn_error(sim_data):
         q_est = rotmat_to_quat(C, ordering='xyzw')
         err[i] = quat_angle_diff(q_est, sim_data.q[i])
     return err.mean()
-
