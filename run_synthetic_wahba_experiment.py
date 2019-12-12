@@ -66,13 +66,13 @@ def main():
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
         model_direct = RotMat6DDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats_6d, test_stats_6d) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=True, tensorboard_output=True)
+        (train_stats_6d, test_stats_6d) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=True, tensorboard_output=False)
 
 
         print('=========TRAINING DIRECT QUAT MODEL==================')
         model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=False, tensorboard_output=True)
+        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
         print('==============TRAINING REP MODEL====================')
