@@ -7,9 +7,10 @@ from datetime import datetime
 import argparse
 
 
+def loguniform(low=0, high=1, size=None):
+    return np.exp(np.random.uniform(low, high, size))
+
 def main():
-
-
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
     parser.add_argument('--sim_sigma', type=float, default=1e-6)
     parser.add_argument('--N_train', type=int, default=500)
@@ -51,32 +52,38 @@ def main():
         #Data will be generated on the fly
         train_data, test_data = None, None
 
+    stats_list = []
+
     for t_i in range(args.trials):
         #Train and test direct model
-        print('===================TRAINING DIRECT MODEL=======================')
+        print('===================TRIAL #{}======================='.format(t_i))
+
+        lr = loguniform(np.log(args.lr_min), np.log(args.lr_max))
+        args.lr = lr
+        print('Learning rate: {:.3E}'.format(lr))
+
+        print('====DIRECT MODEL====')
         model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
         (train_stats_direct, test_stats_direct) = train_test_model(args, train_data, test_data, model_direct, tensorboard_output=True)
 
         #Train and test with new representation
-        print('===================TRAINING REP MODEL=======================')
+        print('====REP MODEL====')
         A_net = ANet(num_pts=args.matches_per_sample, bidirectional=args.bidirectional_loss).to(device=device, dtype=tensor_type)
         model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
         (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, tensorboard_output=True)
 
+        stats_list.append([lr, train_stats_direct, train_stats_rep, test_stats_direct, test_stats_rep])
     
-    # saved_data_file_name = 'synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    # full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
-    # torch.save({
-    #         'model_rep': model_rep.state_dict(),
-    #         'model_direct': model_direct.state_dict(),
-    #         'train_stats_direct': train_stats_direct.detach().cpu(),
-    #         'test_stats_direct': test_stats_direct.detach().cpu(),
-    #         'train_stats_rep': train_stats_rep.detach().cpu(),
-    #         'test_stats_rep': test_stats_rep.detach().cpu(),
-    #         'args': args,
-    #     }, full_saved_path)
 
-    #    print('Saved data to {}.'.format(full_saved_path))
+    saved_data_file_name = 'diff_lr_synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
+    torch.save({
+        'stats_list': stats_list,
+        'args': args
+    }, full_saved_path)
+    print('Saved data to {}.'.format(full_saved_path))
+
+    
 if __name__=='__main__':
     main()
