@@ -32,7 +32,7 @@ def main():
 
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
-    parser.add_argument('--lr_max', type=float, default=1e-2)
+    parser.add_argument('--lr_max', type=float, default=1e-3)
     parser.add_argument('--trials', type=int, default=25)
     
 
