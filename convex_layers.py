@@ -24,7 +24,7 @@ def convert_Avec_to_A(A_vec):
     return A.squeeze()
 
 #=========================PYTORCH (FAST) SOLVER=========================
-def QuadQuatPSDFastSolver(A_vec):
+def QuadQuatPSDFastSolver(A_vec, normalize=True):
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze()
 
@@ -33,7 +33,10 @@ def QuadQuatPSDFastSolver(A_vec):
     L = A_vec.new_zeros((A_vec.shape[0],4,4))   
     L[:, idx[0], idx[1]] = A_vec
     A = L.bmm(L.transpose(1,2))
+    if normalize:
+        A = A / A.norm(dim=[1,2], keepdim=True)
     A_vec_psd = convert_A_to_Avec(A)
+
     
     return QuadQuatFastSolver.apply(A_vec_psd)
 
