@@ -5,6 +5,14 @@ import cvxpy as cp
 import time
 import torch  
 
+def normalize_Avec(A_vec):
+    """ Normalizes Bx10 vectors such that resulting Bx4x4 matrices have unit Frobenius norm"""
+    A = convert_Avec_to_A(A_vec)
+    if A.dim() < 3:
+        A = A.unsqueeze(dim=0)
+    A = A / A.norm(dim=[1,2], keepdim=True)
+    return convert_A_to_Avec(A).squeeze()
+
 def convert_A_to_Avec(A):
     """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values"""
     if A.dim() < 3:
@@ -24,7 +32,7 @@ def convert_Avec_to_A(A_vec):
     A[:, idx[1], idx[0]] = A_vec
     return A.squeeze()
 
-def convert_Avec_to_Avec_psd(A_vec, normalize=True):
+def convert_Avec_to_Avec_psd(A_vec):
     """ Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  
     (encodes symmetric and PSD 4x4 matrices)"""
 
@@ -34,16 +42,10 @@ def convert_Avec_to_Avec_psd(A_vec, normalize=True):
     L = A_vec.new_zeros((A_vec.shape[0],4,4))   
     L[:, idx[0], idx[1]] = A_vec
     A = L.bmm(L.transpose(1,2))
-    if normalize:
-        A = A / A.norm(dim=[1,2], keepdim=True)
     A_vec_psd = convert_A_to_Avec(A)
     return A_vec_psd
 
 #=========================PYTORCH (FAST) SOLVER=========================
-def QuadQuatPSDFastSolver(A_vec, normalize=True):
-    A_vec_psd = convert_Avec_to_Avec_psd(A_vec, normalize=normalize)
-    return QuadQuatFastSolver.apply(A_vec_psd)
-
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """
