@@ -285,7 +285,7 @@ def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, dtype=tor
                 (x_1[0] >= 0.) & (x_1[1] < 0.), 
                 (x_1[0] < 0.) & (x_1[1] >= 0.), 
                 (x_1[0] >= 0.) & (x_1[1] >= 0.)]
-    sigma_list = [0.25*sigma, 0.5*sigma, 2*sigma, 4*sigma]
+    sigma_list = [0.1*sigma, 0.5*sigma, 2*sigma, 10*sigma]
 
     noise = torch.zeros_like(x_1)
     for r_i, region in enumerate(region_masks):
