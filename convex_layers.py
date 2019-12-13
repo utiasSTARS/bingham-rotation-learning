@@ -6,12 +6,11 @@ import time
 import torch  
 
 def convert_A_to_Avec(A):
-    """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values """
+    """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values"""
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
     A_vec = A[:, idx[0], idx[1]]
-    A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
     return A_vec.squeeze()
 
 def convert_Avec_to_A(A_vec):
@@ -42,7 +41,7 @@ def convert_Avec_to_Avec_psd(A_vec, normalize=True):
 
 #=========================PYTORCH (FAST) SOLVER=========================
 def QuadQuatPSDFastSolver(A_vec, normalize=True):
-    A_vec_psd = convert_Avec_to_Avec_psd(A_vec, normalize=True)
+    A_vec_psd = convert_Avec_to_Avec_psd(A_vec, normalize=normalize)
     return QuadQuatFastSolver.apply(A_vec_psd)
 
 
