@@ -5,8 +5,8 @@ import cvxpy as cp
 import time
 import torch  
 
-# Convert symmetric 4x4 matrix to 10 parameter vector
 def convert_A_to_Avec(A):
+    """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values """
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
@@ -15,6 +15,8 @@ def convert_A_to_Avec(A):
     return A_vec.squeeze()
 
 def convert_Avec_to_A(A_vec):
+    """ Convert Bx10 tensor to Bx4x4 symmetric matrices """
+
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
@@ -23,12 +25,12 @@ def convert_Avec_to_A(A_vec):
     A[:, idx[1], idx[0]] = A_vec
     return A.squeeze()
 
-#=========================PYTORCH (FAST) SOLVER=========================
-def QuadQuatPSDFastSolver(A_vec, normalize=True):
+def convert_Avec_to_Avec_psd(A_vec, normalize=True):
+    """ Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  
+    (encodes symmetric and PSD 4x4 matrices)"""
+
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze()
-
-    #Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  (encodes symmetric and PSD 4x4 matrices)
     idx = torch.tril_indices(4,4)
     L = A_vec.new_zeros((A_vec.shape[0],4,4))   
     L[:, idx[0], idx[1]] = A_vec
@@ -36,8 +38,11 @@ def QuadQuatPSDFastSolver(A_vec, normalize=True):
     if normalize:
         A = A / A.norm(dim=[1,2], keepdim=True)
     A_vec_psd = convert_A_to_Avec(A)
+    return A_vec_psd
 
-    
+#=========================PYTORCH (FAST) SOLVER=========================
+def QuadQuatPSDFastSolver(A_vec, normalize=True):
+    A_vec_psd = convert_Avec_to_Avec_psd(A_vec, normalize=True)
     return QuadQuatFastSolver.apply(A_vec_psd)
 
 
