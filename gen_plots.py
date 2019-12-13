@@ -101,13 +101,13 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     for i in range(len(names)):
         _plot_curve_with_bounds(
             ax[0], x, np.quantile(train_err[i], 0.5, axis=0),
-            np.quantile(train_err[i], 0.25, axis=0), 
-            np.quantile(train_err[i], 0.75, axis=0),  
+            np.quantile(train_err[i], 0.1, axis=0), 
+            np.quantile(train_err[i], 0.9, axis=0),  
             names[i], colours[i])
         _plot_curve_with_bounds(
             ax[1], x, np.quantile(test_err[i], 0.5, axis=0),
-            np.quantile(test_err[i], 0.25, axis=0), 
-            np.quantile(test_err[i], 0.75, axis=0),  
+            np.quantile(test_err[i], 0.1, axis=0), 
+            np.quantile(test_err[i], 0.9, axis=0),  
             names[i], colours[i])
        
     ax[0].legend()
@@ -119,7 +119,7 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-12-2019-23-23-18.pt'
+    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-13-2019-07-17-05.pt'
     checkpoint = torch.load(path)
     args = checkpoint['args']
     train_stats_list = checkpoint['train_stats_list']
