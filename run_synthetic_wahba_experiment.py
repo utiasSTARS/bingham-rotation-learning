@@ -27,8 +27,6 @@ def main():
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
 
-    parser.add_argument('--enforce_psd', action='store_true', default=False)
-
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
     parser.add_argument('--lr_max', type=float, default=1e-3)
@@ -72,22 +70,29 @@ def main():
         (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_quat, loss_fn, rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
-        print('==============TRAINING REP MODEL====================')
-        model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        print('==============TRAINING A (Sym) MODEL====================')
+        model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=False)
+        (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model_A_sym, loss_fn,  rotmat_targets=False, tensorboard_output=False)
+
+        #Train and test with new representation
+        print('==============TRAINING A (PSD) MODEL====================')
+        model_A_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        loss_fn = quat_squared_loss
+        (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
+
 
         lrs[t_i] = lr
-        train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_rep])
-        test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_rep])
+        train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
+        test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
         
-    saved_data_file_name = 'diff_lr_synthetic_wahba_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    saved_data_file_name = 'diff_lr_synthetic_wahba_experiment_4models_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
     torch.save({
         'train_stats_list': train_stats_list,
         'test_stats_list': test_stats_list,
-        'named_approaches': ['6D', 'Quat', 'Ours'],
+        'named_approaches': ['6D', 'Quat', 'A (sym)', 'A (psd)'],
         'learning_rates': lrs,
         'args': args
     }, full_saved_path)
