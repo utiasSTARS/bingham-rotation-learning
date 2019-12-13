@@ -14,17 +14,15 @@ def main():
     parser.add_argument('--sim_sigma', type=float, default=1e-6)
     parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
-    parser.add_argument('--matches_per_sample', type=int, default=1000)
+    parser.add_argument('--matches_per_sample', type=int, default=100)
 
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
 
-    parser.add_argument('--static_data', action='store_true', default=False)
+    parser.add_argument('--dataset', choices=['static', 'dynamic', 'dynamic_beachball'], default='dynamic')
     
-    parser.add_argument('--pretrain_A_net', action='store_true', default=False)
-    parser.add_argument('--use_A_prior', action='store_true', default=False)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--comparison', action='store_true', default=False)
@@ -40,7 +38,7 @@ def main():
 
 
     #Generate data
-    if args.static_data:
+    if args.dataset == 'static':
         train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
     else:
         #Data will be generated on the fly
