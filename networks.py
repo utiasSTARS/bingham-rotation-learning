@@ -1,32 +1,17 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from convex_layers import QuadQuatFastSolver
+from convex_layers import *
 from utils import sixdim_to_rotmat
 import torchvision
 
 
-class QuatNetDirect(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=False):
-        super(QuatNetDirect, self).__init__()        
-        self.net = ANet(num_pts=num_pts, num_dim_out=4, bidirectional=bidirectional)
-
-    def forward(self, x, A_prior=None):
-        vecs = self.net(x)
-        if self.net.bidirectional:
-            q = vecs[0]/vecs[0].norm(dim=1).view(-1, 1)
-            q_inv =vecs[1]/vecs[1].norm(dim=1).view(-1, 1)
-            return [q, q_inv]
-        else:
-            q = vecs/vecs.norm(dim=1).view(-1, 1)
-            return q
-
 class RotMat6DDirect(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=False):
+    def __init__(self):
         super(RotMat6DDirect, self).__init__()        
-        self.net = ANet(num_pts=num_pts, num_dim_out=6, bidirectional=bidirectional)
+        self.net = PointNet(dim_out=6, normalize_output=False)
 
-    def forward(self, x, A_prior=None):
+    def forward(self, x):
         vecs = self.net(x)
         C = sixdim_to_rotmat(vecs)
         return C
@@ -35,19 +20,15 @@ class QuatNet(torch.nn.Module):
     def __init__(self, A_net=None):
         super(QuatNet, self).__init__()
         if A_net is None:
-            raise RuntimeError('Must pass in an ANet to QuatNet')
-        self.A_net = A_net
-        self.qcqp_solver = QuadQuatFastSolver.apply
-
-    def forward(self, x, A_prior=None):
-        A_vec = self.A_net(x, A_prior)
-        if self.A_net.bidirectional:
-            q = self.qcqp_solver(A_vec[0])
-            q_inv = self.qcqp_solver(A_vec[1])
-            return [q, q_inv]
+            self.A_net = PointNet(dim_out=10, normalize_output=False)
         else:
-            q = self.qcqp_solver(A_vec)
-            return q
+            self.A_net = A_net
+        self.qcqp_solver = QuadQuatPSDFastSolver
+
+    def forward(self, x):
+        A_vec = self.A_net(x)
+        q = self.qcqp_solver(A_vec)
+        return q
 
 
 class PointFeatCNN(torch.nn.Module):
@@ -86,62 +67,38 @@ class PointFeatMLP(torch.nn.Module):
         return x
 
         
-class ANet(torch.nn.Module):
-    def __init__(self, num_pts, num_dim_out=10, bidirectional=False):
-        super(ANet, self).__init__()
-        self.num_pts = num_pts
-        self.bidirectional = bidirectional #Evaluate both forward and backward directions
-        self.feat_net1 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
-        #self.feat_net2 = PointFeatCNN()#PointFeatMLP(num_pts=num_pts)
-        
-
+class PointNet(torch.nn.Module):
+    def __init__(self, dim_out=10, normalize_output=False):
+        super(PointNet, self).__init__()
+        self.feat_net = PointFeatCNN()
+        self.normalize_output = normalize_output
         self.head = torch.nn.Sequential(
           torch.nn.Linear(1024, 256),
-          #torch.nn.BatchNorm1d(128),
           torch.nn.PReLU(),
           torch.nn.Linear(256, 128),
-          #torch.nn.BatchNorm1d(128),
           torch.nn.PReLU(),
-          torch.nn.Linear(128, num_dim_out)
+          torch.nn.Linear(128, dim_out)
         )
 
-
-    def feats_to_A(self, x):
-        A_vec = self.head(x)
-        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-        return A_vec
-
-    def forward(self, x, A_prior=None):
+    def forward(self, x):
         #Decompose input into two point clouds
         if x.dim() < 4:
             x = x.unsqueeze(dim=0)
+
         x_1 = x[:, 0, :, :].transpose(1,2)
         x_2 = x[:, 1, :, :].transpose(1,2)
             
-        #x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
-        #x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
-        
-        #Collect and concatenate features
-        #x_1 -> x_2
-        #feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
-        feats_12 = self.feat_net1(torch.cat([x_1, x_2], dim=1))
+        feats_12 = self.feat_net(torch.cat([x_1, x_2], dim=1))
+
         if feats_12.dim() < 2:
             feats_12 = feats_12.unsqueeze(dim=0)
-
-        A1 = self.feats_to_A(feats_12)
         
-        #Prior? Doesn't make sense with symmetric loss unless we give two priors...TODO
-        # if A_prior is not None:
-        #     A1 = A1 + self.A_prior_net(A_prior)
+        out = self.head(feats_12)
 
-        if self.bidirectional:
-            #x_2 -> x_1
-            #feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
-            feats_21 = self.feat_net1(torch.cat([x_2, x_1], dim=1))
-            A2 = self.feats_to_A(feats_21)
-            return [A1, A2]
-
-        return A1
+        if self.normalize_output:
+            out = out / out.norm(dim=1, keepdim=True)
+        
+        return out
 
 
 
