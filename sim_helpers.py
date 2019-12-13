@@ -19,7 +19,7 @@ def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     optimizer.zero_grad()
 
     # Forward
-    out = model.forward(x, A_prior)
+    out = model.forward(x)
     loss = loss_fn(out, targets)
 
     # Backward

@@ -29,6 +29,14 @@ def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=100):
     assert (grad_test == True)
     print('Batch...Passed.')
 
+def test_pytorch_fast_PSD_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=100):
+    print('Checking PyTorch PSD sped-up gradients (random A, batch_size: {})'.format(num_samples))
+    qcqp_solver = QuadQuatPSDFastSolver
+    A_vec = torch.randn((num_samples, 10), dtype=torch.double, requires_grad=True)
+    input = (A_vec,)
+    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    assert (grad_test == True)
+    print('Batch...Passed.')
 
 def test_duality_gap_wahba_solver(num_samples=100):
     print('Checking duality gap on the fast Wahba solver')
@@ -139,6 +147,8 @@ if __name__=='__main__':
     test_pytorch_analytic_gradient()
     print("=============")
     test_pytorch_fast_analytic_gradient()
+    print("=============")
+    test_pytorch_fast_PSD_analytic_gradient()
     print("=============")
     test_compare_fast_and_slow_solvers()
     print("=============")
