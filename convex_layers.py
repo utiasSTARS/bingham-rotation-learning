@@ -24,6 +24,20 @@ def convert_Avec_to_A(A_vec):
     return A.squeeze()
 
 #=========================PYTORCH (FAST) SOLVER=========================
+def QuadQuatPSDFastSolver(A_vec):
+    if A_vec.dim() < 2:
+        A_vec = A_vec.unsqueeze()
+
+    #Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  (encodes symmetric and PSD 4x4 matrices)
+    idx = torch.tril_indices(4,4)
+    L = A_vec.new_zeros((A_vec.shape[0],4,4))   
+    L[:, idx[0], idx[1]] = A_vec
+    A = L.bmm(L.transpose(1,2))
+    A_vec_psd = convert_A_to_Avec(A)
+    
+    return QuadQuatFastSolver.apply(A_vec_psd)
+
+
 class QuadQuatFastSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver
