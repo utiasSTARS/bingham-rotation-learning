@@ -25,8 +25,6 @@ def main():
     parser.add_argument('--bidirectional_loss', action='store_true', default=False)
     parser.add_argument('--static_data', action='store_true', default=False)
     
-    parser.add_argument('--pretrain_A_net', action='store_true', default=False)
-    parser.add_argument('--use_A_prior', action='store_true', default=False)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--comparison', action='store_true', default=False)
@@ -64,20 +62,19 @@ def main():
         print('Learning rate: {:.3E}'.format(lr))
 
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
-        model_direct = RotMat6DDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats_6d, test_stats_6d) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=True, tensorboard_output=False)
+        (train_stats_6d, test_stats_6d) = train_test_model(args, train_data, test_data, model_6D, loss_fn, rotmat_targets=True, tensorboard_output=False)
 
 
         print('=========TRAINING DIRECT QUAT MODEL==================')
-        model_direct = QuatNetDirect(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
+        model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_direct, loss_fn, rotmat_targets=False, tensorboard_output=False)
+        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_quat, loss_fn, rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
         print('==============TRAINING REP MODEL====================')
-        A_net = ANet(num_pts=args.matches_per_sample, bidirectional=False).to(device=device, dtype=tensor_type)
-        model_rep = QuatNet(A_net=A_net).to(device=device, dtype=tensor_type)
+        model_rep = QuatNet().to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
