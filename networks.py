@@ -17,16 +17,16 @@ class RotMat6DDirect(torch.nn.Module):
         return C
 
 class QuatNet(torch.nn.Module):
-    def __init__(self, A_net=None):
+    def __init__(self, enforce_psd=True):
         super(QuatNet, self).__init__()
-        if A_net is None:
-            self.A_net = PointNet(dim_out=10, normalize_output=False)
-        else:
-            self.A_net = A_net
-        self.qcqp_solver = QuadQuatPSDFastSolver
-
+        self.A_net = PointNet(dim_out=10, normalize_output=False)
+        self.enforce_psd = enforce_psd
+        self.qcqp_solver = QuadQuatFastSolver.apply
+        
     def forward(self, x):
         A_vec = self.A_net(x)
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec, normalize=False)
         q = self.qcqp_solver(A_vec)
         return q
 
