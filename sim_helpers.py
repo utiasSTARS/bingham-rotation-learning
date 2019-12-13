@@ -97,8 +97,9 @@ def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets
     for e in range(args.epochs):
         start_time = time.time()
 
-        if not args.static_data:
-            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
+        if args.dataset is not 'static':
+            beachball = (args.dataset == 'dynamic_beachball')
+            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, beachball=beachball, device=device, dtype=tensor_type)
 
         #Train model
         if verbose:
@@ -270,9 +271,41 @@ def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, dtype=torch.do
     x_2 = C.bmm(x_1) + noise
     return C, x_1, x_2
 
-def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, device=torch.device('cpu'), dtype=torch.double):
-    C_train, x_1_train, x_2_train = gen_sim_data_fast(N_train, N_matches_per_sample, sigma)
-    C_test, x_1_test, x_2_test = gen_sim_data_fast(N_test, N_matches_per_sample, sigma)
+def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, dtype=torch.double):
+    ##Simulation
+    #Create a random rotation
+    C = SO3_torch.exp(torch.randn(N_rotations, 3, dtype=dtype)).as_matrix()
+    #Create two sets of vectors (normalized to unit l2 norm)
+    x_1 = torch.randn(3, N_rotations*N_matches_per_rotation, dtype=dtype)
+    x_1 = x_1/x_1.norm(dim=0,keepdim=True)
+
+    #x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation, dtype=dtype)
+
+    region_masks = [(x_1[0] < 0.) & (x_1[1] < 0.), 
+                (x_1[0] >= 0.) & (x_1[1] < 0.), 
+                (x_1[0] < 0.) & (x_1[1] >= 0.), 
+                (x_1[0] >= 0.) & (x_1[1] >= 0.)]
+    sigma_list = [0.25*sigma, 0.5*sigma, 2*sigma, 4*sigma]
+
+    noise = torch.zeros_like(x_1)
+    for r_i, region in enumerate(region_masks):
+        noise[:, region] = sigma_list[r_i]*torch.randn_like(noise[:, region])
+
+    x_1 = x_1.view(3, N_rotations, N_matches_per_rotation).transpose(0,1) 
+    noise = noise.view(3, N_rotations, N_matches_per_rotation).transpose(0,1) 
+
+    #Rotate and add noise
+    x_2 = C.bmm(x_1) + noise
+    return C, x_1, x_2
+
+def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, beachball=False, device=torch.device('cpu'), dtype=torch.double):
+    
+    if beachball:
+        C_train, x_1_train, x_2_train = gen_sim_data_beachball(N_train, N_matches_per_sample, sigma)
+        C_test, x_1_test, x_2_test = gen_sim_data_beachball(N_test, N_matches_per_sample, sigma)
+    else:
+        C_train, x_1_train, x_2_train = gen_sim_data_fast(N_train, N_matches_per_sample, sigma)
+        C_test, x_1_test, x_2_test = gen_sim_data_fast(N_test, N_matches_per_sample, sigma)
 
     x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype, device=device)
     x_train[:,0,:,:] = x_1_train.transpose(1,2)

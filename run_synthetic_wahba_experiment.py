@@ -15,20 +15,19 @@ def main():
     parser.add_argument('--sim_sigma', type=float, default=1e-6)
     parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
-    parser.add_argument('--matches_per_sample', type=int, default=1000)
+    parser.add_argument('--matches_per_sample', type=int, default=100)
 
     parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
     #parser.add_argument('--lr', type=float, default=1e-3)
 
-    parser.add_argument('--bidirectional_loss', action='store_true', default=False)
-    parser.add_argument('--static_data', action='store_true', default=False)
+    parser.add_argument('--dataset', choices=['static', 'dynamic', 'dynamic_beachball'], default='dynamic')
     
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
-    parser.add_argument('--comparison', action='store_true', default=False)
 
+    parser.add_argument('--enforce_psd', action='store_true', default=False)
 
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
@@ -44,7 +43,7 @@ def main():
 
 
     #Generate data
-    if args.static_data:
+    if args.dataset == 'static':
         train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, device=device, dtype=tensor_type)
     else:
         #Data will be generated on the fly
@@ -74,7 +73,7 @@ def main():
 
         #Train and test with new representation
         print('==============TRAINING REP MODEL====================')
-        model_rep = QuatNet().to(device=device, dtype=tensor_type)
+        model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
