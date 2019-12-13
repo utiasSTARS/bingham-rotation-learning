@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--comparison', action='store_true', default=False)
+    parser.add_argument('--enforce_psd', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
 
 
@@ -60,7 +61,7 @@ def main():
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    model_rep = QuatNet().to(device=device, dtype=tensor_type)
+    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
     loss_fn = quat_squared_loss
     (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=True)
 
