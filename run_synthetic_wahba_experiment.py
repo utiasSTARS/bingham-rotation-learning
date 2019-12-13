@@ -12,7 +12,9 @@ def loguniform(low=0, high=1, size=None):
 
 def main():
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
-    parser.add_argument('--sim_sigma', type=float, default=1e-6)
+    parser.add_argument('--sim_sigma', type=float, default=1e-2)
+    parser.add_argument('--beachball_sigma_factors', type=lambda s: [float(item) for item in s.split(',')], default=[0.1, 0.5, 2, 10])
+
     parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
