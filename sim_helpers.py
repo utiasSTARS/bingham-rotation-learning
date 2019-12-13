@@ -270,8 +270,7 @@ def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, dtype=torch.do
     #Rotate and add noise
     noise = sigma*torch.randn_like(x_1)
     x_2 = C.bmm(x_1) + noise
-
-    x_2 = x_2/x_2.norm(dim=1,keepdim=True)   
+    
     return C, x_1, x_2
 
 def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, factors, dtype=torch.double):
@@ -297,8 +296,6 @@ def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, factors, 
     
     #Rotate and add noise
     x_2 = C.bmm(x_1) + noise
-    x_2 = x_2/x_2.norm(dim=1,keepdim=True) 
-    
     return C, x_1, x_2
 
 def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, beachball=False, beachball_factors=None, device=torch.device('cpu'), dtype=torch.double):
