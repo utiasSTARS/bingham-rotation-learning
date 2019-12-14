@@ -83,8 +83,67 @@ def plot_wahba_training_comparisons(individual=True, combined=False):
         output_file = 'plots/' + datafile.replace('.pt','').replace('saved_data/synthetic/','') + '_combined.pdf'
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
+
+def _plot_curve_with_bounds(ax, x, y, lower, upper, label, color):
+    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+    ax.fill_between(x, lower, upper, alpha=0.3, facecolor=color)
+    ax.plot(x, y, color, linewidth=1.5, label=label)
+    return 
+
+def _create_learning_rate_fig_combined(args, train_err, test_err, names):
+    plt.rc('text', usetex=True)
+    fig, ax = plt.subplots(1, 2, sharex='col', sharey='row')
+    fig.set_size_inches(4, 2)
+
+    x = np.arange(args.epochs)
+    colours = ['tab:red', 'tab:green', 'tab:blue']
+
+    for i in range(len(names)):
+        _plot_curve_with_bounds(
+            ax[0], x, np.quantile(train_err[i], 0.5, axis=0),
+            np.quantile(train_err[i], 0.1, axis=0), 
+            np.quantile(train_err[i], 0.9, axis=0),  
+            names[i], colours[i])
+        _plot_curve_with_bounds(
+            ax[1], x, np.quantile(test_err[i], 0.5, axis=0),
+            np.quantile(test_err[i], 0.1, axis=0), 
+            np.quantile(test_err[i], 0.9, axis=0),  
+            names[i], colours[i])
+       
+    ax[0].legend()
+    ax[0].set_xlabel('epoch (training)')
+    ax[1].set_xlabel('epoch (validation)')
+    ax[0].set_yscale('log')
+    ax[1].set_yscale('log')
+    ax[0].set_ylabel('mean error (deg)')
+    return fig
+
+def plot_learning_rate_wahba_experiment():
+    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-13-2019-16-56-18.pt'
+    checkpoint = torch.load(path)
+    args = checkpoint['args']
+    train_stats_list = checkpoint['train_stats_list']
+    test_stats_list = checkpoint['test_stats_list']
+    names = checkpoint['named_approaches']
+
+    trials = args.trials
+    train_err = np.empty((len(names), trials, args.epochs))
+    test_err = np.empty((len(names), trials, args.epochs))
     
+    for t_i in range(trials):
+        train_stats = train_stats_list[t_i]
+        test_stats = test_stats_list[t_i]
+        for app_i in range(len(names)):
+            #Index 1 is mean angular error, index 0 is loss
+            train_err[app_i, t_i, :] = train_stats[app_i][:, 1].detach().numpy()
+            test_err[app_i, t_i, :] = test_stats[app_i][:, 1].detach().numpy()
+            
+    fig = _create_learning_rate_fig_combined(args, train_err, test_err, names)
+    output_file = 'plots/' + path.replace('.pt','').replace('saved_data/synthetic/','') + '_plot.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
 
 
 if __name__=='__main__':
-    plot_wahba_training_comparisons()
+    #plot_wahba_training_comparisons()
+    plot_learning_rate_wahba_experiment()

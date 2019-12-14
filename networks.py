@@ -1,65 +1,58 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from convex_layers import QuadQuatFastSolver
-import torchvision 
+from convex_layers import *
+from utils import sixdim_to_rotmat
+import torchvision
 
-#Utility module to replace BatchNorms without affecting structure
-class Identity(torch.nn.Module):
+
+class RotMat6DDirect(torch.nn.Module):
     def __init__(self):
-        super(Identity, self).__init__()
+        super(RotMat6DDirect, self).__init__()        
+        self.net = PointNet(dim_out=6, normalize_output=False)
 
     def forward(self, x):
-        return x
-
-class QuatNetDirect(torch.nn.Module):
-    def __init__(self, num_pts):
-        super(QuatNetDirect, self).__init__()        
-        self.net = ANet(num_pts=num_pts, num_dim_out=4)
-
-    def forward(self, x, A_prior=None):
         vecs = self.net(x)
-        q = vecs/vecs.norm(dim=1).view(-1, 1)
-        return q
-
+        C = sixdim_to_rotmat(vecs)
+        return C
 
 class QuatNet(torch.nn.Module):
-    def __init__(self, A_net=None):
+    def __init__(self, enforce_psd=True, unit_frob_norm=True):
         super(QuatNet, self).__init__()
-        if A_net is None:
-            raise RuntimeError('Must pass in an ANet to QuatNet')
-        self.A_net = A_net
+        self.A_net = PointNet(dim_out=10, normalize_output=False)
+        self.enforce_psd = enforce_psd
+        self.unit_frob_norm = unit_frob_norm
         self.qcqp_solver = QuadQuatFastSolver.apply
+    
+    def output_A(self, x):
+        A_vec = self.A_net(x)
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
+        return convert_Avec_to_A(A_vec)
 
-    def forward(self, x, A_prior=None):
-        A_vec = self.A_net(x, A_prior)
-        if self.A_net.bidirectional:
-            q = self.qcqp_solver(A_vec[0])
-            q_inv = self.qcqp_solver(A_vec[1])
-            return [q, q_inv]
-        else:
-            q = self.qcqp_solver(A_vec)
-            return q
+    def forward(self, x):
+        A_vec = self.A_net(x)
 
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
+        q = self.qcqp_solver(A_vec)
+        return q
 
-class APriorNet(torch.nn.Module):
-    def __init__(self):
-        super(APriorNet, self).__init__()
-        self.fc1 = torch.nn.Linear(10,10)
-        self.bn1 = torch.nn.BatchNorm1d(10)
-
-    def forward(self, A_vec):
-        A_vec = F.relu(self.bn1(self.fc1(A_vec))) + A_vec
-        return A_vec
 
 class PointFeatCNN(torch.nn.Module):
     def __init__(self):
         super(PointFeatCNN, self).__init__()
         self.net = torch.nn.Sequential(
-                torch.nn.Conv1d(3, 64, kernel_size=1),
-                torch.nn.LeakyReLU(),
+                torch.nn.Conv1d(6, 64, kernel_size=1),
+                torch.nn.PReLU(),
                 torch.nn.Conv1d(64, 128, kernel_size=1),
-                torch.nn.LeakyReLU(),
+                torch.nn.PReLU(),
                 torch.nn.Conv1d(128, 1024, kernel_size=1),
                 torch.nn.AdaptiveMaxPool1d(output_size=1)
                 )
@@ -88,89 +81,38 @@ class PointFeatMLP(torch.nn.Module):
         return x
 
         
-class ANet(torch.nn.Module):
-    def __init__(self, num_pts, num_dim_out=10, bidirectional=False):
-        super(ANet, self).__init__()
-        self.num_pts = num_pts
-        self.bidirectional = bidirectional #Evaluate both forward and backward directions
-        self.A_prior_net = APriorNet()
-        self.feat_net1 = PointFeatMLP(num_pts=num_pts)
-        self.feat_net2 = PointFeatMLP(num_pts=num_pts)
-        
-
+class PointNet(torch.nn.Module):
+    def __init__(self, dim_out=10, normalize_output=False):
+        super(PointNet, self).__init__()
+        self.feat_net = PointFeatCNN()
+        self.normalize_output = normalize_output
         self.head = torch.nn.Sequential(
           torch.nn.Linear(1024, 256),
-          #torch.nn.BatchNorm1d(128),
           torch.nn.PReLU(),
           torch.nn.Linear(256, 128),
-          #torch.nn.BatchNorm1d(128),
           torch.nn.PReLU(),
-          torch.nn.Linear(128, num_dim_out)
+          torch.nn.Linear(128, dim_out)
         )
 
-
-    def feats_to_A(self, x):
-        A_vec = self.head(x)
-        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-        return A_vec
-
-    def forward(self, x, A_prior=None):
+    def forward(self, x):
         #Decompose input into two point clouds
-        # x_1 = x[:, 0, :, :].transpose(1,2)
-        # x_2 = x[:, 1, :, :].transpose(1,2)
         if x.dim() < 4:
             x = x.unsqueeze(dim=0)
+
+        x_1 = x[:, 0, :, :].transpose(1,2)
+        x_2 = x[:, 1, :, :].transpose(1,2)
             
-        x_1 = x[:, 0, :, :].view(-1, self.num_pts*3)
-        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
+        feats_12 = self.feat_net(torch.cat([x_1, x_2], dim=1))
+
+        if feats_12.dim() < 2:
+            feats_12 = feats_12.unsqueeze(dim=0)
         
-        #Collect and concatenate features
-        #x_1 -> x_2
-        feats_12 = torch.cat([self.feat_net1(x_1), self.feat_net2(x_2)], dim=1)
+        out = self.head(feats_12)
 
-        A1 = self.feats_to_A(feats_12)
+        if self.normalize_output:
+            out = out / out.norm(dim=1, keepdim=True)
         
-        #Prior? Doesn't make sense with symmetric loss unless we give two priors...TODO
-        # if A_prior is not None:
-        #     A1 = A1 + self.A_prior_net(A_prior)
-
-        if self.bidirectional:
-            #x_2 -> x_1
-            feats_21 = torch.cat([self.feat_net1(x_2), self.feat_net2(x_1)], dim=1)
-            A2 = self.feats_to_A(feats_21)
-            return [A1, A2]
-
-        return A1
-
-class ANetSingle(torch.nn.Module):
-    def __init__(self, num_pts, bidirectional=False):
-        super(ANetSingle, self).__init__()
-        self.num_pts = num_pts
-        self.bidirectional = bidirectional
-
-        self.body = torch.nn.Sequential(
-          torch.nn.Linear(num_pts*3, 512),
-          #torch.nn.BatchNorm1d(128),
-          torch.nn.ELU(),
-          torch.nn.Linear(512, 256),
-          #torch.nn.BatchNorm1d(128),
-          torch.nn.ELU(),
-          torch.nn.Linear(256, 128),
-          #torch.nn.BatchNorm1d(64),
-          torch.nn.ELU(),
-          torch.nn.Linear(128, 10)
-        )
-
-
-
-    def forward(self, x, A_prior=None):
-        #Decompose input into two point clouds
-        #x_1 = x[:, 0, :, :].transpose(1,2)
-        x_2 = x[:, 1, :, :].view(-1, self.num_pts*3)
-
-        A_vec = self.body(x_2)
-        A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
-        return A_vec
+        return out
 
 
 

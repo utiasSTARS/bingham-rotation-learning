@@ -5,8 +5,8 @@ from liegroups.numpy import SO3
 from convex_layers import *
 from quaternions import *
 from sim_helpers import *
-
 import os
+
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
@@ -29,12 +29,11 @@ def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=100):
     assert (grad_test == True)
     print('Batch...Passed.')
 
-
 def test_duality_gap_wahba_solver(num_samples=100):
     print('Checking duality gap on the fast Wahba solver')
     A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=True)
     A = 0.5 * (A.transpose(1, 2) + A)
-    _, _, _, gap = solve_wahba_fast(A)
+    _, _, gap = solve_wahba_fast(A, compute_gap=True)
     assert np.allclose(gap.detach().numpy(), 0.0)
     print('Done')
 
@@ -143,7 +142,5 @@ if __name__=='__main__':
     test_compare_fast_and_slow_solvers()
     print("=============")
     test_duality_gap_wahba_solver()
-    print("=============")
-    test_pytorch_fast_analytic_gradient()
     # print("=============")
     # test_pytorch_manual_analytic_gradient()

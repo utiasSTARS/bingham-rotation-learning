@@ -56,71 +56,7 @@ def pure_quat(v):
 #PYTORCH
 ##########
 
-def quat_exp(phi):
-    # input: phi: Nx3
-    # output: Exp(phi) Nx4 (see Sola eq. 101)
-
-    if phi.dim() < 2:
-        phi = phi.unsqueeze(0)
-
-    q = phi.new_empty((phi.shape[0], 4))
-    phi_norm = phi.norm(dim=1, keepdim=True)
-    q[:,0] = torch.cos(phi_norm.squeeze()/2.)
-    q[:, 1:] = (phi/phi_norm)*torch.sin(phi_norm/2.)
-    return q.squeeze(0)
-
-def quat_log(q):
-    #input: q: Nx4
-    #output: Log(q) Nx3 (see Sola eq. 105a/b)
-    if q.dim() < 2:
-        q = q.unsqueeze(0)
-
-    #Check for negative scalars first, then substitute q for -q whenever that is the case (this accounts for the double cover of S3 over SO(3))
-    neg_angle_mask = q[:, 0] < 0.
-    neg_angle_inds = neg_angle_mask.nonzero().squeeze_(dim=1)
-
-    q_w = q[:, 0].clone()
-    q_v = q[:, 1:].clone()
-
-    if len(neg_angle_inds) > 0:
-        q_w[neg_angle_inds] = -1.*q_w[neg_angle_inds]
-        q_v[neg_angle_inds] = -1.*q_v[neg_angle_inds]
-
-    q_v_norm = q_v.norm(dim=1)
-
-    # Near phi==0 (q_w ~ 1), use first order Taylor expansion
-    angles = 2. * torch.atan2(q_v_norm, q_w)
-    small_angle_mask = isclose(angles, 0.)
-    small_angle_inds = small_angle_mask.nonzero().squeeze_(dim=1)
-
-    phi = q.new_empty((q.shape[0], 3))
-
-
-
-    if len(small_angle_inds) > 0:
-        q_v_small = q_v[small_angle_inds]
-        q_v_n_small = q_v_norm[small_angle_inds].unsqueeze(1)
-        q_w_small = q_w[small_angle_inds].unsqueeze(1)
-        phi[small_angle_inds, :] = \
-            2. * ( q_v_small /  q_w_small) * \
-            (1 - ( q_v_n_small ** 2)/(3. * ( q_w_small ** 2)))
-
-
-    # Otherwise...
-    large_angle_mask = 1 - small_angle_mask  # element-wise not
-    large_angle_inds = large_angle_mask.nonzero().squeeze_(dim=1)
-
-    if len(large_angle_inds) > 0:
-        angles_large = angles[large_angle_inds]
-        #print(q_v[large_angle_inds].shape)
-        #print(q_v_norm[large_angle_inds].shape)
-
-        axes = q_v[large_angle_inds] / q_v_norm[large_angle_inds].unsqueeze(1)
-        phi[large_angle_inds, :] = \
-            angles_large.unsqueeze(1) * axes
-
-    return phi.squeeze()
-
+#ASSUMES XYZW
 def quat_inv(q):
     #Note, 'empty_like' is necessary to prevent in-place modification (which is not auto-diff'able)
     if q.dim() < 2:
@@ -129,7 +65,8 @@ def quat_inv(q):
     q_inv[:, :3] = -1*q[:, :3]
     q_inv[:, 3] = q[:, 3]
     return q_inv.squeeze()
-    
+
+
 #Quaternion difference of two unit quaternions
 def quat_norm_diff(q_a, q_b):
     if q_a.dim() < 2:
@@ -155,7 +92,7 @@ def quat_norm_to_angle(q_met, units='deg'):
     return angle
 
 
-def quat_to_rotmat(quat, ordering='wxyz'):
+def quat_to_rotmat(quat, ordering='xyzw'):
     """Form a rotation matrix from a unit length quaternion.
 
         Valid orderings are 'xyzw' and 'wxyz'.
@@ -164,7 +101,8 @@ def quat_to_rotmat(quat, ordering='wxyz'):
         quat = quat.unsqueeze(dim=0)
 
     if not utils.allclose(quat.norm(p=2, dim=1), 1.):
-        raise ValueError("Quaternions must be unit length")
+        print("Warning: Some quaternions not unit length ... normalizing.")
+        quat = quat/quat.norm(p=2, dim=1, keepdim=True)
 
     if ordering is 'xyzw':
         qx = quat[:, 0]
@@ -202,7 +140,7 @@ def quat_to_rotmat(quat, ordering='wxyz'):
     return mat.squeeze_()
 
 
-def rotmat_to_quat(mat, ordering='wxyz'):
+def rotmat_to_quat(mat, ordering='xyzw'):
     """Convert a rotation matrix to a unit length quaternion.
 
         Valid orderings are 'xyzw' and 'wxyz'.
@@ -284,39 +222,5 @@ def rotmat_to_quat(mat, ordering='wxyz'):
             "Valid orderings are 'xyzw' and 'wxyz'. Got '{}'.".format(ordering))
 
     return quat
-
-## PYTORCH QUAT LOSSES
-
-#Computes q^T A q
-def quat_self_supervised_primal_loss(q, A, reduce=True):
-    losses = torch.einsum('bn,bnm,bm->b', q, A, q)
-    loss = losses.mean() if reduce else losses
-    return loss 
-
-def quat_consistency_loss(qs, q_target, reduce=True):
-    q = qs[0]
-    q_inv = qs[1]
-    assert(q.shape == q_inv.shape == q_target.shape)
-    d1 = quat_loss(q, q_target, reduce=False)
-    d2 = quat_loss(q_inv, quat_inv(q_target), reduce=False)
-    d3 = quat_loss(q, quat_inv(q_inv), reduce=False)
-    losses =  d1*d1 + d2*d2 + d3*d3
-    loss = losses.mean() if reduce else losses
-    return loss
-    
-
-def quat_squared_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses =  0.5*d*d
-    loss = losses.mean() if reduce else losses
-    return loss
-
-def quat_loss(q, q_target, reduce=True):
-    assert(q.shape == q_target.shape)
-    d = quat_norm_diff(q, q_target)
-    losses = d
-    loss = losses.mean() if reduce else losses
-    return loss
 
 
