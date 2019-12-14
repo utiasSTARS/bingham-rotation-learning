@@ -69,7 +69,9 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
 
     # Right-handed constraint
     if right_handed:
-        A_sub = np.array([[0, -1, 1], [1, 0, -1], [-1, 1, 0]])
+        A_sub = -1*np.array([[[0, 0, 0], [0, 0, -1], [0, 1, 0]],
+                          [[0, 0, 1], [0, 0, 0], [-1, 0, 0]],
+                          [[0, -1, 0], [1, 0, 0], [0, 0, 0]]])
 
         for idx in range(0, 3):
             # Cyclic constraints {1,2,3}, {2,3,1}, {3,1,2}
@@ -78,7 +80,7 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
             ind3 = np.arange(3*((idx+2) % 3), 3*((idx+2) % 3 + 1))
             for jdx in range(0, 3):
                 A = np.zeros((N, N))
-                A[ind1[jdx], ind2] = A_sub[jdx, :]
+                A[ind1, ind2] = A_sub[jdx, :, :]
                 A[ind3[jdx], -1] = -1
                 A = 0.5*(A+A.T)
                 constraint_matrices = np.append(constraint_matrices,
@@ -96,3 +98,18 @@ if __name__=='__main__':
     n = 10
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
+    R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+    r = np.reshape(R.T, (9, -1))
+    r = np.vstack((r, 1))
+
+    R2 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+    r2 = np.reshape(R2.T, (9, -1))
+    r2 = np.vstack((r2, 1))
+
+    print('Valid SO(3):')
+    for idx in range(constraint_matrices.shape[0]):
+        print(np.dot(r.T, np.dot(constraint_matrices[idx, :, :], r)) - c_vec[idx])
+
+    print('Valid O(3):')
+    for idx in range(constraint_matrices.shape[0]):
+        print(np.dot(r2.T, np.dot(constraint_matrices[idx, :, :], r2)) - c_vec[idx])
