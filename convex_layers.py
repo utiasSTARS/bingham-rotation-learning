@@ -5,16 +5,25 @@ import cvxpy as cp
 import time
 import torch  
 
-# Convert symmetric 4x4 matrix to 10 parameter vector
+def normalize_Avec(A_vec):
+    """ Normalizes Bx10 vectors such that resulting Bx4x4 matrices have unit Frobenius norm"""
+    A = convert_Avec_to_A(A_vec)
+    if A.dim() < 3:
+        A = A.unsqueeze(dim=0)
+    A = A / A.norm(dim=[1,2], keepdim=True)
+    return convert_A_to_Avec(A).squeeze()
+
 def convert_A_to_Avec(A):
+    """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values"""
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
     A_vec = A[:, idx[0], idx[1]]
-    A_vec = A_vec/A_vec.norm(dim=1).view(-1, 1)
     return A_vec.squeeze()
 
 def convert_Avec_to_A(A_vec):
+    """ Convert Bx10 tensor to Bx4x4 symmetric matrices """
+
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze(dim=0)
     idx = torch.triu_indices(4,4)
@@ -23,7 +32,21 @@ def convert_Avec_to_A(A_vec):
     A[:, idx[1], idx[0]] = A_vec
     return A.squeeze()
 
+def convert_Avec_to_Avec_psd(A_vec):
+    """ Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  
+    (encodes symmetric and PSD 4x4 matrices)"""
+
+    if A_vec.dim() < 2:
+        A_vec = A_vec.unsqueeze()
+    idx = torch.tril_indices(4,4)
+    L = A_vec.new_zeros((A_vec.shape[0],4,4))   
+    L[:, idx[0], idx[1]] = A_vec
+    A = L.bmm(L.transpose(1,2))
+    A_vec_psd = convert_A_to_Avec(A)
+    return A_vec_psd
+
 #=========================PYTORCH (FAST) SOLVER=========================
+
 class QuadQuatFastSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver
@@ -43,7 +66,7 @@ class QuadQuatFastSolver(torch.autograd.Function):
         A[:, idx[0], idx[1]] = A_vec
         A[:, idx[1], idx[0]] = A_vec
 
-        q, nu, _, _ = solve_wahba_fast(A)
+        q, nu  = solve_wahba_fast(A)
         ctx.save_for_backward(A, q, nu)
         return q
 
@@ -54,14 +77,14 @@ class QuadQuatFastSolver(torch.autograd.Function):
         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
         return outgrad
 
-def solve_wahba_fast(A):
+def solve_wahba_fast(A, compute_gap=False):
     """
     Use a fast eigenvalue solution to the dual of the 'generalized Wahba' problem to solve the primal.
     :param A: quadratic cost matrix
     :param redundant_constraints: boolean indicating whether to use redundand constraints
     :return: Optimal q, optimal dual var. nu, time to solve, duality gap
     """
-    start = time.time()
+    #start = time.time()
     # Returns (b,n) and (b,n,n) tensors
     nus, qs = torch.symeig(A, eigenvectors=True)
     nu_min, nu_argmin = torch.min(nus, 1)# , keepdim=False, out=None)
@@ -70,11 +93,15 @@ def solve_wahba_fast(A):
     nu_opt = -1.*nu_min.unsqueeze(1)
     # Normalize qs (but symeig already does this!)
     # q_opt = qs/torch.norm(q, dim=1).unsqueeze(1) # Unsqueeze as per broadcast rules
-    t_solve = time.time() - start
-    p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
-    gap = p + nu_opt
+    #t_solve = time.time() - start
+    if compute_gap:
+        p = torch.einsum('bn,bnm,bm->b', q_opt, A, q_opt).unsqueeze(1)
+        gap = p + nu_opt
+        return q_opt, nu_opt, gap
+    #t_solve = 0
+    #gap = 10
 
-    return q_opt, nu_opt, t_solve, gap
+    return q_opt, nu_opt#, t_solve, gap
 
 
 def compute_grad_fast(A, nu, q):
