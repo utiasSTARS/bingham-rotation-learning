@@ -70,8 +70,8 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
     # Right-handed constraint
     if right_handed:
         A_sub = -1*np.array([[[0, 0, 0], [0, 0, -1], [0, 1, 0]],
-                          [[0, 0, 1], [0, 0, 0], [-1, 0, 0]],
-                          [[0, -1, 0], [1, 0, 0], [0, 0, 0]]])
+                            [[0, 0, 1], [0, 0, 0], [-1, 0, 0]],
+                            [[0, -1, 0], [1, 0, 0], [0, 0, 0]]])
 
         for idx in range(0, 3):
             # Cyclic constraints {1,2,3}, {2,3,1}, {3,1,2}
@@ -89,27 +89,55 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
 
     return constraint_matrices, np.array(c)
 
-def solve_rotation_SDP(cost_matrix):
 
+# def solve_rotation_SDP(cost_matrix, redundant=True, right_handed=True, homogeneous=True):
+
+
+def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
     Z = cp.Variable((10, 10), PSD=True)
+    constraints = [cp.trace(constraint_matrices[idx, :, :] @ Z) == c_vec[idx]
+                   for idx in range(constraint_matrices.shape[0])]
+    prob = cp.Problem(cp.Minimize(cp.trace(cost_matrix @ Z)), constraints)
+    prob.solve(solver=cp.MOSEK, verbose=False) #verbose=True)
+    # Extract rank-1 solution (or highest-eigenvalue eigenvector)
+    vals, vecs = np.linalg.eig(Z.value)
+    R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3))
+    return Z.value, R
 
 if __name__=='__main__':
 
     n = 10
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
-    R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
-    r = np.reshape(R.T, (9, -1))
-    r = np.vstack((r, 1))
+    # R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
+    # r = np.reshape(R.T, (9, -1))
+    # r = np.vstack((r, 1))
+    #
+    # R2 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
+    # r2 = np.reshape(R2.T, (9, -1))
+    # r2 = np.vstack((r2, 1))
+    #
+    # print('Valid SO(3):')
+    # for idx in range(constraint_matrices.shape[0]):
+    #     print(np.dot(r.T, np.dot(constraint_matrices[idx, :, :], r)) - c_vec[idx])
+    #
+    # print('Valid O(3):')
+    # for idx in range(constraint_matrices.shape[0]):
+    #     print(np.dot(r2.T, np.dot(constraint_matrices[idx, :, :], r2)) - c_vec[idx])
 
-    R2 = np.array([[0, 1, 0], [1, 0, 0], [0, 0, 1]])
-    r2 = np.reshape(R2.T, (9, -1))
-    r2 = np.vstack((r2, 1))
 
-    print('Valid SO(3):')
-    for idx in range(constraint_matrices.shape[0]):
-        print(np.dot(r.T, np.dot(constraint_matrices[idx, :, :], r)) - c_vec[idx])
 
-    print('Valid O(3):')
-    for idx in range(constraint_matrices.shape[0]):
-        print(np.dot(r2.T, np.dot(constraint_matrices[idx, :, :], r2)) - c_vec[idx])
+    for idx in range(n):
+        cost_matrix = np.random.rand(10, 10)
+        cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
+        # Enforce positive semidefiniteness with the following line
+        # cost_matrix = np.dot(cost_matrix, cost_matrix.T)
+        Z, R = solve_equality_SDP(cost_matrix, constraint_matrices, c_vec)
+        print("Eigs: ")
+        print(np.linalg.eigvals(Z))
+        print("R extracted: ")
+        print(R)
+        print("Ortho check: ")
+        print(np.dot(R, R.T))
+        print("Right hand check: ")
+        print(np.linalg.det(R))
