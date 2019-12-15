@@ -60,12 +60,7 @@ class QuadQuatFastSolver(torch.autograd.Function):
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze()
 
-        #Convert Bx10 tensor to Bx4x4 symmetric matrices
-        idx = torch.triu_indices(4,4)
-        A = A_vec.new_zeros((A_vec.shape[0],4,4))   
-        A[:, idx[0], idx[1]] = A_vec
-        A[:, idx[1], idx[0]] = A_vec
-
+        A = convert_Avec_to_A(A_vec)
         q, nu  = solve_wahba_fast(A)
         ctx.save_for_backward(A, q, nu)
         return q

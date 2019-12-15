@@ -171,4 +171,5 @@ if __name__=='__main__':
     print(np.max(np.abs(right_handed_check)))
 
     total_time = time.time() - start
+    pbar.close()
     print('Total time: {:.3f} sec. Average solve:  {:.3F} sec.'.format(total_time, total_time/n))
