@@ -1,5 +1,6 @@
 import numpy as np
 import cvxpy as cp
+import time
 
 def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=True):
     '''
@@ -126,7 +127,7 @@ if __name__=='__main__':
     #     print(np.dot(r2.T, np.dot(constraint_matrices[idx, :, :], r2)) - c_vec[idx])
 
 
-
+    start = time.time()
     for idx in range(n):
         cost_matrix = np.random.rand(10, 10)
         cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
@@ -141,3 +142,7 @@ if __name__=='__main__':
         print(np.dot(R, R.T))
         print("Right hand check: ")
         print(np.linalg.det(R))
+
+    total_time = time.time() - start
+
+    print('Total time: {:.3f} sec. Average solve:  {:.3F} sec.'.format(total_time, total_time/n))
