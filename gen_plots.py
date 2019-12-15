@@ -96,7 +96,7 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     fig.set_size_inches(4, 2)
 
     x = np.arange(args.epochs)
-    colours = ['tab:red', 'tab:green', 'tab:blue']
+    colours = ['tab:red', 'tab:green', 'tab:blue', 'tab:grey']
 
     for i in range(len(names)):
         _plot_curve_with_bounds(
@@ -119,7 +119,7 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_12-13-2019-16-56-18.pt'
+    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_4models_static_12-13-2019-21-09-26.pt'
     checkpoint = torch.load(path)
     args = checkpoint['args']
     train_stats_list = checkpoint['train_stats_list']
