@@ -102,12 +102,12 @@ def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
     prob.solve(solver=cp.MOSEK, verbose=False) #verbose=True)
     # Extract rank-1 solution (or highest-eigenvalue eigenvector)
     vals, vecs = np.linalg.eig(Z.value)
-    R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3))
-    return Z.value, R
+    R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3), order='F')
+    return Z.value, R, prob.solution.opt_val
 
 if __name__=='__main__':
 
-    n = 10
+    n = 1000
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
     # R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
@@ -127,6 +127,10 @@ if __name__=='__main__':
     #     print(np.dot(r2.T, np.dot(constraint_matrices[idx, :, :], r2)) - c_vec[idx])
 
 
+    gap = np.zeros(n)
+    orth_check = np.zeros(n)
+    right_handed_check = np.zeros(n)
+
     start = time.time()
     for idx in range(n):
         cost_matrix = np.random.rand(10, 10)
@@ -143,6 +147,37 @@ if __name__=='__main__':
         print("Right hand check: ")
         print(np.linalg.det(R))
 
-    total_time = time.time() - start
+        cost_matrix = np.dot(cost_matrix, cost_matrix.T)
+        Z, R, opt_val = solve_equality_SDP(cost_matrix, constraint_matrices, c_vec)
+        r_homog = np.reshape(R, (9, 1), order='F')
+        r_homog = np.vstack((r_homog, 1))
+        primal_cost = np.dot(r_homog.T, np.dot(cost_matrix, r_homog))
+        # print("Second eigenvalue: ")
+        # Z_eigs = np.linalg.eigvals(Z)
+        # print(Z_eigs[1])
+        # print("R extracted: ")
+        # print(R)
+        # print("Ortho check: ")
+        # print(np.dot(R, R.T))
+        # print("Right hand check: ")
+        # print(np.linalg.det(R))
+        # print("Primal cost: ")
+        # print(primal_cost)
+        # print("Relaxed cost: ")
+        # print(opt_val)
 
+        gap[idx] = primal_cost - opt_val
+        orth_check[idx] = np.linalg.norm(np.eye(3)-np.dot(R, R.T), ord='fro')
+        right_handed_check[idx] = np.linalg.det(R) - 1
+
+    print("Max gap: ")
+    print(np.max(gap))
+
+    print("Max orthogonality deviation: ")
+    print(np.max(np.abs(orth_check)))
+
+    print("Max handedness deviation: ")
+    print(np.max(np.abs(right_handed_check)))
+
+    total_time = time.time() - start
     print('Total time: {:.3f} sec. Average solve:  {:.3F} sec.'.format(total_time, total_time/n))
