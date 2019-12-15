@@ -134,19 +134,7 @@ if __name__=='__main__':
     start = time.time()
     for idx in range(n):
         cost_matrix = np.random.rand(10, 10)
-        cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
-        # Enforce positive semidefiniteness with the following line
-        # cost_matrix = np.dot(cost_matrix, cost_matrix.T)
-        Z, R = solve_equality_SDP(cost_matrix, constraint_matrices, c_vec)
-        print("Eigs: ")
-        print(np.linalg.eigvals(Z))
-        print("R extracted: ")
-        print(R)
-        print("Ortho check: ")
-        print(np.dot(R, R.T))
-        print("Right hand check: ")
-        print(np.linalg.det(R))
-
+        #cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
         cost_matrix = np.dot(cost_matrix, cost_matrix.T)
         Z, R, opt_val = solve_equality_SDP(cost_matrix, constraint_matrices, c_vec)
         r_homog = np.reshape(R, (9, 1), order='F')
