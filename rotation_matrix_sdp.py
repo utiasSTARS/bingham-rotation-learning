@@ -1,6 +1,6 @@
 import numpy as np
 import cvxpy as cp
-import time
+import time, tqdm
 
 def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=True):
     '''
@@ -132,6 +132,8 @@ if __name__=='__main__':
     right_handed_check = np.zeros(n)
 
     start = time.time()
+    pbar = tqdm.tqdm(total=n)
+
     for idx in range(n):
         cost_matrix = np.random.rand(10, 10)
         #cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
@@ -157,6 +159,7 @@ if __name__=='__main__':
         gap[idx] = primal_cost - opt_val
         orth_check[idx] = np.linalg.norm(np.eye(3)-np.dot(R, R.T), ord='fro')
         right_handed_check[idx] = np.linalg.det(R) - 1
+        pbar.update(1)
 
     print("Max gap: ")
     print(np.max(gap))
