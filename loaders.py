@@ -294,9 +294,9 @@ class PointNetDataset(Dataset):
             print('FOUND NANS.')
             print(torch.isnan(q).any().item())
             print(q[torch.isnan(q)])
-            nan_mask = torch.isnan(a).sum(dim=1)>0
+            nan_mask = torch.isnan(q).sum(dim=1)>0
             print(C[nan_mask])
-            
+
 
 
         return (x, q)
