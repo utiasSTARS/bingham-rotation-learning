@@ -281,8 +281,8 @@ class PointNetDataset(Dataset):
         q = rotmat_to_quat(C, ordering='xyzw')
 
 
-        if torch.isnan(a).any().item() or  torch.isnan(q).any().item():
+        if torch.isnan(x).any().item() or  torch.isnan(q).any().item():
             print('FOUND NANS.')
-            print(self.file_list[pointcloud_id])             
+            print(self.file_list[pointcloud_id])           
 
         return (x, q)
