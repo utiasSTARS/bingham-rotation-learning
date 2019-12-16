@@ -150,9 +150,18 @@ def main():
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
+
+    #Train and test direct model
+
+
+    # print('===================TRAINING DIRECT QUAT MODEL=======================')
+    # model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+    # loss_fn = quat_squared_loss
+    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
+
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    model_rep = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
     loss_fn = quat_squared_loss
     (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
 
