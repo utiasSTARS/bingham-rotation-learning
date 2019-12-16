@@ -210,24 +210,19 @@ def pointnet_collate(batch):
 class PointNetDataset(Dataset):
     """PointNet Dataset."""
 
-    def __init__(self, pc_folder, rotations_per_batch=50,total_iters=1e6, dtype=torch.float, rotmat_targets=False):
+    def __init__(self, pc_folder, rotations_per_batch=50, total_iters=1e6, dtype=torch.float, rotmat_targets=False, test_mode=False):
         """
         Args:
-            csv_file (string): Path to the csv file with annotations.
-            root_dir (string): Directory with all the images.
-            transform (callable, optional): Optional transform to be applied
-                on a sample.
+
         """
         self.file_list = self._load_pc_list(pc_folder)
         self.total_iters = int(total_iters)
         self.rotations_per_batch = rotations_per_batch
         self.dtype = dtype
         self.rotmat_targets = rotmat_targets
+        self.test_mode = test_mode
         
     # See: https://github.com/papagina/RotationContinuity
-    #input [folder_name]
-    #output [point_cloud]
-    #point_cloud num*3
     def _load_pc_list(self, d):
         files = [os.path.join(d, f) for f in os.listdir(d)] 
         return files
@@ -256,19 +251,17 @@ class PointNetDataset(Dataset):
 
 
     def __len__(self):
-        return self.total_iters
-
-    def check_for_nans(self):
-        for i in range(len(self.file_list)):
-            pc1 = torch.from_numpy(np.array(self._load_file(self.file_list[i]))).float()
-            if torch.isnan(pc1).any().item():
-                print('FOUND NANS.')
-                print(i)
-                print(self.file_list[i])        
+        if self.test_mode:
+            return len(self.file_list)
+        else:
+            return self.total_iters
 
     def __getitem__(self, idx):
         # Select a random point cloud
-        pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
+        if self.test_mode:
+            pointcloud_id = idx
+        else:
+            pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
         
         pc1 = torch.from_numpy(
             np.array(self._load_file(self.file_list[pointcloud_id]))

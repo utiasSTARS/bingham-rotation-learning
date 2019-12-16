@@ -46,20 +46,19 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         writer = SummaryWriter()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, amsgrad=True)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.2)
 
     #Save stats
-    train_stats = torch.empty(args.epochs, 2)
-    test_stats = torch.empty(args.epochs, 2)
+    train_stats = torch.zeros(args.epochs, 2)
+    test_stats = torch.zeros(args.epochs, 2)
     
     device = next(model.parameters()).device
 
-    
+    pbar = tqdm.tqdm(total=args.epochs)
     for e in range(args.epochs):
         start_time = time.time()
 
         #Train model
-        print('Epoch {} / {} | Training with lr: {:.3E}'.format(e+1, args.epochs, scheduler.get_lr()[0]))
+        print('Epoch {} / {} '.format(e+1, args.epochs))
         model.train()
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
@@ -73,52 +72,62 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
 
         #Test model
-        print('Testing...')
-        model.eval()
-        num_test_batches = len(test_loader)
-        test_loss = torch.tensor(0.)
-        test_mean_err = torch.tensor(0.)
+        if e%args.test_epoch_period == 0:
+            print('Testing...')
+            model.eval()
+            num_test_batches = len(test_loader)
+            test_loss = torch.tensor(0.)
+            test_mean_err = torch.tensor(0.)
 
-        for batch_idx, (x, q_gt) in enumerate(test_loader):
-            #Move all data to appropriate device
-            q_gt = q_gt.to(device)
-            x = x.to(device)
-            (q_est, test_loss_k) = test(model, loss_fn, x, q_gt)
-            test_loss += (1./num_test_batches)*test_loss_k
-            test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
+            for batch_idx, (x, q_gt) in enumerate(test_loader):
+                #Move all data to appropriate device
+                q_gt = q_gt.to(device)
+                x = x.to(device)
+                (q_est, test_loss_k) = test(model, loss_fn, x, q_gt)
+                test_loss += (1./num_test_batches)*test_loss_k
+                test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
 
+            test_stats[e, 0] = test_loss
+            test_stats[e, 1] = test_mean_err
 
-        scheduler.step()
+            if tensorboard_output:
+                writer.add_scalar('validation/loss', test_loss, e)
+                writer.add_scalar('validation/mean_err', test_mean_err, e)
 
         if tensorboard_output:
             writer.add_scalar('training/loss', train_loss, e)
             writer.add_scalar('training/mean_err', train_mean_err, e)
-
-            writer.add_scalar('validation/loss', test_loss, e)
-            writer.add_scalar('validation/mean_err', test_mean_err, e)
+           
         
         #History tracking
         train_stats[e, 0] = train_loss
         train_stats[e, 1] = train_mean_err
-        test_stats[e, 0] = test_loss
-        test_stats[e, 1] = test_mean_err
 
         elapsed_time = time.time() - start_time
+        
+        if e%args.test_epoch_period == 0:
+            output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
+        else:
+            output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, elapsed_time)
+        pbar.set_description(output_string)
+        pbar.update(1)
 
-        print('Epoch: {}/{} done. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time))
 
     if tensorboard_output:
         writer.close()
-
+    pbar.close()
     return train_stats, test_stats
 
 def main():
 
 
     parser = argparse.ArgumentParser(description='ShapeNet experiment')
-    parser.add_argument('--epochs', type=int, default=250)
-    parser.add_argument('--batch_size_train', type=int, default=1)
+    parser.add_argument('--epochs', type=int, default=500)
+
+    parser.add_argument('--test_epoch_period', type=int, default=10)
     parser.add_argument('--batch_size_test', type=int, default=1)
+    parser.add_argument('--batch_size_test', type=int, default=1)
+    
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
@@ -146,26 +155,26 @@ def main():
     train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', rotations_per_batch=100, total_iters=5, dtype=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', rotations_per_batch=100, total_iters=5, dtype=tensor_type),
+    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', rotations_per_batch=100, total_iters=5, dtype=tensor_type, test_mode=True),
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
 
     #Train and test direct model
 
-    print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
-    model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
-    train_loader.dataset.rotmat_targets = True
-    valid_loader.dataset.rotmat_targets = True
-    loss_fn = rotmat_frob_squared_norm_loss
-    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader)
+    # print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
+    # model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+    # train_loader.dataset.rotmat_targets = True
+    # valid_loader.dataset.rotmat_targets = True
+    # loss_fn = rotmat_frob_squared_norm_loss
+    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader)
     
-    # print('===================TRAINING DIRECT QUAT MODEL=======================')
-    model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
-    train_loader.dataset.rotmat_targets = False
-    valid_loader.dataset.rotmat_targets = False
-    loss_fn = quat_squared_loss
-    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader)
+    # # print('===================TRAINING DIRECT QUAT MODEL=======================')
+    # model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+    # train_loader.dataset.rotmat_targets = False
+    # valid_loader.dataset.rotmat_targets = False
+    # loss_fn = quat_squared_loss
+    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader)
 
 
     #Train and test with new representation
