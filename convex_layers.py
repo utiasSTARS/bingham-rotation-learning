@@ -9,7 +9,7 @@ def normalize_Avec(A_vec):
     """ Normalizes BxM vectors such that resulting symmetric BxNxN matrices have unit Frobenius norm"""
     """ M = N*(N+1)/2"""
     
-    A = convert_Avec_to_A(A_vec, A_dim)
+    A = convert_Avec_to_A(A_vec)
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
     A = A / A.norm(dim=[1,2], keepdim=True)
@@ -34,7 +34,8 @@ def convert_Avec_to_A(A_vec):
     elif A_vec.shape[1] == 55:
         A_dim = 10
     else:
-        raise ValueError("Arbitrary A_vec not yet implementedf")
+        raise ValueError("Arbitrary A_vec not yet implemented")
+    
     idx = torch.triu_indices(A_dim,A_dim)
     A = A_vec.new_zeros((A_vec.shape[0],A_dim,A_dim))   
     A[:, idx[0], idx[1]] = A_vec

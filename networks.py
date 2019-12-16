@@ -96,7 +96,6 @@ class PointNet(torch.nn.Module):
 
     def forward(self, x):
 
-        print(x.shape)
         #Decompose input into two point clouds
         if x.dim() < 4:
             x = x.unsqueeze(dim=0)
