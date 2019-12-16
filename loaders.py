@@ -277,6 +277,12 @@ class PointNetDataset(Dataset):
         x = torch.empty(batch_num, 2, point_num, 3)
         x[:,0,:,:] = pc1.transpose(1,2)
         x[:,1,:,:] = pc2.transpose(1,2)
-        
+
         q = rotmat_to_quat(C, ordering='xyzw')
+
+
+        if torch.isnan(a).any().item() or  torch.isnan(q).any().item():
+            print('FOUND NANS.')
+            print(self.file_list[pointcloud_id])             
+
         return (x, q)
