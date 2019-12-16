@@ -286,16 +286,17 @@ class PointNetDataset(Dataset):
         x[:,0,:,:] = pc1.transpose(1,2)
         x[:,1,:,:] = pc2.transpose(1,2)
 
-        q = rotmat_to_quat(C.to(torch.double), ordering='xyzw').float()
+        q = rotmat_to_quat(C, ordering='xyzw')
 
 
         if torch.isnan(x).any().item() or torch.isnan(q).any().item():
 
             print('FOUND NANS.')
-            print(torch.isnan(pc1).any().item())
-            print(torch.isnan(pc2).any().item())
             print(torch.isnan(q).any().item())
-            print(pointcloud_id)
-            print(self.file_list[pointcloud_id])           
+            print(q[torch.isnan(q)])
+            nan_mask = torch.isnan(a).sum(dim=1)>0
+            print(C[nan_mask])
+            
+
 
         return (x, q)
