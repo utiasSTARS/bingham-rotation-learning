@@ -190,7 +190,7 @@ def solve_horn_batch(x_1, x_2):
     
 
     x_1_n = x_1 - x_1.mean(dim=1, keepdim=True)
-    x_2_n = x_2 - np.mean(x_2, axis=0)
+    x_2_n = x_2 - x_1.mean(dim=1, keepdim=True)
     
     W = (1./(x_1.shape[0]))*x_2_n.T.dot(x_1_n)
 
