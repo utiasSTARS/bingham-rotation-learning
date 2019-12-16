@@ -291,7 +291,7 @@ class PointNetDataset(Dataset):
 
         if self.rotmat_targets:
             targets = C
-        else
+        else:
             targets = rotmat_to_quat(C, ordering='xyzw')
 
         targets = targets.to(self.dtype)
