@@ -58,7 +58,6 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         start_time = time.time()
 
         #Train model
-        print('Epoch {} / {} '.format(e+1, args.epochs))
         model.train()
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
@@ -72,8 +71,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
 
         #Test model
-        if e%args.test_epoch_period == 0:
-            print('Testing...')
+        if e%args.test_epoch_period == 0 and e > 0:
             model.eval()
             num_test_batches = len(test_loader)
             test_loss = torch.tensor(0.)
@@ -124,11 +122,11 @@ def main():
     parser = argparse.ArgumentParser(description='ShapeNet experiment')
     parser.add_argument('--epochs', type=int, default=500)
 
-    parser.add_argument('--test_epoch_period', type=int, default=10)
+    parser.add_argument('--test_epoch_period', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=1)
     parser.add_argument('--batch_size_train', type=int, default=1)
     
-    parser.add_argument('--lr', type=float, default=1e-4)
+    parser.add_argument('--lr', type=float, default=5e-4)
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
 
