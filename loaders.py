@@ -280,7 +280,7 @@ class PointNetDataset(Dataset):
         
         batch_num = self.rotations_per_batch
         pc1 = pc1.view(1, point_num,3).expand(batch_num,point_num,3).transpose(1,2) #batch*3*p_num
-        C = SO3.exp(torch.randn(batch_num, 3, dtype=torch.double).as_matrix()
+        C = SO3.exp(torch.randn(batch_num, 3, dtype=torch.double)).as_matrix()
         pc2 = torch.bmm(C, pc1)#(batch*point_num)*3*1
 
         x = torch.empty(batch_num, 2, point_num, 3)
