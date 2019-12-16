@@ -115,8 +115,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 def main():
 
 
-    parser = argparse.ArgumentParser(description='Point net experiment')
-    parser.add_argument('--epochs', type=int, default=20)
+    parser = argparse.ArgumentParser(description='ShapeNet experiment')
+    parser.add_argument('--epochs', type=int, default=250)
     parser.add_argument('--batch_size_train', type=int, default=1)
     parser.add_argument('--batch_size_test', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-4)
