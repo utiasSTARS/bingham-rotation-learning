@@ -221,7 +221,7 @@ class PointNetDataset(Dataset):
         self.file_list = self._load_pc_list(pc_folder)
         self.total_iters = int(total_iters)
         self.rotations_per_batch = rotations_per_batch
-
+        
     # See: https://github.com/papagina/RotationContinuity
     #input [folder_name]
     #output [point_cloud]
@@ -256,6 +256,14 @@ class PointNetDataset(Dataset):
     def __len__(self):
         return self.total_iters
 
+    def check_for_nans(self):
+        for i in range(len(self.file_list)):
+            pc1 = torch.from_numpy(np.array(self._load_file(self.file_list[i]))).float()
+            if torch.isnan(pc1).any().item():
+                print('FOUND NANS.')
+                print(i)
+                print(self.file_list[i])        
+
     def __getitem__(self, idx):
         # Select a random point cloud
         pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
@@ -281,9 +289,12 @@ class PointNetDataset(Dataset):
         q = rotmat_to_quat(C, ordering='xyzw')
 
 
-        if torch.isnan(x).any().item() or  torch.isnan(q).any().item():
+        if torch.isnan(x).any().item() or torch.isnan(q).any().item():
 
             print('FOUND NANS.')
+            print(torch.isnan(pc1).any().item())
+            print(torch.isnan(pc2).any().item())
+            print(torch.isnan(q).any().item())
             print(pointcloud_id)
             print(self.file_list[pointcloud_id])           
 
