@@ -126,7 +126,7 @@ def main():
 
     parser.add_argument('--test_epoch_period', type=int, default=10)
     parser.add_argument('--batch_size_test', type=int, default=1)
-    parser.add_argument('--batch_size_test', type=int, default=1)
+    parser.add_argument('--batch_size_train', type=int, default=1)
     
     parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--cuda', action='store_true', default=False)
