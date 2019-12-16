@@ -286,7 +286,7 @@ class PointNetDataset(Dataset):
         x[:,0,:,:] = pc1.transpose(1,2)
         x[:,1,:,:] = pc2.transpose(1,2)
 
-        q = rotmat_to_quat(C, ordering='xyzw')
+        q = rotmat_to_quat(C.to(torch.double), ordering='xyzw').float()
 
 
         if torch.isnan(x).any().item() or torch.isnan(q).any().item():
