@@ -134,6 +134,8 @@ def main():
     parser.add_argument('--enforce_psd', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
 
+    parser.add_argument('--comparison', action='store_true', default=False)
+
 
     args = parser.parse_args()
     print(args)
@@ -160,24 +162,25 @@ def main():
 
     #Train and test direct model
 
-    # print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
-    # model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
-    # train_loader.dataset.rotmat_targets = True
-    # valid_loader.dataset.rotmat_targets = True
-    # loss_fn = rotmat_frob_squared_norm_loss
-    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader)
-    
-    # # print('===================TRAINING DIRECT QUAT MODEL=======================')
-    # model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
-    # train_loader.dataset.rotmat_targets = False
-    # valid_loader.dataset.rotmat_targets = False
-    # loss_fn = quat_squared_loss
-    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader)
+    if args.comparison:
+        print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
+        model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = True
+        valid_loader.dataset.rotmat_targets = True
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=True)
+        
+        print('===================TRAINING DIRECT QUAT MODEL=======================')
+        model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = False
+        valid_loader.dataset.rotmat_targets = False
+        loss_fn = quat_squared_loss
+        (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=True)
 
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type, tensorboard_output=True)
     loss_fn = quat_squared_loss
     (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
 
