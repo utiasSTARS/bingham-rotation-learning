@@ -103,7 +103,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         elapsed_time = time.time() - start_time
         
-        if e%args.test_epoch_period == 0:
+        if e%args.test_epoch_period == 0 and e > 0:
             output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
         else:
             output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, elapsed_time)
