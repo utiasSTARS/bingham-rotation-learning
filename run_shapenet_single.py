@@ -180,9 +180,9 @@ def main():
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
-    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type, tensorboard_output=True)
+    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
     loss_fn = quat_squared_loss
-    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
+    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader, tensorboard_output=True)
 
 if __name__=='__main__':
     main()
