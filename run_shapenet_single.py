@@ -153,11 +153,20 @@ def main():
 
     #Train and test direct model
 
-
+    print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
+    model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+    train_loader.dataset.rotmat_targets = True
+    valid_loader.dataset.rotmat_targets = True
+    loss_fn = rotmat_frob_squared_norm_loss
+    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader)
+    
     # print('===================TRAINING DIRECT QUAT MODEL=======================')
-    # model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
-    # loss_fn = quat_squared_loss
-    # (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
+    model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+    train_loader.dataset.rotmat_targets = False
+    valid_loader.dataset.rotmat_targets = False
+    loss_fn = quat_squared_loss
+    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader)
+
 
     #Train and test with new representation
     print('===================TRAINING REP MODEL=======================')
