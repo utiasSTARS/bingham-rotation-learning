@@ -146,7 +146,7 @@ def main():
     train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', rotations_per_batch=100, total_iters=5),
                         batch_size=args.batch_size_train, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(PointNetDataset('/Users/valentinp/Dropbox/Postdoc/projects/misc/RotationContinuity/shapenet/data/pc_plane/points_test', rotations_per_batch=100, total_iters=5),
+    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', rotations_per_batch=100, total_iters=5),
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
