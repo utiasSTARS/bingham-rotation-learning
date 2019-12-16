@@ -282,7 +282,9 @@ class PointNetDataset(Dataset):
 
 
         if torch.isnan(x).any().item() or  torch.isnan(q).any().item():
+
             print('FOUND NANS.')
+            print(pointcloud_id)
             print(self.file_list[pointcloud_id])           
 
         return (x, q)
