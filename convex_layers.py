@@ -6,40 +6,57 @@ import time
 import torch  
 
 def normalize_Avec(A_vec):
-    """ Normalizes Bx10 vectors such that resulting Bx4x4 matrices have unit Frobenius norm"""
-    A = convert_Avec_to_A(A_vec)
+    """ Normalizes BxM vectors such that resulting symmetric BxNxN matrices have unit Frobenius norm"""
+    """ M = N*(N+1)/2"""
+    
+    A = convert_Avec_to_A(A_vec, A_dim)
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
     A = A / A.norm(dim=[1,2], keepdim=True)
     return convert_A_to_Avec(A).squeeze()
 
 def convert_A_to_Avec(A):
-    """ Convert Bx4X4 matrices to Bx10 vectors encoding unique values"""
+    """ Convert BxNXN symmetric matrices to BxM vectors encoding unique values"""
     if A.dim() < 3:
         A = A.unsqueeze(dim=0)
-    idx = torch.triu_indices(4,4)
+    idx = torch.triu_indices(A.shape[1], A.shape[1])
     A_vec = A[:, idx[0], idx[1]]
     return A_vec.squeeze()
 
 def convert_Avec_to_A(A_vec):
-    """ Convert Bx10 tensor to Bx4x4 symmetric matrices """
-
+    """ Convert BxM tensor to BxNxN symmetric matrices """
+    """ M = N*(N+1)/2"""
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze(dim=0)
-    idx = torch.triu_indices(4,4)
-    A = A_vec.new_zeros((A_vec.shape[0],4,4))   
+    
+    if A_vec.shape[1] == 10:
+        A_dim = 4
+    elif A_vec.shape[1] == 55:
+        A_dim = 10
+    else:
+        raise ValueError("Arbitrary A_vec not yet implementedf")
+    idx = torch.triu_indices(A_dim,A_dim)
+    A = A_vec.new_zeros((A_vec.shape[0],A_dim,A_dim))   
     A[:, idx[0], idx[1]] = A_vec
     A[:, idx[1], idx[0]] = A_vec
     return A.squeeze()
 
 def convert_Avec_to_Avec_psd(A_vec):
-    """ Convert Bx10 tensor (encodes symmetric 4x4 amatrices) to Bx10 tensor  
+    """ Convert BxM tensor (encodes symmetric NxN amatrices) to BxM tensor  
     (encodes symmetric and PSD 4x4 matrices)"""
 
     if A_vec.dim() < 2:
         A_vec = A_vec.unsqueeze()
-    idx = torch.tril_indices(4,4)
-    L = A_vec.new_zeros((A_vec.shape[0],4,4))   
+    
+    if A_vec.shape[1] == 10:
+        A_dim = 4
+    elif A_vec.shape[1] == 55:
+        A_dim = 10
+    else:
+        raise ValueError("Arbitrary A_vec not yet implementedf")
+
+    idx = torch.tril_indices(A_dim,A_dim)
+    L = A_vec.new_zeros((A_vec.shape[0],A_dim,A_dim))   
     L[:, idx[0], idx[1]] = A_vec
     A = L.bmm(L.transpose(1,2))
     A_vec_psd = convert_A_to_Avec(A)
