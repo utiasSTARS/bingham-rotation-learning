@@ -210,7 +210,7 @@ def pointnet_collate(batch):
 class PointNetDataset(Dataset):
     """PointNet Dataset."""
 
-    def __init__(self, pc_folder, rotations_per_batch=50,total_iters=1e6, dtype=torch.float):
+    def __init__(self, pc_folder, rotations_per_batch=50,total_iters=1e6, dtype=torch.float, rotmat_targets=False):
         """
         Args:
             csv_file (string): Path to the csv file with annotations.
@@ -222,6 +222,7 @@ class PointNetDataset(Dataset):
         self.total_iters = int(total_iters)
         self.rotations_per_batch = rotations_per_batch
         self.dtype = dtype
+        self.rotmat_targets = rotmat_targets
         
     # See: https://github.com/papagina/RotationContinuity
     #input [folder_name]
@@ -287,20 +288,13 @@ class PointNetDataset(Dataset):
         x[:,0,:,:] = pc1.transpose(1,2)
         x[:,1,:,:] = pc2.transpose(1,2)
 
-        q = rotmat_to_quat(C, ordering='xyzw')
 
+        if self.rotmat_targets:
+            targets = C
+        else
+            targets = rotmat_to_quat(C, ordering='xyzw')
 
-        q = q.to(self.dtype)
+        targets = targets.to(self.dtype)
         x = x.to(self.dtype)
 
-        if torch.isnan(x).any().item() or torch.isnan(q).any().item():
-
-            print('FOUND NANS.')
-            print(torch.isnan(q).any().item())
-            print(q[torch.isnan(q)])
-            nan_mask = torch.isnan(q).sum(dim=1)>0
-            print(C[nan_mask])
-
-
-
-        return (x, q)
+        return (x, targets)
