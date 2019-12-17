@@ -203,3 +203,5 @@ def solve_horn_batch(x_1, x_2):
 def matrix_diff(X,Y):
     return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
     
+def loguniform(low=0, high=1, size=None):
+    return np.exp(np.random.uniform(low, high, size))
