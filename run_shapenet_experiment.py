@@ -121,7 +121,8 @@ def main():
 
     parser.add_argument('--batch_size_test', type=int, default=1)
     parser.add_argument('--batch_size_train', type=int, default=1)
-    parser.add_argument('--rotations_per_batch', type=int, default=100)
+    parser.add_argument('--rotations_per_batch_train', type=int, default=10)
+    parser.add_argument('--rotations_per_batch_test', type=int, default=100)
     parser.add_argument('--iterations_per_epoch', type=int, default=1000)
 
     parser.add_argument('--cuda', action='store_true', default=False)
@@ -150,11 +151,11 @@ def main():
     else:
         pointnet_data = '/Users/valentinp/Dropbox/Postdoc/projects/misc/RotationContinuity/shapenet/data/pc_plane'
     
-    train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch, total_iters=args.iterations_per_epoch, dtype=tensor_type),
+    train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch_train, total_iters=args.iterations_per_epoch, dtype=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch, dtype=tensor_type, test_mode=True),
+    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch_test, dtype=tensor_type, test_mode=True),
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
