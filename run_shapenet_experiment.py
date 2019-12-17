@@ -195,7 +195,7 @@ def main():
         print('==============TRAINING A (PSD) MODEL====================')
         model_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_psd, train_loader, valid_loader, tensorboard_output=False)
 
         lrs[t_i] = lr
         train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
