@@ -210,7 +210,7 @@ def main():
     torch.save({
         'train_stats_list': train_stats_list,
         'test_stats_list': test_stats_list,
-        'named_approaches': ['6D', 'Quat', 'A (sym)', 'A (psd)'],
+        'named_approaches': ['6D', 'Quat', 'A (sym)'],
         'learning_rates': lrs,
         'args': args
     }, full_saved_path)
