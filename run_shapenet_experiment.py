@@ -1,5 +1,6 @@
 import torch
-import datetime, time, argparse
+import time, argparse
+from datetime import datetime
 import numpy as np
 from tensorboardX import SummaryWriter
 from loaders import PointNetDataset, pointnet_collate
@@ -149,10 +150,11 @@ def main():
     else:
         pointnet_data = '/Users/valentinp/Dropbox/Postdoc/projects/misc/RotationContinuity/shapenet/data/pc_plane'
     
-    train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', rotations_per_batch=args.rotations_per_batch, total_iters=args.iterations_per_epoch, dtype=tensor_type),
+    train_loader = DataLoader(PointNetDataset(pointnet_data + '/points', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch, total_iters=args.iterations_per_epoch, dtype=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', rotations_per_batch=args.rotations_per_batch, dtype=tensor_type, test_mode=True),
+
+    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch, dtype=tensor_type, test_mode=True),
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     

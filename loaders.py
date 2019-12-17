@@ -210,7 +210,13 @@ def pointnet_collate(batch):
 class PointNetDataset(Dataset):
     """PointNet Dataset."""
 
-    def __init__(self, pc_folder, rotations_per_batch=50, total_iters=1e6, dtype=torch.float, rotmat_targets=False, test_mode=False):
+    def __init__(self, pc_folder, rotations_per_batch=50, 
+    total_iters=1e6, 
+    dtype=torch.float, 
+    rotmat_targets=False,
+    load_into_memory=True, 
+    device=torch.device('cpu'),
+    test_mode=False):
         """
         Args:
 
@@ -221,7 +227,12 @@ class PointNetDataset(Dataset):
         self.dtype = dtype
         self.rotmat_targets = rotmat_targets
         self.test_mode = test_mode
-        
+        if load_into_memory:
+            print('Loading pointclouds into memory...')
+            self.data = [torch.from_numpy(np.array(self._load_file(file))).to(device=device) for file in self.file_list]
+            print('Done')
+        else:
+            self.data = None
     # See: https://github.com/papagina/RotationContinuity
     def _load_pc_list(self, d):
         files = [os.path.join(d, f) for f in os.listdir(d)] 
@@ -263,9 +274,10 @@ class PointNetDataset(Dataset):
         else:
             pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
         
-        pc1 = torch.from_numpy(
-            np.array(self._load_file(self.file_list[pointcloud_id]))
-            )
+        if self.data is None:
+            pc1 = torch.from_numpy(np.array(self._load_file(self.file_list[pointcloud_id])))
+        else:
+            pc1 = self.data[pointcloud_id]
 
         #Matches the original code
         point_num = int(pc1.shape[0]/2)
