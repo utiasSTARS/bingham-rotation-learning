@@ -192,15 +192,17 @@ def main():
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
-        #Train and test with new representation
-        print('==============TRAINING A (PSD) MODEL====================')
-        model_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-        loss_fn = quat_squared_loss
-        (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_psd, train_loader, valid_loader, tensorboard_output=False)
+        # #Train and test with new representation
+        # print('==============TRAINING A (PSD) MODEL====================')
+        # model_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        # loss_fn = quat_squared_loss
+        # (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_psd, train_loader, valid_loader, tensorboard_output=False)
 
         lrs[t_i] = lr
-        train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
-        test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
+        #train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
+        #test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
+        train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym])
+        test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym])
         
     saved_data_file_name = 'diff_lr_shapenet_experiment_4models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/shapenet/{}.pt'.format(saved_data_file_name)
