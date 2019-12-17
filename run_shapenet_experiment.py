@@ -125,7 +125,7 @@ def main():
     parser.add_argument('--iterations_per_epoch', type=int, default=1000)
 
     parser.add_argument('--cuda', action='store_true', default=False)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=0)
 
     parser.add_argument('--double', action='store_true', default=False)
     
@@ -158,11 +158,9 @@ def main():
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
-    
-
-
     train_stats_list = []
     test_stats_list = []
+
     lrs = torch.empty(args.trials)
     for t_i in range(args.trials):
         #Train and test direct model
