@@ -99,7 +99,7 @@ class SevenScenesData(Dataset):
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None):
+    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
@@ -108,6 +108,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
         self.use_flow = use_flow
         self.reverse_images = reverse_images
+        self.rotmat_targets = rotmat_targets
 
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
@@ -120,7 +121,7 @@ class KITTIVODatasetPreTransformed(Dataset):
             self.T_21_vo = kitti_data['train_T_21_vo']
             self.pose_deltas = kitti_data['train_pose_deltas']
 
-        elif run_type == 'test':
+        elif run_type == 'test': 
             self.seqs = kitti_data['test_seqs']
             self.pose_indices = kitti_data['test_pose_indices']
             self.T_21_gt = kitti_data['test_T_21_gt']
@@ -197,8 +198,10 @@ class KITTIVODatasetPreTransformed(Dataset):
             img_input = [self.prep_img(self.seq_images[seq][p_ids[0]]),
                        self.prep_img(self.seq_images[seq][p_ids[1]])]
 
-        q_target = torch.from_numpy(quaternion_from_matrix(C_21_gt)).float()
-        return img_input, q_target
+        if self.rotmat_targets:
+            return img_input, C_21_gt
+        else:
+            return img_input, rotmat_to_quat(C_21_gt)
 
 
 def pointnet_collate(batch):
