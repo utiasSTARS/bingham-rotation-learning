@@ -270,6 +270,7 @@ def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, dtype=torch.do
     #Rotate and add noise
     noise = sigma*torch.randn_like(x_1)
     x_2 = C.bmm(x_1) + noise
+    
     return C, x_1, x_2
 
 def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, factors, dtype=torch.double):
