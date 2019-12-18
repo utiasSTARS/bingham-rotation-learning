@@ -185,6 +185,23 @@ def solve_horn(x_1, x_2):
     C = U.dot(S).dot(V)
     return C
 
+def solve_horn_batch(x_1, x_2):
+    """Assumes x_1, x_2 are BXNX3, outputs Bx3x3 matrices"""
+    
+
+    x_1_n = x_1 - x_1.mean(dim=1, keepdim=True)
+    x_2_n = x_2 - x_1.mean(dim=1, keepdim=True)
+    
+    W = (1./(x_1.shape[0]))*x_2_n.T.dot(x_1_n)
+
+    U,_,V = torch.svd(W)
+    S = np.eye(3)
+    S[2,2] = np.linalg.det(U) * np.linalg.det(V)
+    C = U.dot(S).dot(V)
+    return C
+
 def matrix_diff(X,Y):
     return np.abs(np.linalg.norm(X - Y) / min(np.linalg.norm(X), np.linalg.norm(Y)))
     
+def loguniform(low=0, high=1, size=None):
+    return np.exp(np.random.uniform(low, high, size))

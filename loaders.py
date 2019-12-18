@@ -6,6 +6,8 @@ import os.path as osp
 from PIL import Image
 import os
 from quaternions import rotmat_to_quat
+from liegroups.torch import SO3
+
 #import cv2
 
 class SevenScenesData(Dataset):
@@ -97,7 +99,7 @@ class SevenScenesData(Dataset):
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None):
+    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
@@ -106,6 +108,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
         self.use_flow = use_flow
         self.reverse_images = reverse_images
+        self.rotmat_targets = rotmat_targets
 
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
@@ -118,7 +121,7 @@ class KITTIVODatasetPreTransformed(Dataset):
             self.T_21_vo = kitti_data['train_T_21_vo']
             self.pose_deltas = kitti_data['train_pose_deltas']
 
-        elif run_type == 'test':
+        elif run_type == 'test': 
             self.seqs = kitti_data['test_seqs']
             self.pose_indices = kitti_data['test_pose_indices']
             self.T_21_gt = kitti_data['test_T_21_gt']
@@ -169,20 +172,6 @@ class KITTIVODatasetPreTransformed(Dataset):
         flow_cv2 = cv2.calcOpticalFlowFarneback(np_img1, np_img2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
         flow_img = torch.from_numpy(flow_cv2).permute(2,0,1)
 
-        # if idx < 10:
-        #     # Obtain the flow magnitude and direction angle
-        #     hsvImg = np.zeros_like(img1.permute(1,2,0).numpy())
-        #     hsvImg[..., 1] = 255
-        #     mag, ang = cv2.cartToPolar(flow_cv2[..., 0], flow_cv2[..., 1])
-        #     # Update the color image
-        #     hsvImg[..., 0] = 0.5 * ang * 180 / np.pi
-        #     hsvImg[..., 2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
-        #     rgbImg = cv2.cvtColor(hsvImg, cv2.COLOR_HSV2BGR)
-        #     cv2.imwrite('{}_flow.png'.format(idx), rgbImg)
-        #gr_img1 = torch.from_numpy(np_img1).float().unsqueeze(0)
-        #gr_img2 = torch.from_numpy(np_img2).float().unsqueeze(0)
-
-        #stacked_img = torch.cat((gr_img1, gr_img2, flow_img), 0)
         return flow_img
 
 
@@ -209,5 +198,112 @@ class KITTIVODatasetPreTransformed(Dataset):
             img_input = [self.prep_img(self.seq_images[seq][p_ids[0]]),
                        self.prep_img(self.seq_images[seq][p_ids[1]])]
 
-        q_target = torch.from_numpy(quaternion_from_matrix(C_21_gt)).float()
-        return img_input, q_target
+        if self.rotmat_targets:
+            return img_input, C_21_gt
+        else:
+            return img_input, rotmat_to_quat(C_21_gt)
+
+
+def pointnet_collate(batch):
+    #print(batch[0][1].shape)
+    data = torch.cat([item[0] for item in batch], dim=0)
+    target = torch.cat([item[1] for item in batch], dim=0)
+    return [data, target]
+
+class PointNetDataset(Dataset):
+    """PointNet Dataset."""
+
+    def __init__(self, pc_folder, rotations_per_batch=50, 
+    total_iters=1e6, 
+    dtype=torch.float, 
+    rotmat_targets=False,
+    load_into_memory=True, 
+    device=torch.device('cpu'),
+    test_mode=False):
+        """
+        Args:
+
+        """
+        self.file_list = self._load_pc_list(pc_folder)
+        self.total_iters = int(total_iters)
+        self.rotations_per_batch = rotations_per_batch
+        self.dtype = dtype
+        self.rotmat_targets = rotmat_targets
+        self.test_mode = test_mode
+        if load_into_memory:
+            print('Loading pointclouds into memory...')
+            self.data = [torch.from_numpy(np.array(self._load_file(file))) for file in self.file_list]
+            print('Done')
+        else:
+            self.data = None
+    # See: https://github.com/papagina/RotationContinuity
+    def _load_pc_list(self, d):
+        files = [os.path.join(d, f) for f in os.listdir(d)] 
+        return files
+
+    def _load_file(self, path):
+        """takes as input the path to a .pts and returns a list of 
+        tuples of floats containing the points in in the form:
+        [(x_0, y_0, z_0),
+        (x_1, y_1, z_1),
+        ...
+        (x_n, y_n, z_n)]"""
+        with open(path) as f:
+            rows = [rows.strip() for rows in f]
+        
+        """Use the curly braces to find the start and end of the point data""" 
+        #head = rows.index('{') + 1
+        #tail = rows.index('}')
+
+        """Select the point data split into coordinates"""
+        raw_points = rows#rows[head:tail]
+        coords_set = [point.split() for point in raw_points]
+
+        """Convert entries from lists of strings to tuples of floats"""
+        points = [tuple([float(point) for point in coords]) for coords in coords_set]
+        return (points)
+
+
+    def __len__(self):
+        if self.test_mode:
+            return len(self.file_list)
+        else:
+            return self.total_iters
+
+    def __getitem__(self, idx):
+        # Select a random point cloud
+        if self.test_mode:
+            pointcloud_id = idx
+        else:
+            pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
+        
+        if self.data is None:
+            pc1 = torch.from_numpy(np.array(self._load_file(self.file_list[pointcloud_id])))
+        else:
+            pc1 = self.data[pointcloud_id]
+
+        #Matches the original code
+        point_num = int(pc1.shape[0]/2)
+        #Sub sample
+        pc1 = pc1[:point_num]
+        
+        batch_num = self.rotations_per_batch
+        pc1 = pc1.view(1, point_num,3).expand(batch_num,point_num,3).transpose(1,2) #batch*3*p_num
+        C = SO3.exp(torch.randn(batch_num, 3, dtype=torch.double)).as_matrix()
+
+        pc2 = torch.bmm(C, pc1)#(batch*point_num)*3*1
+
+        x = torch.empty(batch_num, 2, point_num, 3)
+        x[:,0,:,:] = pc1.transpose(1,2)
+        x[:,1,:,:] = pc2.transpose(1,2)
+
+
+        if self.rotmat_targets:
+            targets = C
+        else:
+            targets = rotmat_to_quat(C, ordering='xyzw')
+
+        targets = targets.to(self.dtype)
+        x = x.to(self.dtype)
+
+        return (x, targets)
