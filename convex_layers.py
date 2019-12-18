@@ -65,6 +65,23 @@ def convert_Avec_to_Avec_psd(A_vec):
 
 #=========================PYTORCH (FAST) SOLVER=========================
 
+class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
+    """
+
+    """
+    def __init__(self):
+
+
+    @staticmethod
+    def forward(ctx, A_vec):
+
+        if A_vec.dim() < 2:
+            A_vec = A_vec.unsqueeze()
+        A = convert_Avec_to_A(A_vec)
+        q, nu  = solve_rotation_qcqp(A)
+        ctx.save_for_backward(A, q, nu)
+        return q
+
 class QuadQuatFastSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver
@@ -116,6 +133,50 @@ def solve_wahba_fast(A, compute_gap=False):
 
     return q_opt, nu_opt#, t_solve, gap
 
+
+def compute_rotation_QCQP_grad_fast(A, E, nu, x):
+    """
+    Input: A_vec: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
+           E: (B,22,10,10) tensor (quadratic symmetric equality constraint matrices)
+           nu: (B,22) tensor (optimal lagrange multipliers)
+           x: (B,10) tensor (optimal unit quaternions)
+
+    Output: grad: (B, 4, 55) tensor (gradient)
+
+    Applies the implicit function theorem to compute gradients of the solution to an equality-constrained
+    homogeneous rotation matrix QCQP.
+    """
+    assert (A.dim() > 2 and E.dim() > 3 and nu.dim() > 0 and x.dim() > 1)
+
+    M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
+    I = A.new_zeros((A.shape[0], 10, 10))
+    # TODO: check this expansion
+    M[:, :10, :10] = A + E*nu[:, :, None, None]
+    # TODO: figure out how to do the batch concatenation and matrix multiplication
+    # B = A.new_zeros((A.shape[0], 10, 22))
+    # for idx in range(22):
+    #     B[:, :, 10*idx:10*(idx+1)] = torch.matmul(E[:, idx, :, :], x[:, :, None])
+    B = torch.einsum('bmij,bj->bim', E, x)
+    M[:, :10, 10:] = B
+    M[:, 10:, :10] = torch.transpose(B, 1, 2)
+    b = A.new_zeros((A.shape[0], 10+22, (10*11)/2))
+    # symmetric matrix indices
+    idx = torch.triu_indices(4, 4)
+
+    i = torch.arange(10)
+    I_ij = A.new_zeros((10, 4, 4))
+
+    I_ij[i, idx[0], idx[1]] = 1.
+    I_ij[i, idx[1], idx[0]] = 1.
+
+    I_ij = I_ij.expand(A.shape[0], 10, 4, 4)
+
+    b[:, :4, :] = torch.einsum('bkij,bi->bjk', I_ij, q)
+
+    # This solves all gradients simultaneously!
+    X, _ = torch.solve(b, M)
+    grad = -1 * X[:, :10, :]
+    return grad
 
 def compute_grad_fast(A, nu, q):
     """
@@ -298,3 +359,8 @@ def q_from_qqT(qqT):
         q[2] *=  -1.
 
     return q
+
+
+def solve_rotation_qcqp(A):
+
+    pass

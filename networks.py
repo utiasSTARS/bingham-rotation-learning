@@ -119,68 +119,84 @@ class PointNet(torch.nn.Module):
 
 
 #CNNS
-class CustomResNetDirect(torch.nn.Module):
-    def __init__(self, dual=True):
-        super(CustomResNetDirect, self).__init__()
-        if dual:
-            self.cnn = CustomResNetDual(num_outputs=4, normalize_output=True)
-        else:
-            self.cnn = CustomResNet(num_outputs=4, normalize_output=True)
+class RotMat6DFlowNet(torch.nn.Module):
+    def __init__(self):
+        super(RotMat6DFlowNet, self).__init__()        
+        self.net = BasicCNN(dim_in=2, dim_out=6, normalize_output=False)
+    def forward(self, x):
+        vecs = self.net(x)
+        C = sixdim_to_rotmat(vecs)
+        return C
 
-    def forward(self, im):
-        return self.cnn(im)
-
-class CustomResNetConvex(torch.nn.Module):
-    def __init__(self, dual=True):
-        super(CustomResNetConvex, self).__init__()
-        if dual:
-            self.cnn = CustomResNetDual(num_outputs=10, normalize_output=True)
-        else:
-            self.cnn = CustomResNet(num_outputs=10, normalize_output=True)
+class QuatFlowNet(torch.nn.Module):
+    def __init__(self, enforce_psd=True, unit_frob_norm=True):
+        super(QuatFlowNet, self).__init__()
+        self.A_net = BasicCNN(dim_in=2, dim_out=10, normalize_output=False)
+        self.enforce_psd = enforce_psd
+        self.unit_frob_norm = unit_frob_norm
         self.qcqp_solver = QuadQuatFastSolver.apply
+    
+    def output_A(self, x):
+        A_vec = self.A_net(x)
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
+        return convert_Avec_to_A(A_vec)
 
-    def forward(self, im):
-        A_vec = self.cnn(im)
+    def forward(self, x):
+        A_vec = self.A_net(x)
+
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
         q = self.qcqp_solver(A_vec)
         return q
-   
 
-class CustomResNetDual(torch.nn.Module):
-    def __init__(self, num_outputs, normalize_output=True):
-        super(CustomResNetDual, self).__init__()
-        self.cnn = torchvision.models.resnet34(pretrained=True)
-        num_ftrs = self.cnn.fc.in_features
-        self.cnn.fc = torch.nn.Linear(num_ftrs, 512)
-        self.head = torch.nn.Sequential(
-          torch.nn.PReLU(),
-          torch.nn.Linear(1024, 128),
-          torch.nn.PReLU(),
-          torch.nn.Linear(128, num_outputs)
+
+
+def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1):
+        return torch.nn.Sequential(
+            torch.nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
+            #torch.nn.BatchNorm2d(out_planes),
+            torch.nn.PReLU()
         )
+
+
+class BasicCNN(torch.nn.Module):
+    def __init__(self, dim_in, dim_out, normalize_output=True):
+        super(BasicCNN, self).__init__()
         self.normalize_output = normalize_output
-        self.freeze_layers()
+        self.cnn = torch.nn.Sequential(
+            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1),
+            conv_unit(64, 128, kernel_size=3, stride=2, padding=1),
+            conv_unit(128, 256, kernel_size=3, stride=2, padding=1),
+            conv_unit(256, 512, kernel_size=3, stride=2, padding=1),
+            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1)
+        )
+        self.fc = torch.nn.Linear(4096, dim_out)
 
-    def freeze_layers(self):
-        # To freeze or not to freeze...
-        for param in self.cnn.parameters():
-            param.requires_grad = False
-        for param in self.cnn.fc.parameters():
-            param.requires_grad = True
 
-    def forward(self, ims):
-        feats = torch.cat((self.cnn(ims[0]), self.cnn(ims[1])), dim=1)
-        y = self.head(feats)
+    def forward(self, x):
+        out = self.cnn(x)
+        out = out.view(out.shape[0], -1)
+        out = self.fc(out)
         if self.normalize_output:
-            y = y/y.norm(dim=1).view(-1, 1)
-        return y
+            out = out/out.norm(dim=1).view(-1, 1)
+        return out
 
 
 class CustomResNet(torch.nn.Module):
-    def __init__(self, num_outputs, normalize_output=True):
+    def __init__(self, dim_out, normalize_output=True):
         super(CustomResNet, self).__init__()
-        self.cnn = torchvision.models.resnet101(pretrained=True)
+        self.cnn = torchvision.models.resnet34(pretrained=True)
         num_ftrs = self.cnn.fc.in_features
-        self.cnn.fc = torch.nn.Linear(num_ftrs, num_outputs)
+        self.cnn.fc = torch.nn.Linear(num_ftrs, dim_out)
         self.normalize_output = normalize_output
         
     def forward(self, x):
