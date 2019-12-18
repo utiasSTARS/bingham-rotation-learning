@@ -124,6 +124,7 @@ def main():
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--megalith', action='store_true', default=False)
 
     parser.add_argument('--double', action='store_true', default=False)
     
@@ -145,6 +146,9 @@ def main():
 
     transform = None
     seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+    if args.megalith:
+        seqs_base_path = '/media/datasets/KITTI/single_files'
+
     seq_prefix = 'seq_'
 
 
