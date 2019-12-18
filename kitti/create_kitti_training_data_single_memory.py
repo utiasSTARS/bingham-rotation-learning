@@ -53,8 +53,8 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
         coin_flip = np.random.rand(len(pose_ids)) > 1
 
         for i, p_idx in enumerate(pose_ids):
-            T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx]).as_matrix()
-            T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx]).as_matrix()
+            T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx])
+            T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx])
 
             turning_angle = np.linalg.norm(T_21_gt.rot.log())
             if (turning_angle > min_turning_angle or coin_flip[i]) or eval_type == 'test':
@@ -65,8 +65,8 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
 
         if add_reverse and eval_type=='train':
             for i, p_idx in enumerate(pose_ids):
-                T_21_gt = tm.Twv_gt[p_idx].inv().dot(tm.Twv_gt[p_idx + p_delta]).as_matrix()
-                T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta]).as_matrix()
+                T_21_gt = tm.Twv_gt[p_idx].inv().dot(tm.Twv_gt[p_idx + p_delta])
+                T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
 
                 turning_angle = np.linalg.norm(T_21_gt.rot.log())
                 if turning_angle > min_turning_angle or coin_flip[i]:
