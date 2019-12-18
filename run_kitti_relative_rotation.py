@@ -55,7 +55,6 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     
     device = next(model.parameters()).device
 
-    pbar = tqdm.tqdm(total=args.epochs)
     for e in range(args.epochs):
         start_time = time.time()
 
@@ -64,6 +63,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         train_loss = torch.tensor(0.)
         train_mean_err = torch.tensor(0.)
         num_train_batches = len(train_loader)
+        pbar = tqdm.tqdm(total=num_train_batches)
         for batch_idx, (x, q_gt) in enumerate(train_loader):
             #Move all data to appropriate device
             q_gt = q_gt.to(device)
@@ -71,7 +71,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             (q_est, train_loss_k) = train(model, loss_fn, optimizer, x, q_gt)
             train_loss += (1./num_train_batches)*train_loss_k
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
-
+            pbar.update(1)
+        pbar.close()
         #Test model
         model.eval()
         num_test_batches = len(test_loader)
@@ -104,8 +105,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         elapsed_time = time.time() - start_time
         
         output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
-        pbar.set_description(output_string)
-        pbar.update(1)
+        print(output_string)
 
 
     if tensorboard_output:
