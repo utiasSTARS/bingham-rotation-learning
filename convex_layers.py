@@ -164,7 +164,7 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     """
     assert(A.dim() > 2)
     assert(E.dim() > 2)
-    assert(nu.dim() > 0)
+    assert(nu.dim() > 1)
     assert(x.dim() > 1)
 
     M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
@@ -175,7 +175,7 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     # B = A.new_zeros((A.shape[0], 10, 22))
     # for idx in range(22):
     #     B[:, :, 10*idx:10*(idx+1)] = torch.matmul(E[:, idx, :, :], x[:, :, None])
-    B = 2.*torch.einsum('mij,bj->bim', E, x)
+    B = torch.einsum('mij,bj->bim', E, x)
     M[:, :10, 10:] = B
     M[:, 10:, :10] = torch.transpose(B, 1, 2)
     b = A.new_zeros((A.shape[0], 10+22, 55))
