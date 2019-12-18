@@ -116,18 +116,15 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 def main():
 
 
-    parser = argparse.ArgumentParser(description='ShapeNet experiment')
+    parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--seq', type=str, default='00')
 
-    parser.add_argument('--batch_size_test', type=int, default=1)
-    parser.add_argument('--batch_size_train', type=int, default=1)
-    parser.add_argument('--rotations_per_batch_train', type=int, default=10)
-    parser.add_argument('--rotations_per_batch_test', type=int, default=100)
-    parser.add_argument('--iterations_per_epoch', type=int, default=1000)
+    parser.add_argument('--batch_size_test', type=int, default=16)
+    parser.add_argument('--batch_size_train', type=int, default=16)
 
     parser.add_argument('--cuda', action='store_true', default=False)
-    parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--num_workers', type=int, default=4)
 
     parser.add_argument('--double', action='store_true', default=False)
     
@@ -153,12 +150,12 @@ def main():
     seq_prefix = 'seq_'
 
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
-                              batch_size=args.batch_size, pin_memory=False,
-                              shuffle=True, num_workers=4, drop_last=True)
+                              batch_size=args.batch_size_train, pin_memory=False,
+                              shuffle=True, num_workers=args.num_workers, drop_last=True)
 
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
-                              batch_size=args.batch_size, pin_memory=False,
-                              shuffle=False, num_workers=4, drop_last=False)    
+                              batch_size=args.batch_size_test, pin_memory=False,
+                              shuffle=False, num_workers=args.num_workers, drop_last=False)    
     train_stats_list = []
     test_stats_list = []
 
