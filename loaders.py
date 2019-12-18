@@ -195,8 +195,8 @@ class KITTIVODatasetPreTransformed(Dataset):
         if self.use_flow:
             img_input = self.compute_flow(self.seq_images[seq][p_ids[0]], self.seq_images[seq][p_ids[1]], idx, self.apply_blur)
         else:
-            img_input = [self.prep_img(self.seq_images[seq][p_ids[0]]),
-                       self.prep_img(self.seq_images[seq][p_ids[1]])]
+            img_input = torch.cat([self.prep_img(self.seq_images[seq][p_ids[0]]),
+                       self.prep_img(self.seq_images[seq][p_ids[1]])], dim=0)
 
         if self.rotmat_targets:
             return img_input, torch.from_numpy(C_21_gt).float()
