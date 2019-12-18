@@ -117,10 +117,10 @@ def main():
 
 
     parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
-    parser.add_argument('--epochs', type=int, default=15)
+    parser.add_argument('--epochs', type=int, default=10)
 
     parser.add_argument('--batch_size_test', type=int, default=64)
-    parser.add_argument('--batch_size_train', type=int, default=16)
+    parser.add_argument('--batch_size_train', type=int, default=32)
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
@@ -128,8 +128,8 @@ def main():
     parser.add_argument('--double', action='store_true', default=False)
     
     #Randomly select within this range
-    parser.add_argument('--lr_min', type=float, default=1e-4)
-    parser.add_argument('--lr_max', type=float, default=1e-3)
+    parser.add_argument('--lr_min', type=float, default=1e-5)
+    parser.add_argument('--lr_max', type=float, default=1e-4)
     parser.add_argument('--trials', type=int, default=5)
 
 
