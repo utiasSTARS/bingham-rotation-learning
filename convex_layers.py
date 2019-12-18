@@ -3,7 +3,8 @@ import scipy as sp
 from liegroups.numpy import SO3
 import cvxpy as cp
 import time
-import torch  
+import torch
+from rotation_matrix_sdp import solve_equality_QCQP_dual, rotation_matrix_constraints, CONSTRAINT_MATRICES, C_VEC
 
 def normalize_Avec(A_vec):
     """ Normalizes BxM vectors such that resulting symmetric BxNxN matrices have unit Frobenius norm"""
@@ -63,22 +64,39 @@ def convert_Avec_to_Avec_psd(A_vec):
     A_vec_psd = convert_A_to_Avec(A)
     return A_vec_psd
 
-#=========================PYTORCH (FAST) SOLVER=========================
 
+class RotmatQCQPSolver(torch.nn.Module):
+    def __init__(self):
+        super(RotmatQCQPSolver, self).__init__()
+        constraint_matrices, c_vec = rotation_matrix_constraints()
+        self.constraint_matrices = constraint_matrices
+        self.c_vec = constraint_matrices
+
+    def forward(self, A):
+        return HomogeneousRotationQCQPFastSolver.apply(A, self.constraint_matrices, self.c_vec)
+
+
+#=========================PYTORCH (FAST) SOLVER=========================
 class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
     """
 
     """
-    
     @staticmethod
     def forward(ctx, A_vec):
-
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze()
         A = convert_Avec_to_A(A_vec)
-        q, nu  = solve_rotation_qcqp(A)
-        ctx.save_for_backward(A, q, nu)
-        return q
+        r, nu = solve_rotation_qcqp(A, CONSTRAINT_MATRICES, C_VEC)
+        ctx.save_for_backward(A, r, nu)
+        return r
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        A, r, nu = ctx.saved_tensors
+        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
+        return outgrad
+
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """
@@ -135,7 +153,7 @@ def solve_wahba_fast(A, compute_gap=False):
 def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     """
     Input: A_vec: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
-           E: (B,22,10,10) tensor (quadratic symmetric equality constraint matrices)
+           E: (22,10,10) tensor (quadratic symmetric equality constraint matrices)
            nu: (B,22) tensor (optimal lagrange multipliers)
            x: (B,10) tensor (optimal unit quaternions)
 
@@ -144,17 +162,20 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     Applies the implicit function theorem to compute gradients of the solution to an equality-constrained
     homogeneous rotation matrix QCQP.
     """
-    assert (A.dim() > 2 and E.dim() > 3 and nu.dim() > 0 and x.dim() > 1)
+    assert(A.dim() > 2)
+    assert(E.dim() > 2)
+    assert(nu.dim() > 0)
+    assert(x.dim() > 1)
 
     M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
     I = A.new_zeros((A.shape[0], 10, 10))
     # TODO: check this expansion
-    M[:, :10, :10] = A + E*nu[:, :, None, None]
+    M[:, :10, :10] = A + E[None, :, :, :]*nu[:, :, None, None]
     # TODO: figure out how to do the batch concatenation and matrix multiplication
     # B = A.new_zeros((A.shape[0], 10, 22))
     # for idx in range(22):
     #     B[:, :, 10*idx:10*(idx+1)] = torch.matmul(E[:, idx, :, :], x[:, :, None])
-    B = torch.einsum('bmij,bj->bim', E, x)
+    B = torch.einsum('mij,bj->bim', E, x)
     M[:, :10, 10:] = B
     M[:, 10:, :10] = torch.transpose(B, 1, 2)
     b = A.new_zeros((A.shape[0], 10+22, (10*11)/2))
@@ -169,7 +190,7 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
 
     I_ij = I_ij.expand(A.shape[0], 10, 4, 4)
 
-    b[:, :4, :] = torch.einsum('bkij,bi->bjk', I_ij, q)
+    b[:, :4, :] = torch.einsum('bkij,bi->bjk', I_ij, x)
 
     # This solves all gradients simultaneously!
     X, _ = torch.solve(b, M)
@@ -221,7 +242,6 @@ def compute_grad_fast(A, nu, q):
 
 
 #=========================NUMPY/CVXPY (SLOW) SOLVER=========================
-
 class QuadQuatSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver
@@ -359,6 +379,11 @@ def q_from_qqT(qqT):
     return q
 
 
-def solve_rotation_qcqp(A):
-
-    pass
+def solve_rotation_qcqp(A, constraint_matrices, constraint_vec):
+    r_out = A.new_zeros((A.shape[0], 10))
+    nu_out = A.new_zeros((A.shape[0], 22))
+    for idx in range(A.shape[0]):
+        nu, R = solve_equality_QCQP_dual(A[idx, :, :], constraint_matrices, constraint_vec, is_torch=True)
+        r_out[idx, :] = torch.from_numpy(np.append(np.reshape(R, (9,), order='F'), 1))
+        nu_out[idx, :] = torch.from_numpy(nu)
+    return r_out, nu_out
