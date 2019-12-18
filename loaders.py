@@ -179,12 +179,11 @@ class KITTIVODatasetPreTransformed(Dataset):
     def __getitem__(self, idx):
         seq = self.seqs[idx]
         p_ids = self.pose_indices[idx]
-        C_21_gt = self.T_21_gt[idx][:3,:3].as_matrix()
-
+        C_21_gt = self.T_21_gt[idx][:3,:3]
 
         if self.reverse_images:
             p_ids = [p_ids[1], p_ids[0]]
-            C_21_gt = self.T_21_gt[idx][:3,:3].transpose(0,1).as_matrix()
+            C_21_gt = self.T_21_gt[idx][:3,:3].transpose(0,1)
 
         #print('Loading seq: {}. ids: {}'.format(seq, p_ids))
 
