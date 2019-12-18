@@ -177,6 +177,12 @@ def main():
             loss_fn = rotmat_frob_squared_norm_loss
             (train_stats_6D, test_stats_6D) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
 
+            #Train and test with new representation
+            print('==============TRAINING A (Sym) MODEL====================')
+            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+            loss_fn = quat_squared_loss
+            (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+
 
             print('=========TRAINING DIRECT QUAT MODEL==================')
             model_quat = BasicCNN(dim_in=2, dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
@@ -185,13 +191,7 @@ def main():
             loss_fn = quat_squared_loss
             (train_stats_quat, test_stats_quat) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
 
-            #Train and test with new representation
-            print('==============TRAINING A (Sym) MODEL====================')
-            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-            loss_fn = quat_squared_loss
-            (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
-
-            # #Train and test with new representation
+                      # #Train and test with new representation
             # print('==============TRAINING A (PSD) MODEL====================')
             # model_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
             # loss_fn = quat_squared_loss
