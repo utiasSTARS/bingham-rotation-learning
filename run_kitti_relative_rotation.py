@@ -128,8 +128,8 @@ def main():
     parser.add_argument('--double', action='store_true', default=False)
     
     #Randomly select within this range
-    parser.add_argument('--lr_min', type=float, default=1e-5)
-    parser.add_argument('--lr_max', type=float, default=1e-4)
+    parser.add_argument('--lr_min', type=float, default=5e-5)
+    parser.add_argument('--lr_max', type=float, default=5e-4)
     parser.add_argument('--trials', type=int, default=5)
 
 
@@ -180,6 +180,8 @@ def main():
             #Train and test with new representation
             print('==============TRAINING A (Sym) MODEL====================')
             model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+            train_loader.dataset.rotmat_targets = False
+            valid_loader.dataset.rotmat_targets = False
             loss_fn = quat_squared_loss
             (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 

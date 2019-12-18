@@ -119,7 +119,7 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = './saved_data/shapenet/diff_lr_shapenet_experiment_4models_12-17-2019-17-43-16.pt'
+    path = './saved_data/shapenet/diff_lr_shapenet_experiment_3models_12-18-2019-08-13-47.pt'
     checkpoint = torch.load(path)
     args = checkpoint['args']
     train_stats_list = checkpoint['train_stats_list']
