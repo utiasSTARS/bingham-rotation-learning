@@ -105,6 +105,25 @@ def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
     R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3), order='F')
     return Z.value, R, prob.solution.opt_val
 
+def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec):
+    nu = cp.Variable(constraint_matrices.shape[0])
+    constraint = cost_matrix
+    for idx in range(constraint_matrices.shape[0]):
+        constraint = constraint + nu[idx]*constraint_matrices[idx, :, :]
+    #TODO: check cost formulation
+    prob = cp.Problem(cp.Maximize(-c_vec@nu), [constraint >> 0])
+    prob.solve(solver=cp.MOSEK, verbose=False)
+    # Extract primal
+    Z_out = cost_matrix
+    for idx in range(constraint_matrices.shape[0]):
+        Z_out = Z_out + nu.value[idx]*constraint_matrices[idx, :, :]
+    vals, vecs = np.linalg.eig(Z_out)
+    eig_idx = np.argmin(vals)
+    r = vecs[:, eig_idx]
+    r = r[0:9]/r[9]
+    R = np.reshape(r, (3,3), order='F')
+    return nu.value, R
+
 if __name__=='__main__':
 
     n = 1000
@@ -128,6 +147,7 @@ if __name__=='__main__':
 
 
     gap = np.zeros(n)
+    dual_check = np.zeros(n)
     orth_check = np.zeros(n)
     right_handed_check = np.zeros(n)
 
@@ -139,6 +159,7 @@ if __name__=='__main__':
         #cost_matrix = 0.5 * (cost_matrix + cost_matrix.T)
         cost_matrix = np.dot(cost_matrix, cost_matrix.T)
         Z, R, opt_val = solve_equality_SDP(cost_matrix, constraint_matrices, c_vec)
+        nu, R_dual = solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec)
         r_homog = np.reshape(R, (9, 1), order='F')
         r_homog = np.vstack((r_homog, 1))
         primal_cost = np.dot(r_homog.T, np.dot(cost_matrix, r_homog))
@@ -155,7 +176,9 @@ if __name__=='__main__':
         # print(primal_cost)
         # print("Relaxed cost: ")
         # print(opt_val)
-
+        dual_check[idx] = np.linalg.norm(R - R_dual, ord='fro')
+        # print(R)
+        # print(R_dual)
         gap[idx] = primal_cost - opt_val
         orth_check[idx] = np.linalg.norm(np.eye(3)-np.dot(R, R.T), ord='fro')
         right_handed_check[idx] = np.linalg.det(R) - 1
@@ -169,6 +192,9 @@ if __name__=='__main__':
 
     print("Max handedness deviation: ")
     print(np.max(np.abs(right_handed_check)))
+
+    print("Max dual/SDP deviation: ")
+    print(np.max(np.abs(dual_check)))
 
     total_time = time.time() - start
     pbar.close()
