@@ -9,7 +9,7 @@ from quaternions import rotmat_to_quat
 from liegroups.torch import SO3
 import pickle
 #import cv2
-from liegroups.numpy import SE3
+from liegroups.torch import SE3
 
 
 class SevenScenesData(Dataset):
@@ -136,9 +136,9 @@ class KITTIVODatasetPreTransformed(Dataset):
         if use_only_seq is not None:
             self.pose_indices = [self.pose_indices[i] for i in range(len(self.seqs))
                                  if self.seqs[i] ==  use_only_seq]
-            self.T_21_gt = [torch.from_numpy(self.T_21_gt[i]).float() for i in range(len(self.seqs))
+            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(self.T_21_gt[i]).float()) for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
-            self.T_21_vo = [torch.from_numpy(self.T_21_vo[i]).float() for i in range(len(self.seqs))
+            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(self.T_21_vo[i]).float()) for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
             self.seqs = [self.seqs[i] for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
