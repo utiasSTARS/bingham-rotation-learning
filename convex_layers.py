@@ -35,7 +35,7 @@ def convert_Avec_to_A(A_vec):
         A_dim = 10
     else:
         raise ValueError("Arbitrary A_vec not yet implemented")
-    
+
     idx = torch.triu_indices(A_dim,A_dim)
     A = A_vec.new_zeros((A_vec.shape[0],A_dim,A_dim))   
     A[:, idx[0], idx[1]] = A_vec
@@ -69,9 +69,7 @@ class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
     """
 
     """
-    def __init__(self):
-
-
+    
     @staticmethod
     def forward(ctx, A_vec):
 
