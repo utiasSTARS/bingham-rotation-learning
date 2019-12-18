@@ -19,6 +19,16 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     assert(grad_test == True)
     print('Batch...Passed.')
 
+def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=10):
+    print('Checking PyTorch gradients (random A, batch_size: {})'.format(num_samples))
+    # qcqp_solver = RotmatQCQPSolver.apply
+    qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
+    A = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
+    input = (A,)
+    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    assert (grad_test == True)
+    print('Batch...Passed.')
+
 
 def test_pytorch_fast_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=100):
     print('Checking PyTorch sped-up gradients (random A, batch_size: {})'.format(num_samples))
@@ -131,16 +141,20 @@ def test_numpy_solver(N=100, sigma=0.01, tol=1.):
     assert(so3_diff(C_opt, C) < tol)
 
 if __name__=='__main__':
-    test_numpy_solver()
-    print("=============")
-    test_numpy_analytic_gradient()
-    print("=============")
-    test_pytorch_analytic_gradient()
-    print("=============")
-    test_pytorch_fast_analytic_gradient()
-    print("=============")
-    test_compare_fast_and_slow_solvers()
-    print("=============")
-    test_duality_gap_wahba_solver()
+    # test_numpy_solver()
+    # print("=============")
+    # test_numpy_analytic_gradient()
+    # print("=============")
+    # test_pytorch_analytic_gradient()
+    # print("=============")
+    # test_pytorch_fast_analytic_gradient()
+    # print("=============")
+    # test_compare_fast_and_slow_solvers()
+    # print("=============")
+    # test_duality_gap_wahba_solver()
+
     # print("=============")
     # test_pytorch_manual_analytic_gradient()
+
+    print("=============")
+    test_rotmat_pytorch_analytic_gradient()

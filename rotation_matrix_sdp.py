@@ -1,6 +1,7 @@
 import numpy as np
 import cvxpy as cp
 import time, tqdm
+from torch import from_numpy
 
 def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=True):
     '''
@@ -91,6 +92,9 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
     return constraint_matrices, np.array(c)
 
 
+CONSTRAINT_MATRICES, C_VEC = rotation_matrix_constraints()
+CONSTRAINT_MATRICES = from_numpy(CONSTRAINT_MATRICES)
+C_VEC = from_numpy(C_VEC)
 # def solve_rotation_SDP(cost_matrix, redundant=True, right_handed=True, homogeneous=True):
 
 
@@ -105,7 +109,11 @@ def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
     R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3), order='F')
     return Z.value, R, prob.solution.opt_val
 
-def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec):
+def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=False):
+    if is_torch:
+        cost_matrix = cost_matrix.numpy()
+        constraint_matrices = constraint_matrices.numpy()
+        c_vec = c_vec.numpy()
     nu = cp.Variable(constraint_matrices.shape[0])
     constraint = cost_matrix
     for idx in range(constraint_matrices.shape[0]):
