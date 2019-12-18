@@ -160,10 +160,6 @@ def main():
 
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_test, pin_memory=False,
-                            shuffle=False, num_workers=args.num_workers, drop_last=False)    
-    train_stats_list = []
-    test_stats_list = []
-
 
     #Train and test with new representation
     dim_in = 2 if args.optical_flow else 6
