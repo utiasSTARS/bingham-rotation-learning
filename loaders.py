@@ -119,15 +119,15 @@ class KITTIVODatasetPreTransformed(Dataset):
         if run_type == 'train':
             self.seqs = kitti_data['train_seqs']
             self.pose_indices = kitti_data['train_pose_indices']
-            self.T_21_gt = kitti_data['train_T_21_gt']
-            self.T_21_vo = kitti_data['train_T_21_vo']
+            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['train_T_21_gt']]
+            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['train_T_21_gt']]
             self.pose_deltas = kitti_data['train_pose_deltas']
 
         elif run_type == 'test': 
             self.seqs = kitti_data['test_seqs']
             self.pose_indices = kitti_data['test_pose_indices']
-            self.T_21_gt = kitti_data['test_T_21_gt']
-            self.T_21_vo = kitti_data['test_T_21_vo']
+            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['test_T_21_gt']]
+            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['test_T_21_vo']]
             self.pose_delta = kitti_data['test_pose_delta']
 
         else:
