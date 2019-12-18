@@ -124,7 +124,7 @@ def main():
     parser.add_argument('--batch_size_train', type=int, default=16)
 
     parser.add_argument('--cuda', action='store_true', default=False)
-    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--num_workers', type=int, default=8)
 
     parser.add_argument('--double', action='store_true', default=False)
     
