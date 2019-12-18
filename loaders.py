@@ -7,8 +7,10 @@ from PIL import Image
 import os
 from quaternions import rotmat_to_quat
 from liegroups.torch import SO3
-
+import pickle
 #import cv2
+from liegroups.numpy import SE3
+
 
 class SevenScenesData(Dataset):
     def __init__(self, scene, data_path, train, transform=None, output_first_image=True, tensor_type=torch.float):

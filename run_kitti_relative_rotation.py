@@ -148,7 +148,7 @@ def main():
     tensor_type = torch.double if args.double else torch.float
 
     transform = None
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True.pickle'.format(args.seq)
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1.pickle'.format(args.seq)
     seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
     seq_prefix = 'seq_'
 
