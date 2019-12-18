@@ -8,8 +8,7 @@ import os
 from quaternions import rotmat_to_quat
 from liegroups.torch import SO3
 import pickle
-#import cv2
-from liegroups.torch import SE3
+import cv2
 
 
 class SevenScenesData(Dataset):
@@ -119,15 +118,15 @@ class KITTIVODatasetPreTransformed(Dataset):
         if run_type == 'train':
             self.seqs = kitti_data['train_seqs']
             self.pose_indices = kitti_data['train_pose_indices']
-            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['train_T_21_gt']]
-            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['train_T_21_gt']]
+            self.T_21_gt = kitti_data['train_T_21_gt']
+            self.T_21_vo = kitti_data['train_T_21_vo']
             self.pose_deltas = kitti_data['train_pose_deltas']
 
         elif run_type == 'test': 
             self.seqs = kitti_data['test_seqs']
             self.pose_indices = kitti_data['test_pose_indices']
-            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['test_T_21_gt']]
-            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(T).float()) for T in kitti_data['test_T_21_vo']]
+            self.T_21_gt = kitti_data['test_T_21_gt']
+            self.T_21_vo = kitti_data['test_T_21_vo']
             self.pose_delta = kitti_data['test_pose_delta']
 
         else:
@@ -136,9 +135,9 @@ class KITTIVODatasetPreTransformed(Dataset):
         if use_only_seq is not None:
             self.pose_indices = [self.pose_indices[i] for i in range(len(self.seqs))
                                  if self.seqs[i] ==  use_only_seq]
-            self.T_21_gt = [SE3.from_matrix(torch.from_numpy(self.T_21_gt[i]).float()) for i in range(len(self.seqs))
+            self.T_21_gt = [torch.from_numpy(self.T_21_gt[i]).float() for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
-            self.T_21_vo = [SE3.from_matrix(torch.from_numpy(self.T_21_vo[i]).float()) for i in range(len(self.seqs))
+            self.T_21_vo = [torch.from_numpy(self.T_21_vo[i]).float() for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
             self.seqs = [self.seqs[i] for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
@@ -180,12 +179,12 @@ class KITTIVODatasetPreTransformed(Dataset):
     def __getitem__(self, idx):
         seq = self.seqs[idx]
         p_ids = self.pose_indices[idx]
-        C_21_gt = self.T_21_gt[idx].rot.as_matrix()
+        C_21_gt = self.T_21_gt[idx][:3,:3].as_matrix()
 
 
         if self.reverse_images:
             p_ids = [p_ids[1], p_ids[0]]
-            C_21_gt = self.T_21_gt[idx].rot.inv().as_matrix()
+            C_21_gt = self.T_21_gt[idx][:3,:3].transpose(0,1).as_matrix()
 
         #print('Loading seq: {}. ids: {}'.format(seq, p_ids))
 
