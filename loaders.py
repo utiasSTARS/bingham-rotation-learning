@@ -199,9 +199,9 @@ class KITTIVODatasetPreTransformed(Dataset):
                        self.prep_img(self.seq_images[seq][p_ids[1]])]
 
         if self.rotmat_targets:
-            return img_input, C_21_gt
+            return img_input, torch.from_numpy(C_21_gt).float()
         else:
-            return img_input, rotmat_to_quat(C_21_gt)
+            return img_input, rotmat_to_quat(torch.from_numpy(C_21_gt).float())
 
 
 def pointnet_collate(batch):
