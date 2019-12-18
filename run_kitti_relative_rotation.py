@@ -124,12 +124,13 @@ def main():
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--megalith', action='store_true', default=False)
 
     parser.add_argument('--double', action='store_true', default=False)
     
     #Randomly select within this range
-    parser.add_argument('--lr_min', type=float, default=1e-5)
-    parser.add_argument('--lr_max', type=float, default=1e-4)
+    parser.add_argument('--lr_min', type=float, default=5e-5)
+    parser.add_argument('--lr_max', type=float, default=5e-4)
     parser.add_argument('--trials', type=int, default=5)
 
 
@@ -145,6 +146,9 @@ def main():
 
     transform = None
     seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+    if args.megalith:
+        seqs_base_path = '/media/datasets/KITTI/single_files'
+
     seq_prefix = 'seq_'
 
 
@@ -170,19 +174,21 @@ def main():
             args.lr = lr
             print('Learning rate: {:.3E}'.format(lr))
 
+             #Train and test with new representation
+            print('==============TRAINING A (Sym) MODEL====================')
+            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+            train_loader.dataset.rotmat_targets = False
+            valid_loader.dataset.rotmat_targets = False
+            loss_fn = quat_squared_loss
+            (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+
+
             print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
             model_6D = RotMat6DFlowNet().to(device=device, dtype=tensor_type)
             train_loader.dataset.rotmat_targets = True
             valid_loader.dataset.rotmat_targets = True
             loss_fn = rotmat_frob_squared_norm_loss
             (train_stats_6D, test_stats_6D) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
-
-            #Train and test with new representation
-            print('==============TRAINING A (Sym) MODEL====================')
-            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-            loss_fn = quat_squared_loss
-            (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
-
 
             print('=========TRAINING DIRECT QUAT MODEL==================')
             model_quat = BasicCNN(dim_in=2, dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
