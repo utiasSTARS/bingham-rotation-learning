@@ -149,6 +149,7 @@ def main():
 
 
     for seq in ['00','02','05']:
+        print('===================SEQ {}======================='.format(seq))
         kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(seq)
         train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_train, pin_memory=False,
