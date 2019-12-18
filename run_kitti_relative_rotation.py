@@ -117,10 +117,10 @@ def main():
 
 
     parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--seq', type=str, default='00')
 
-    parser.add_argument('--batch_size_test', type=int, default=16)
+    parser.add_argument('--batch_size_test', type=int, default=64)
     parser.add_argument('--batch_size_train', type=int, default=16)
 
     parser.add_argument('--cuda', action='store_true', default=False)
@@ -131,7 +131,7 @@ def main():
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
     parser.add_argument('--lr_max', type=float, default=1e-3)
-    parser.add_argument('--trials', type=int, default=25)
+    parser.add_argument('--trials', type=int, default=5)
 
 
     args = parser.parse_args()
@@ -196,21 +196,21 @@ def main():
         # (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_psd, train_loader, valid_loader, tensorboard_output=False)
 
         lrs[t_i] = lr
-        # train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
-        # test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
+        train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym])
+        test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym])
         
-    # saved_data_file_name = 'diff_lr_shapenet_experiment_4models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    # full_saved_path = 'saved_data/shapenet/{}.pt'.format(saved_data_file_name)
+    saved_data_file_name = 'diff_lr_kitti_experiment_3models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
 
-    # torch.save({
-    #     'train_stats_list': train_stats_list,
-    #     'test_stats_list': test_stats_list,
-    #     'named_approaches': ['6D', 'Quat', 'A (sym)', 'A (psd)'],
-    #     'learning_rates': lrs,
-    #     'args': args
-    # }, full_saved_path)
+    torch.save({
+        'train_stats_list': train_stats_list,
+        'test_stats_list': test_stats_list,
+        'named_approaches': ['6D', 'Quat', 'A (sym)'],
+        'learning_rates': lrs,
+        'args': args
+    }, full_saved_path)
 
-    # print('Saved data to {}.'.format(full_saved_path))
+    print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
