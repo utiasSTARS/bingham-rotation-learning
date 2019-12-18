@@ -7,8 +7,9 @@ from PIL import Image
 import os
 from quaternions import rotmat_to_quat
 from liegroups.torch import SO3
+import pickle
+import cv2
 
-#import cv2
 
 class SevenScenesData(Dataset):
     def __init__(self, scene, data_path, train, transform=None, output_first_image=True, tensor_type=torch.float):
@@ -99,7 +100,7 @@ class SevenScenesData(Dataset):
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None):
+    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
@@ -108,6 +109,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
         self.use_flow = use_flow
         self.reverse_images = reverse_images
+        self.rotmat_targets = rotmat_targets
 
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
@@ -120,7 +122,7 @@ class KITTIVODatasetPreTransformed(Dataset):
             self.T_21_vo = kitti_data['train_T_21_vo']
             self.pose_deltas = kitti_data['train_pose_deltas']
 
-        elif run_type == 'test':
+        elif run_type == 'test': 
             self.seqs = kitti_data['test_seqs']
             self.pose_indices = kitti_data['test_pose_indices']
             self.T_21_gt = kitti_data['test_T_21_gt']
@@ -133,9 +135,9 @@ class KITTIVODatasetPreTransformed(Dataset):
         if use_only_seq is not None:
             self.pose_indices = [self.pose_indices[i] for i in range(len(self.seqs))
                                  if self.seqs[i] ==  use_only_seq]
-            self.T_21_gt = [self.T_21_gt[i] for i in range(len(self.seqs))
+            self.T_21_gt = [torch.from_numpy(self.T_21_gt[i]).float() for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
-            self.T_21_vo = [self.T_21_vo[i] for i in range(len(self.seqs))
+            self.T_21_vo = [torch.from_numpy(self.T_21_vo[i]).float() for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
             self.seqs = [self.seqs[i] for i in range(len(self.seqs))
                                  if self.seqs[i] == use_only_seq]
@@ -177,12 +179,11 @@ class KITTIVODatasetPreTransformed(Dataset):
     def __getitem__(self, idx):
         seq = self.seqs[idx]
         p_ids = self.pose_indices[idx]
-        C_21_gt = self.T_21_gt[idx].rot.as_matrix()
-
+        C_21_gt = self.T_21_gt[idx][:3,:3]
 
         if self.reverse_images:
             p_ids = [p_ids[1], p_ids[0]]
-            C_21_gt = self.T_21_gt[idx].rot.inv().as_matrix()
+            C_21_gt = self.T_21_gt[idx][:3,:3].transpose(0,1)
 
         #print('Loading seq: {}. ids: {}'.format(seq, p_ids))
 
@@ -197,8 +198,10 @@ class KITTIVODatasetPreTransformed(Dataset):
             img_input = [self.prep_img(self.seq_images[seq][p_ids[0]]),
                        self.prep_img(self.seq_images[seq][p_ids[1]])]
 
-        q_target = torch.from_numpy(quaternion_from_matrix(C_21_gt)).float()
-        return img_input, q_target
+        if self.rotmat_targets:
+            return img_input, C_21_gt
+        else:
+            return img_input, rotmat_to_quat(C_21_gt)
 
 
 def pointnet_collate(batch):
@@ -210,7 +213,13 @@ def pointnet_collate(batch):
 class PointNetDataset(Dataset):
     """PointNet Dataset."""
 
-    def __init__(self, pc_folder, rotations_per_batch=50, total_iters=1e6, dtype=torch.float, rotmat_targets=False, test_mode=False):
+    def __init__(self, pc_folder, rotations_per_batch=50, 
+    total_iters=1e6, 
+    dtype=torch.float, 
+    rotmat_targets=False,
+    load_into_memory=True, 
+    device=torch.device('cpu'),
+    test_mode=False):
         """
         Args:
 
@@ -221,7 +230,12 @@ class PointNetDataset(Dataset):
         self.dtype = dtype
         self.rotmat_targets = rotmat_targets
         self.test_mode = test_mode
-        
+        if load_into_memory:
+            print('Loading pointclouds into memory...')
+            self.data = [torch.from_numpy(np.array(self._load_file(file))) for file in self.file_list]
+            print('Done')
+        else:
+            self.data = None
     # See: https://github.com/papagina/RotationContinuity
     def _load_pc_list(self, d):
         files = [os.path.join(d, f) for f in os.listdir(d)] 
@@ -263,9 +277,10 @@ class PointNetDataset(Dataset):
         else:
             pointcloud_id = torch.randint(len(self.file_list), (1,)).item() 
         
-        pc1 = torch.from_numpy(
-            np.array(self._load_file(self.file_list[pointcloud_id]))
-            )
+        if self.data is None:
+            pc1 = torch.from_numpy(np.array(self._load_file(self.file_list[pointcloud_id])))
+        else:
+            pc1 = self.data[pointcloud_id]
 
         #Matches the original code
         point_num = int(pc1.shape[0]/2)
@@ -275,6 +290,7 @@ class PointNetDataset(Dataset):
         batch_num = self.rotations_per_batch
         pc1 = pc1.view(1, point_num,3).expand(batch_num,point_num,3).transpose(1,2) #batch*3*p_num
         C = SO3.exp(torch.randn(batch_num, 3, dtype=torch.double)).as_matrix()
+
         pc2 = torch.bmm(C, pc1)#(batch*point_num)*3*1
 
         x = torch.empty(batch_num, 2, point_num, 3)

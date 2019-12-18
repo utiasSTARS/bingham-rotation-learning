@@ -5,10 +5,7 @@ from quaternions import *
 from sim_helpers import *
 from datetime import datetime
 import argparse
-
-
-def loguniform(low=0, high=1, size=None):
-    return np.exp(np.random.uniform(low, high, size))
+from utils import loguniform
 
 def main():
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
