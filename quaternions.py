@@ -69,20 +69,22 @@ def quat_inv(q):
 
 #Quaternion difference of two unit quaternions
 def quat_norm_diff(q_a, q_b):
+    assert(q_a.shape == q_b.shape)
+    assert(q_a.shape[-1] == 4)
     if q_a.dim() < 2:
         q_a = q_a.unsqueeze(0)
-    if q_b.dim() < 2:
         q_b = q_b.unsqueeze(0)
     return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze()
 
-def quat_angle_diff(q, q_target, units='deg', reduce=True):
-    assert(q.shape == q_target.shape)
-    diffs = quat_norm_to_angle(quat_norm_diff(q, q_target), units=units)
+def quat_angle_diff(q_a, q_b, units='deg', reduce=True):
+    assert(q_a.shape == q_b.shape)
+    assert(q_a.shape[-1] == 4)
+    diffs = quat_norm_to_angle(quat_norm_diff(q_a, q_b), units=units)
     return diffs.mean() if reduce else diffs
 
 #See Rotation Averaging by Hartley et al. (2013)
-def quat_norm_to_angle(q_met, units='deg'):
-    angle = 4.*torch.asin(0.5*q_met)
+def quat_norm_to_angle(q_norms, units='deg'):
+    angle = 4.*torch.asin(0.5*q_norms)
     if units == 'deg':
         angle = (180./np.pi)*angle
     elif units == 'rad':

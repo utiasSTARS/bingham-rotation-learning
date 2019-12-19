@@ -47,7 +47,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     if tensorboard_output:
         writer = SummaryWriter()
 
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, amsgrad=True)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
     #Save stats
     train_stats = torch.zeros(args.epochs, 2)
