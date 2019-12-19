@@ -122,6 +122,7 @@ def plot_learning_rate_wahba_experiment():
     path = './saved_data/shapenet/diff_lr_shapenet_experiment_3models_12-18-2019-08-13-47.pt'
     checkpoint = torch.load(path)
     args = checkpoint['args']
+    print(args)
     train_stats_list = checkpoint['train_stats_list']
     test_stats_list = checkpoint['test_stats_list']
     names = checkpoint['named_approaches']
