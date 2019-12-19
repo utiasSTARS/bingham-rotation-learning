@@ -226,3 +226,23 @@ def rotmat_to_quat(mat, ordering='xyzw'):
     return quat
 
 
+def rotmat_angle_diff(C, C_target, units='deg', reduce=True):
+    assert(C.shape == C_target.shape)
+    if C.dim() < 3:
+        C = C.unsqueeze(dim=0)
+        C_target = C_target.unsqueeze(dim=0)
+
+    rotmat_frob_norms = (C - C_target).norm(dim=[1,2]) #torch.sqrt(6. - 2.*trace(C.bmm(C_target.transpose(1,2))))
+    diffs = rotmat_frob_norm_to_angle(rotmat_frob_norms, units=units)
+    return diffs.mean() if reduce else diffs
+
+#See Rotation Averaging by Hartley et al. (2013)
+def rotmat_frob_norm_to_angle(frob_norms, units='deg'):
+    angle = 2.*torch.asin(0.25*math.sqrt(2)*frob_norms)
+    if units == 'deg':
+        angle = (180./np.pi)*angle
+    elif units == 'rad':
+        pass
+    else:
+        raise RuntimeError('Unknown units in metric conversion.')
+    return angle
