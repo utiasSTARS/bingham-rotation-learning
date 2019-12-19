@@ -7,7 +7,7 @@ from networks import *
 from losses import *
 from torch.utils.data import Dataset, DataLoader
 import tqdm
-from train_test_helpers import train_test_model
+from helpers_train_test import train_test_model
 
 
 
