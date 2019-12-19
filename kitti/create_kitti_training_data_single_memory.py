@@ -45,13 +45,8 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
 
     for p_delta in pose_deltas:
 
-        if eval_type=='train':
-            pose_ids = range(len(tm.Twv_gt) - p_delta)
-        elif eval_type=='test':
-            pose_ids = range(0, len(tm.Twv_gt) - p_delta, p_delta)
-
-        #coin_flip = np.random.rand(len(pose_ids)) > 1
-
+        pose_ids = range(len(tm.Twv_gt) - p_delta)
+    
         for i, p_idx in enumerate(pose_ids):
             T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx])
             T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx])
@@ -63,7 +58,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
                 pair_pose_ids.append([p_idx, p_idx + p_delta])
                 seqs.append(seq)
 
-        if add_reverse and eval_type=='train':
+        if add_reverse:
             for i, p_idx in enumerate(pose_ids):
                 T_21_gt = tm.Twv_gt[p_idx].inv().dot(tm.Twv_gt[p_idx + p_delta])
                 T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
@@ -159,7 +154,7 @@ def main():
         # (val_img_paths_rgb, val_corr, val_gt, val_est, val_tm_mat_file) = process_ground_truth([val_trial], tm_path, kitti_path, [test_pose_delta], 'test', add_reverse)
         # print('Processed {} validation image quads.'.format(len(val_corr)))
 
-        (test_pose_ids, test_sequences, test_T_21_gt, test_T_21_est, test_tm_mat_files) = process_ground_truth([test_trial], tm_path, [test_pose_delta], 'test', add_reverse)
+        (test_pose_ids, test_sequences, test_T_21_gt, test_T_21_est, test_tm_mat_files) = process_ground_truth([test_trial], tm_path, [test_pose_delta], 'test', add_reverse, min_turning_angle)
         print('Processed {} test poses.'.format(len(test_T_21_gt)))
 
         #Save the data!
