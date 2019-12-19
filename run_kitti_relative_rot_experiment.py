@@ -16,7 +16,7 @@ def main():
 
 
     parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=25)
 
     parser.add_argument('--batch_size_test', type=int, default=64)
     parser.add_argument('--batch_size_train', type=int, default=32)
@@ -24,12 +24,13 @@ def main():
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument('--megalith', action='store_true', default=False)
+    parser.add_argument('--batchnorm', action='store_true', default=False)
 
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--optical_flow', action='store_true', default=False)
     
     #Randomly select within this range
-    parser.add_argument('--lr_min', type=float, default=1e-5)
+    parser.add_argument('--lr_min', type=float, default=1e-4)
     parser.add_argument('--lr_max', type=float, default=1e-3)
     parser.add_argument('--trials', type=int, default=5)
 
@@ -54,7 +55,7 @@ def main():
 
     for seq in ['00','02','05']:
         print('===================SEQ {}======================='.format(seq))
-        kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(seq)
+        kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_1.0.pickle'.format(seq)
         train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_train, pin_memory=False,
                                 shuffle=True, num_workers=args.num_workers, drop_last=True)
@@ -78,7 +79,7 @@ def main():
             dim_in = 2 if args.optical_flow else 6
 
             print('==============TRAINING A (Sym) MODEL====================')
-            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True, dim_in=dim_in).to(device=device, dtype=tensor_type)
+            model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=args.batchnorm, dim_in=dim_in).to(device=device, dtype=tensor_type)
             train_loader.dataset.rotmat_targets = False
             valid_loader.dataset.rotmat_targets = False
             loss_fn = quat_squared_loss
