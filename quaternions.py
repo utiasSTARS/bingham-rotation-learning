@@ -167,7 +167,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
 
         if len(cond1_inds) > 0:
             R_cond1 = R[cond1_inds]
-            d = 2. * np.sqrt(1. + R_cond1[:, 0, 0] -
+            d = 2. * torch.sqrt(1. + R_cond1[:, 0, 0] -
                                 R_cond1[:, 1, 1] - R_cond1[:, 2, 2])
             qw[cond1_inds] = (R_cond1[:, 2, 1] - R_cond1[:, 1, 2]) / d
             qx[cond1_inds] = 0.25 * d
@@ -179,7 +179,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
 
         if len(cond2_inds) > 0:
             R_cond2 = R[cond2_inds]
-            d = 2. * np.sqrt(1. + R_cond2[:, 1, 1] -
+            d = 2. * torch.sqrt(1. + R_cond2[:, 1, 1] -
                                 R_cond2[:, 0, 0] - R_cond2[:, 2, 2])
             qw[cond2_inds] = (R_cond2[:, 0, 2] - R_cond2[:, 2, 0]) / d
             qx[cond2_inds] = (R_cond2[:, 1, 0] + R_cond2[:, 0, 1]) / d
@@ -192,7 +192,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
         if len(cond3_inds) > 0:
             R_cond3 = R[cond3_inds]
             d = 2. * \
-                np.sqrt(1. + R_cond3[:, 2, 2] -
+                torch.sqrt(1. + R_cond3[:, 2, 2] -
                         R_cond3[:, 0, 0] - R_cond3[:, 1, 1])
             qw[cond3_inds] = (R_cond3[:, 1, 0] - R_cond3[:, 0, 1]) / d
             qx[cond3_inds] = (R_cond3[:, 0, 2] + R_cond3[:, 2, 0]) / d

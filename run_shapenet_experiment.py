@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--batch_size_train', type=int, default=1)
     parser.add_argument('--rotations_per_batch_train', type=int, default=10)
     parser.add_argument('--rotations_per_batch_test', type=int, default=100)
-    parser.add_argument('--iterations_per_epoch', type=int, default=1000)
+    parser.add_argument('--iterations_per_epoch', type=int, default=250)
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=0)
@@ -32,7 +32,7 @@ def main():
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
     parser.add_argument('--lr_max', type=float, default=1e-3)
-    parser.add_argument('--trials', type=int, default=25)
+    parser.add_argument('--trials', type=int, default=10)
 
 
     args = parser.parse_args()
