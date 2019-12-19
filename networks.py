@@ -7,9 +7,9 @@ import torchvision
 
 
 class RotMat6DDirect(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, batchnorm=False):
         super(RotMat6DDirect, self).__init__()        
-        self.net = PointNet(dim_out=6, normalize_output=False)
+        self.net = PointNet(dim_out=6, normalize_output=False, batchnorm=batchnorm)
 
     def forward(self, x):
         vecs = self.net(x)
@@ -17,9 +17,9 @@ class RotMat6DDirect(torch.nn.Module):
         return C
 
 class QuatNet(torch.nn.Module):
-    def __init__(self, enforce_psd=True, unit_frob_norm=True):
+    def __init__(self, enforce_psd=True, unit_frob_norm=True, batchnorm=False):
         super(QuatNet, self).__init__()
-        self.A_net = PointNet(dim_out=10, normalize_output=False)
+        self.A_net = PointNet(dim_out=10, normalize_output=False, batchnorm=batchnorm)
         self.enforce_psd = enforce_psd
         self.unit_frob_norm = unit_frob_norm
         self.qcqp_solver = QuadQuatFastSolver.apply
@@ -46,17 +46,28 @@ class QuatNet(torch.nn.Module):
 
 
 class PointFeatCNN(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, batchnorm=False):
         super(PointFeatCNN, self).__init__()
-        self.net = torch.nn.Sequential(
+        if batchnorm:
+            self.net = torch.nn.Sequential(
+                    torch.nn.Conv1d(6, 64, kernel_size=1),
+                    torch.nn.BatchNorm2d(64),
+                    torch.nn.PReLU(),
+                    torch.nn.Conv1d(64, 128, kernel_size=1),
+                    torch.nn.BatchNorm2d(128),
+                    torch.nn.PReLU(),
+                    torch.nn.Conv1d(128, 1024, kernel_size=1),
+                    torch.nn.AdaptiveMaxPool1d(output_size=1)
+            )
+        else:
+            self.net = torch.nn.Sequential(
                 torch.nn.Conv1d(6, 64, kernel_size=1),
                 torch.nn.PReLU(),
                 torch.nn.Conv1d(64, 128, kernel_size=1),
                 torch.nn.PReLU(),
                 torch.nn.Conv1d(128, 1024, kernel_size=1),
                 torch.nn.AdaptiveMaxPool1d(output_size=1)
-                )
-
+            )
     def forward(self, x):
         x = self.net(x)
         return x.squeeze()
@@ -82,9 +93,9 @@ class PointFeatMLP(torch.nn.Module):
 
         
 class PointNet(torch.nn.Module):
-    def __init__(self, dim_out=10, normalize_output=False):
+    def __init__(self, dim_out=10, normalize_output=False, batchnorm=False):
         super(PointNet, self).__init__()
-        self.feat_net = PointFeatCNN()
+        self.feat_net = PointFeatCNN(batchnorm=batchnorm)
         self.normalize_output = normalize_output
         self.head = torch.nn.Sequential(
           torch.nn.Linear(1024, 256),
