@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--optical_flow', action='store_true', default=False)
     parser.add_argument('--batchnorm', action='store_true', default=False)
     
+    parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
@@ -66,7 +67,7 @@ def main():
 
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
-        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
