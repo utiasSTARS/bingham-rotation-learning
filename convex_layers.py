@@ -155,9 +155,9 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     Input: A_vec: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
            E: (22,10,10) tensor (quadratic symmetric equality constraint matrices)
            nu: (B,22) tensor (optimal lagrange multipliers)
-           x: (B,10) tensor (optimal unit quaternions)
+           x: (B,10) tensor (optimal vectorized rotation matrices with homogenizing 10th entry of 1)
 
-    Output: grad: (B, 4, 55) tensor (gradient)
+    Output: grad: (B, 10, 55) tensor (gradient)
 
     Applies the implicit function theorem to compute gradients of the solution to an equality-constrained
     homogeneous rotation matrix QCQP.
@@ -168,7 +168,6 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     assert(x.dim() > 1)
 
     M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
-    I = A.new_zeros((A.shape[0], 10, 10))
     # TODO: check this expansion
     M[:, :10, :10] = A + torch.einsum('bi,imn->bmn', nu, E)
     # TODO: figure out how to do the batch concatenation and matrix multiplication
