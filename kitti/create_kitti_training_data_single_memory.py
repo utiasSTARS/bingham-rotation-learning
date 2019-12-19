@@ -51,7 +51,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
             T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx])
             T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx])
 
-            turning_angle = np.linalg.norm(T_21_gt.rot.log())
+            turning_angle = np.linalg.norm(T_21_gt.rot.log())*(180./np.pi)
             if (turning_angle > min_turning_angle):
                 T_21_gts.append(T_21_gt.as_matrix())
                 T_21_ests.append(T_21_est.as_matrix())
@@ -63,7 +63,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
                 T_21_gt = tm.Twv_gt[p_idx].inv().dot(tm.Twv_gt[p_idx + p_delta])
                 T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
 
-                turning_angle = np.linalg.norm(T_21_gt.rot.log())
+                turning_angle = np.linalg.norm(T_21_gt.rot.log())*(180./np.pi)
                 if turning_angle > min_turning_angle: #or coin_flip[i]:
                     T_21_gts.append(T_21_gt.as_matrix())
                     T_21_ests.append(T_21_est.as_matrix())
@@ -117,7 +117,7 @@ def main():
     train_pose_deltas = [2] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
     test_pose_delta = 2
     add_reverse = True #Add reverse transformations
-    min_turning_angle = 2.0*(np.pi/180.)
+    min_turning_angle = 2.0 #Degrees
 
     #Where is the KITTI data?
 
@@ -175,7 +175,7 @@ def main():
         kitti_data['test_tm_mat_paths'] = test_tm_mat_files
         kitti_data['test_pose_delta'] = test_pose_delta
 
-        data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_{}_delta_{}_reverse_{}_minta_{}.pickle'.format(test_trial, test_pose_delta, add_reverse, min_turning_angle))
+        data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_{}_delta_{}_reverse_{}_min_turn_{:.1F}.pickle'.format(test_trial, test_pose_delta, add_reverse, min_turning_angle))
         #data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_0910_delta_{}_reverse_{}.pickle'.format(test_pose_delta, add_reverse))
 
         print('Saving to {} ....'.format(data_filename))
