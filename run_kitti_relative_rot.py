@@ -53,7 +53,7 @@ def main():
     seq_prefix = 'seq_'
 
     #kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_5_reverse_False_minta_0.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_5_reverse_True_minta_0.0.pickle'.format(args.seq)
     
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_train, pin_memory=False,
