@@ -129,7 +129,7 @@ def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=F
     eig_idx = np.argmin(vals)
     r = vecs[:, eig_idx]
     r = r[0:9]/r[9]
-    R = np.reshape(r, (3,3), order='F')
+    R = np.reshape(r, (3, 3), order='F')
     return nu.value, R
 
 if __name__=='__main__':
