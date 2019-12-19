@@ -88,7 +88,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         for _, (x, target) in enumerate(test_loader):
             #Move all data to appropriate device
-            q_gt = q_gt.to(device)
+            target = target.to(device)
             x = x.to(device)
             (rot_est, test_loss_k) = test(model, loss_fn, x, target)
             if rotmat_targets:
