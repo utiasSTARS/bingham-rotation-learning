@@ -50,7 +50,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
         elif eval_type=='test':
             pose_ids = range(0, len(tm.Twv_gt) - p_delta, p_delta)
 
-        coin_flip = np.random.rand(len(pose_ids)) > 1
+        #coin_flip = np.random.rand(len(pose_ids)) > 1
 
         for i, p_idx in enumerate(pose_ids):
             T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx])
@@ -69,7 +69,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
                 T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
 
                 turning_angle = np.linalg.norm(T_21_gt.rot.log())
-                if turning_angle > min_turning_angle or coin_flip[i]:
+                if turning_angle > min_turning_angle #or coin_flip[i]:
                     T_21_gts.append(T_21_gt.as_matrix())
                     T_21_ests.append(T_21_est.as_matrix())
                     pair_pose_ids.append([p_idx + p_delta, p_idx])
@@ -119,10 +119,10 @@ def main():
     #all_trials = ['00', '02', '05', '06']
     #all_trials = ['00', '01', '02', '04', '05', '06', '07', '08', '09', '10']
 
-    train_pose_deltas = [5] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
-    test_pose_delta = 5
+    train_pose_deltas = [2] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
+    test_pose_delta = 2
     add_reverse = True #Add reverse transformations
-    min_turning_angle = 0.0
+    min_turning_angle = 2.0*(np.pi/180.)
 
     #Where is the KITTI data?
 
