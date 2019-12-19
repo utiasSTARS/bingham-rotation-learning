@@ -9,7 +9,6 @@ from losses import *
 from torch.utils.data import Dataset, DataLoader
 from quaternions import *
 import tqdm
-from utils import loguniform
 
 
 
@@ -47,7 +46,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     if tensorboard_output:
         writer = SummaryWriter()
 
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, amsgrad=True)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
     #Save stats
     train_stats = torch.zeros(args.epochs, 2)
@@ -69,6 +68,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             q_gt = q_gt.to(device)
             x = x.to(device)
             (q_est, train_loss_k) = train(model, loss_fn, optimizer, x, q_gt)
+            print(q_est.shape)
             train_loss += (1./num_train_batches)*train_loss_k
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
             pbar.update(1)

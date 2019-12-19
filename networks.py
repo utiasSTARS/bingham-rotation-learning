@@ -183,10 +183,10 @@ class BasicCNN(torch.nn.Module):
             conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
-            conv_unit(1024, 2048, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
         )
         self.fc = torch.nn.Sequential(
-                    torch.nn.Linear(8192, 512),
+                    torch.nn.Linear(4092, 512),
                     torch.nn.PReLU(),
                     torch.nn.Linear(512, dim_out)
         )
