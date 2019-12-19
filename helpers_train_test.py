@@ -47,6 +47,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     test_stats = torch.zeros(args.epochs, 2)
     
     device = next(model.parameters()).device
+    tensor_type = torch.double if args.double else torch.float
 
     rotmat_targets = train_loader.dataset.rotmat_targets
 
@@ -64,8 +65,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         for _, (x, target) in enumerate(train_loader):
             #Move all data to appropriate device
-            target = target.to(device)
-            x = x.to(device)
+            target = target.to(device=device, dtype=tensor_type)
+            x = x.to(device=device, dtype=tensor_type)
             (rot_est, train_loss_k) = train(model, loss_fn, optimizer, x, target)
 
             if rotmat_targets:
@@ -88,8 +89,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
         for _, (x, target) in enumerate(test_loader):
             #Move all data to appropriate device
-            target = target.to(device)
-            x = x.to(device)
+            target = target.to(device=device, dtype=tensor_type)
+            x = x.to(device=device, dtype=tensor_type)
             (rot_est, test_loss_k) = test(model, loss_fn, x, target)
 
             if rotmat_targets:
