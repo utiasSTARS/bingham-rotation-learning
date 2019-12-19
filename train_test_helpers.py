@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy as np
 from tensorboardX import SummaryWriter
 from quaternions import *
+import tqdm
 
 #Generic training function
 def train(model, loss_fn, optimizer, x, q_gt):
@@ -97,7 +98,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             else:
                 q_est = rot_est
                 q_gt = target
-                
+
             test_loss += (1./num_test_batches)*test_loss_k
             test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
 
