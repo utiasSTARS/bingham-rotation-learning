@@ -57,7 +57,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
             T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx])
 
             turning_angle = np.linalg.norm(T_21_gt.rot.log())
-            if (turning_angle > min_turning_angle or coin_flip[i]) or eval_type == 'test':
+            if (turning_angle > min_turning_angle):
                 T_21_gts.append(T_21_gt.as_matrix())
                 T_21_ests.append(T_21_est.as_matrix())
                 pair_pose_ids.append([p_idx, p_idx + p_delta])
@@ -69,7 +69,7 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
                 T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
 
                 turning_angle = np.linalg.norm(T_21_gt.rot.log())
-                if turning_angle > min_turning_angle #or coin_flip[i]:
+                if turning_angle > min_turning_angle: #or coin_flip[i]:
                     T_21_gts.append(T_21_gt.as_matrix())
                     T_21_ests.append(T_21_est.as_matrix())
                     pair_pose_ids.append([p_idx + p_delta, p_idx])
