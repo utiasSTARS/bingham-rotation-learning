@@ -54,6 +54,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
     
     device = next(model.parameters()).device
 
+    rotmat_targets = train_loader.dataset.rotmat_targets
+
     for e in range(args.epochs):
         start_time = time.time()
 
@@ -63,12 +65,17 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         train_mean_err = torch.tensor(0.)
         num_train_batches = len(train_loader)
         pbar = tqdm.tqdm(total=num_train_batches)
-        for batch_idx, (x, q_gt) in enumerate(train_loader):
+        for _, (x, target) in enumerate(train_loader):
             #Move all data to appropriate device
-            q_gt = q_gt.to(device)
+            target = target.to(device)
             x = x.to(device)
-            (q_est, train_loss_k) = train(model, loss_fn, optimizer, x, q_gt)
-            print(q_est.shape)
+            (rot_est, train_loss_k) = train(model, loss_fn, optimizer, x, target)
+            if rotmat_targets:
+                q_est = rotmat_to_quat(rot_est)
+                q_gt = rotmat_to_quat(target)
+            else:
+                q_est = rot_est
+                q_gt = target
             train_loss += (1./num_train_batches)*train_loss_k
             train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
             pbar.update(1)
@@ -79,11 +86,17 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         test_loss = torch.tensor(0.)
         test_mean_err = torch.tensor(0.)
 
-        for batch_idx, (x, q_gt) in enumerate(test_loader):
+        for _, (x, target) in enumerate(test_loader):
             #Move all data to appropriate device
             q_gt = q_gt.to(device)
             x = x.to(device)
-            (q_est, test_loss_k) = test(model, loss_fn, x, q_gt)
+            (rot_est, test_loss_k) = test(model, loss_fn, x, target)
+            if rotmat_targets:
+                q_est = rotmat_to_quat(rot_est)
+                q_gt = rotmat_to_quat(target)
+            else:
+                q_est = rot_est
+                q_gt = target
             test_loss += (1./num_test_batches)*test_loss_k
             test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
 
