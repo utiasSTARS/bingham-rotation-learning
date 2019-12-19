@@ -19,8 +19,8 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
     assert(grad_test == True)
     print('Batch...Passed.')
 
-def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=10):
-    print('Checking PyTorch gradients (random A, batch_size: {})'.format(num_samples))
+def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
+    print('Checking PyTorch rotmat gradients (random A, batch_size: {})'.format(num_samples))
     # qcqp_solver = RotmatQCQPSolver.apply
     qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
     A = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)

@@ -164,13 +164,13 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     """
     assert(A.dim() > 2)
     assert(E.dim() > 2)
-    assert(nu.dim() > 0)
+    assert(nu.dim() > 1)
     assert(x.dim() > 1)
 
     M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
     I = A.new_zeros((A.shape[0], 10, 10))
     # TODO: check this expansion
-    M[:, :10, :10] = A + E[None, :, :, :]*nu[:, :, None, None]
+    M[:, :10, :10] = A + torch.einsum('bi,imn->bmn', nu, E)
     # TODO: figure out how to do the batch concatenation and matrix multiplication
     # B = A.new_zeros((A.shape[0], 10, 22))
     # for idx in range(22):
@@ -178,19 +178,19 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     B = torch.einsum('mij,bj->bim', E, x)
     M[:, :10, 10:] = B
     M[:, 10:, :10] = torch.transpose(B, 1, 2)
-    b = A.new_zeros((A.shape[0], 10+22, (10*11)/2))
+    b = A.new_zeros((A.shape[0], 10+22, 55))
     # symmetric matrix indices
-    idx = torch.triu_indices(4, 4)
+    idx = torch.triu_indices(10, 10)
 
-    i = torch.arange(10)
-    I_ij = A.new_zeros((10, 4, 4))
+    i = torch.arange(55)
+    I_ij = A.new_zeros((55, 10, 10))
 
     I_ij[i, idx[0], idx[1]] = 1.
     I_ij[i, idx[1], idx[0]] = 1.
 
-    I_ij = I_ij.expand(A.shape[0], 10, 4, 4)
+    I_ij = I_ij.expand(A.shape[0], 55, 10, 10)
 
-    b[:, :4, :] = torch.einsum('bkij,bi->bjk', I_ij, x)
+    b[:, :10, :] = torch.einsum('bkij,bi->bjk', I_ij, x)
 
     # This solves all gradients simultaneously!
     X, _ = torch.solve(b, M)
