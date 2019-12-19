@@ -106,7 +106,7 @@ def main():
         train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym])
         test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym])
         
-    saved_data_file_name = 'diff_lr_shapenet_experiment_4models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    saved_data_file_name = 'diff_lr_shapenet_experiment_3models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/shapenet/{}.pt'.format(saved_data_file_name)
 
     torch.save({
