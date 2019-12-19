@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from quaternions import *
 import tqdm
 from utils import loguniform
-from train_test_helpers import train_test_model
+from helpers_train_test import train_test_model
 
 def main():
 

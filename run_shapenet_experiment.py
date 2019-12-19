@@ -10,7 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 from quaternions import *
 import tqdm
 from utils import loguniform
-from train_test_helpers import train_test_model
+from helpers_train_test import train_test_model
 
 def main():
 
@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--batch_size_train', type=int, default=1)
     parser.add_argument('--rotations_per_batch_train', type=int, default=10)
     parser.add_argument('--rotations_per_batch_test', type=int, default=100)
-    parser.add_argument('--iterations_per_epoch', type=int, default=250)
+    parser.add_argument('--iterations_per_epoch', type=int, default=200)
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=0)
