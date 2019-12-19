@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import utils
+import math
 
 #NUMPY
 ##########
@@ -69,20 +70,22 @@ def quat_inv(q):
 
 #Quaternion difference of two unit quaternions
 def quat_norm_diff(q_a, q_b):
+    assert(q_a.shape == q_b.shape)
+    assert(q_a.shape[-1] == 4)
     if q_a.dim() < 2:
         q_a = q_a.unsqueeze(0)
-    if q_b.dim() < 2:
         q_b = q_b.unsqueeze(0)
     return torch.min((q_a-q_b).norm(dim=1), (q_a+q_b).norm(dim=1)).squeeze()
 
-def quat_angle_diff(q, q_target, units='deg', reduce=True):
-    assert(q.shape == q_target.shape)
-    diffs = quat_norm_to_angle(quat_norm_diff(q, q_target), units=units)
+def quat_angle_diff(q_a, q_b, units='deg', reduce=True):
+    assert(q_a.shape == q_b.shape)
+    assert(q_a.shape[-1] == 4)
+    diffs = quat_norm_to_angle(quat_norm_diff(q_a, q_b), units=units)
     return diffs.mean() if reduce else diffs
 
 #See Rotation Averaging by Hartley et al. (2013)
-def quat_norm_to_angle(q_met, units='deg'):
-    angle = 4.*torch.asin(0.5*q_met)
+def quat_norm_to_angle(q_norms, units='deg'):
+    angle = 4.*torch.asin(0.5*q_norms)
     if units == 'deg':
         angle = (180./np.pi)*angle
     elif units == 'rad':
@@ -165,7 +168,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
 
         if len(cond1_inds) > 0:
             R_cond1 = R[cond1_inds]
-            d = 2. * np.sqrt(1. + R_cond1[:, 0, 0] -
+            d = 2. * torch.sqrt(1. + R_cond1[:, 0, 0] -
                                 R_cond1[:, 1, 1] - R_cond1[:, 2, 2])
             qw[cond1_inds] = (R_cond1[:, 2, 1] - R_cond1[:, 1, 2]) / d
             qx[cond1_inds] = 0.25 * d
@@ -177,7 +180,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
 
         if len(cond2_inds) > 0:
             R_cond2 = R[cond2_inds]
-            d = 2. * np.sqrt(1. + R_cond2[:, 1, 1] -
+            d = 2. * torch.sqrt(1. + R_cond2[:, 1, 1] -
                                 R_cond2[:, 0, 0] - R_cond2[:, 2, 2])
             qw[cond2_inds] = (R_cond2[:, 0, 2] - R_cond2[:, 2, 0]) / d
             qx[cond2_inds] = (R_cond2[:, 1, 0] + R_cond2[:, 0, 1]) / d
@@ -190,7 +193,7 @@ def rotmat_to_quat(mat, ordering='xyzw'):
         if len(cond3_inds) > 0:
             R_cond3 = R[cond3_inds]
             d = 2. * \
-                np.sqrt(1. + R_cond3[:, 2, 2] -
+                torch.sqrt(1. + R_cond3[:, 2, 2] -
                         R_cond3[:, 0, 0] - R_cond3[:, 1, 1])
             qw[cond3_inds] = (R_cond3[:, 1, 0] - R_cond3[:, 0, 1]) / d
             qx[cond3_inds] = (R_cond3[:, 0, 2] + R_cond3[:, 2, 0]) / d
@@ -224,3 +227,24 @@ def rotmat_to_quat(mat, ordering='xyzw'):
     return quat
 
 
+def rotmat_angle_diff(C, C_target, units='deg', reduce=True):
+    assert(C.shape == C_target.shape)
+    if C.dim() < 3:
+        C = C.unsqueeze(dim=0)
+        C_target = C_target.unsqueeze(dim=0)
+
+    rotmat_frob_norms = (C - C_target).norm(dim=[1,2]) #torch.sqrt(6. - 2.*trace(C.bmm(C_target.transpose(1,2))))
+    diffs = rotmat_frob_norm_to_angle(rotmat_frob_norms, units=units)
+    return diffs.mean() if reduce else diffs
+
+#See Rotation Averaging by Hartley et al. (2013)
+def rotmat_frob_norm_to_angle(frob_norms, units='deg'):
+    sin = torch.clamp(0.25*math.sqrt(2)*frob_norms, min=-1., max=1.)
+    angle = 2.*torch.asin(sin)
+    if units == 'deg':
+        angle = (180./np.pi)*angle
+    elif units == 'rad':
+        pass
+    else:
+        raise RuntimeError('Unknown units in metric conversion.')
+    return angle
