@@ -120,18 +120,18 @@ class PointNet(torch.nn.Module):
 
 #CNNS
 class RotMat6DFlowNet(torch.nn.Module):
-    def __init__(self, dim_in=2):
+    def __init__(self, dim_in=2, batchnorm=True):
         super(RotMat6DFlowNet, self).__init__()        
-        self.net = BasicCNN(dim_in=dim_in, dim_out=6, normalize_output=False)
+        self.net = BasicCNN(dim_in=dim_in, dim_out=6, normalize_output=False, batchnorm=batchnorm)
     def forward(self, x):
         vecs = self.net(x)
         C = sixdim_to_rotmat(vecs)
         return C
 
 class QuatFlowNet(torch.nn.Module):
-    def __init__(self, enforce_psd=True, unit_frob_norm=True, dim_in=2):
+    def __init__(self, enforce_psd=True, unit_frob_norm=True, dim_in=2, batchnorm=True):
         super(QuatFlowNet, self).__init__()
-        self.A_net = BasicCNN(dim_in=dim_in, dim_out=10, normalize_output=False)
+        self.A_net = BasicCNN(dim_in=dim_in, dim_out=10, normalize_output=False, batchnorm=batchnorm)
         self.enforce_psd = enforce_psd
         self.unit_frob_norm = unit_frob_norm
         self.qcqp_solver = QuadQuatFastSolver.apply
@@ -158,30 +158,38 @@ class QuatFlowNet(torch.nn.Module):
 
 
 
-def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1):
-        return torch.nn.Sequential(
-            torch.nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
-            torch.nn.BatchNorm2d(out_planes),
-            torch.nn.PReLU()
-        )
+def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1, batchnorm=True):
+        if batchnorm:
+            return torch.nn.Sequential(
+                torch.nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
+                torch.nn.BatchNorm2d(out_planes),
+                torch.nn.PReLU()
+            )
+        else:
+            return torch.nn.Sequential(
+                torch.nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding),
+                torch.nn.PReLU()
+            )
 
 
 class BasicCNN(torch.nn.Module):
-    def __init__(self, dim_in, dim_out, normalize_output=True):
+    def __init__(self, dim_in, dim_out, normalize_output=True, batchnorm=True):
         super(BasicCNN, self).__init__()
         self.normalize_output = normalize_output
         self.cnn = torch.nn.Sequential(
-            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1),
-            conv_unit(64, 128, kernel_size=3, stride=2, padding=1),
-            conv_unit(128, 256, kernel_size=3, stride=2, padding=1),
-            conv_unit(256, 512, kernel_size=3, stride=2, padding=1),
-            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1),
-            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1),
-            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1)
+            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(64, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(128, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
         )
-        self.fc = torch.nn.Linear(4096, dim_out)
-
-
+        self.fc = torch.nn.Sequential(
+                    torch.nn.Linear(4096, 1024),
+                    torch.nn.PReLU(),
+                    torch.nn.Linear(1024, dim_out)
+        )
+        
     def forward(self, x):
         out = self.cnn(x)
         out = out.view(out.shape[0], -1)
