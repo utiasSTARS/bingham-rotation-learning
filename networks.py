@@ -51,10 +51,10 @@ class PointFeatCNN(torch.nn.Module):
         if batchnorm:
             self.net = torch.nn.Sequential(
                     torch.nn.Conv1d(6, 64, kernel_size=1),
-                    torch.nn.BatchNorm2d(64),
+                    torch.nn.BatchNorm1d(64),
                     torch.nn.PReLU(),
                     torch.nn.Conv1d(64, 128, kernel_size=1),
-                    torch.nn.BatchNorm2d(128),
+                    torch.nn.BatchNorm1d(128),
                     torch.nn.PReLU(),
                     torch.nn.Conv1d(128, 1024, kernel_size=1),
                     torch.nn.AdaptiveMaxPool1d(output_size=1)
