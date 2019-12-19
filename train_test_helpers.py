@@ -67,14 +67,13 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             target = target.to(device)
             x = x.to(device)
             (rot_est, train_loss_k) = train(model, loss_fn, optimizer, x, target)
+
             if rotmat_targets:
-                q_est = rotmat_to_quat(rot_est)
-                q_gt = rotmat_to_quat(target)
+                train_mean_err += (1./num_train_batches)*rotmat_angle_diff(rot_est, target)
             else:
-                q_est = rot_est
-                q_gt = target
+                train_mean_err += (1./num_train_batches)*quat_angle_diff(rot_est, target)
+
             train_loss += (1./num_train_batches)*train_loss_k
-            train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
             if progress_bar:
                 pbar.update(1)
         
