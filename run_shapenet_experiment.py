@@ -26,6 +26,7 @@ def main():
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=0)
+    parser.add_argument('--batchnorm', action='store_true', default=False)
 
     parser.add_argument('--double', action='store_true', default=False)
     
@@ -70,24 +71,26 @@ def main():
         args.lr = lr
         print('Learning rate: {:.3E}'.format(lr))
 
+        print('=========TRAINING DIRECT QUAT MODEL==================')
+        model_quat = PointNet(dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = False
+        valid_loader.dataset.rotmat_targets = False
+        loss_fn = quat_squared_loss
+        (train_stats_quat, test_stats_quat) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
+
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
-        model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+        model_6D = RotMat6DDirect(batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_6D, test_stats_6D) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
 
 
-        print('=========TRAINING DIRECT QUAT MODEL==================')
-        model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+               #Train and test with new representation
+        print('==============TRAINING A (Sym) MODEL====================')
+        model_sym = QuatNet(enforce_psd=False, unit_frob_norm=True,batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
-        loss_fn = quat_squared_loss
-        (train_stats_quat, test_stats_quat) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
-
-        #Train and test with new representation
-        print('==============TRAINING A (Sym) MODEL====================')
-        model_sym = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
