@@ -2,15 +2,16 @@ import numpy as np
 import torch
 
 
-
-if __name__=='__main__':
+if __name__ == '__main__':
     b = 5
     m = 2
     n = 3
 
     E = np.zeros((m, n, n))
-    E[0, :, :] = np.eye(n)
-    E[1, :, :] = 2*np.eye(n)
+    E[0, :, :] = np.array([[1., 2., 3.],
+                           [4., 5., 6.],
+                           [7., 8., 9.]])
+    E[1, :, :] = 3*E[0, :, :]
     mu = np.array([[0., 1.],
                    [2., 3.],
                    [4., 5.],
