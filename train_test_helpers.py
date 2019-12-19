@@ -92,6 +92,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
             target = target.to(device)
             x = x.to(device)
             (rot_est, test_loss_k) = test(model, loss_fn, x, target)
+
             if rotmat_targets:
                 q_est = rotmat_to_quat(rot_est)
                 q_gt = rotmat_to_quat(target)
@@ -99,6 +100,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
                 q_est = rot_est
                 q_gt = target
 
+            print(quat_angle_diff(q_est, q_gt))            
             test_loss += (1./num_test_batches)*test_loss_k
             test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
 
