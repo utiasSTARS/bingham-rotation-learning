@@ -2,120 +2,16 @@ import torch
 import time, argparse
 from datetime import datetime
 import numpy as np
-from tensorboardX import SummaryWriter
 from loaders import KITTIVODatasetPreTransformed
 from networks import *
 from losses import *
 from torch.utils.data import Dataset, DataLoader
-from quaternions import *
 import tqdm
-from utils import loguniform
+from helpers_train_test import train_test_model
 
 
-
-#Generic training function
-def train(model, loss_fn, optimizer, x, q_gt):
-
-    # Reset gradient
-    optimizer.zero_grad()
-
-    # Forward
-    q_est = model.forward(x)
-    
-    loss = loss_fn(q_est, q_gt)
-
-    # Backward
-    loss.backward()
-
-    # Update parameters
-    optimizer.step()
-
-    return (q_est, loss.item())
-
-
-def test(model, loss_fn, x, q_gt):
-    # Forward
-    with torch.no_grad():
-        q_est = model.forward(x)
-        loss = loss_fn(q_est, q_gt)
-            
-    return (q_est, loss.item())
-
-
-def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboard_output=True):
-
-    if tensorboard_output:
-        writer = SummaryWriter()
-
-    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr, amsgrad=True)
-
-    #Save stats
-    train_stats = torch.zeros(args.epochs, 2)
-    test_stats = torch.zeros(args.epochs, 2)
-    
-    device = next(model.parameters()).device
-
-    for e in range(args.epochs):
-        start_time = time.time()
-
-        #Train model
-        model.train()
-        train_loss = torch.tensor(0.)
-        train_mean_err = torch.tensor(0.)
-        num_train_batches = len(train_loader)
-        pbar = tqdm.tqdm(total=num_train_batches)
-        for batch_idx, (x, q_gt) in enumerate(train_loader):
-            #Move all data to appropriate device
-            q_gt = q_gt.to(device)
-            x = x.to(device)
-            (q_est, train_loss_k) = train(model, loss_fn, optimizer, x, q_gt)
-            train_loss += (1./num_train_batches)*train_loss_k
-            train_mean_err += (1./num_train_batches)*quat_angle_diff(q_est, q_gt)
-            pbar.update(1)
-        pbar.close()
-        #Test model
-        model.eval()
-        num_test_batches = len(test_loader)
-        test_loss = torch.tensor(0.)
-        test_mean_err = torch.tensor(0.)
-
-        for batch_idx, (x, q_gt) in enumerate(test_loader):
-            #Move all data to appropriate device
-            q_gt = q_gt.to(device)
-            x = x.to(device)
-            (q_est, test_loss_k) = test(model, loss_fn, x, q_gt)
-            test_loss += (1./num_test_batches)*test_loss_k
-            test_mean_err += (1./num_test_batches)*quat_angle_diff(q_est, q_gt)
-
-        test_stats[e, 0] = test_loss
-        test_stats[e, 1] = test_mean_err
-
-        if tensorboard_output:
-            writer.add_scalar('validation/loss', test_loss, e)
-            writer.add_scalar('validation/mean_err', test_mean_err, e)
-
-            writer.add_scalar('training/loss', train_loss, e)
-            writer.add_scalar('training/mean_err', train_mean_err, e)
-        
-        
-        #History tracking
-        train_stats[e, 0] = train_loss
-        train_stats[e, 1] = train_mean_err
-
-        elapsed_time = time.time() - start_time
-        
-        output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
-        print(output_string)
-
-
-    if tensorboard_output:
-        writer.close()
-    pbar.close()
-    return train_stats, test_stats
 
 def main():
-
-
     parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
     parser.add_argument('--epochs', type=int, default=10)
 
@@ -128,6 +24,8 @@ def main():
 
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--optical_flow', action='store_true', default=False)
+    parser.add_argument('--batchnorm', action='store_true', default=False)
+    
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
@@ -166,7 +64,7 @@ def main():
 
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
-        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True, dim_in=dim_in).to(device=device, dtype=tensor_type)
+        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
@@ -174,7 +72,7 @@ def main():
 
     elif args.model == '6D':
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
-        model_6D = RotMat6DFlowNet(dim_in=dim_in).to(device=device, dtype=tensor_type)
+        model_6D = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
@@ -182,7 +80,7 @@ def main():
 
     elif args.model == 'quat':
         print('=========TRAINING DIRECT QUAT MODEL==================')
-        model_quat = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+        model_quat = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss

@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from networks import *
 from losses import *
-from sim_helpers import *
+from helpers_sim import *
 from datetime import datetime
 import argparse
 

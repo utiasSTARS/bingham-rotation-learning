@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from networks import *
 from quaternions import *
-from sim_helpers import *
+from helpers_sim import *
 from datetime import datetime
 import argparse
 from utils import loguniform
