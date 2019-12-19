@@ -239,7 +239,8 @@ def rotmat_angle_diff(C, C_target, units='deg', reduce=True):
 
 #See Rotation Averaging by Hartley et al. (2013)
 def rotmat_frob_norm_to_angle(frob_norms, units='deg'):
-    angle = 2.*torch.asin(0.25*math.sqrt(2)*frob_norms)
+    sin = torch.clamp(0.25*math.sqrt(2)*frob_norms, min=-1., max=1.)
+    angle = 2.*torch.asin(sin)
     if units == 'deg':
         angle = (180./np.pi)*angle
     elif units == 'rad':
