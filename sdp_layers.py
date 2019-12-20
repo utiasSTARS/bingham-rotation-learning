@@ -23,24 +23,14 @@ def x_from_xxT(xxT):
     return x.squeeze()
 
 
-
-def make_rotation_matrix_sdp_layer():
-    X = cp.Variable((10, 10), PSD=True)
-    constraint_matrices, c_vec = rotation_matrix_constraints()
-    constraints = [cp.trace(constraint_matrices[idx, :, :] @ X) == c_vec[idx]
-                   for idx in range(constraint_matrices.shape[0])]
-    A = cp.Parameter((10, 10), symmetric=True)
-    prob = cp.Problem(cp.Minimize(cp.trace(A @ X)), constraints)
-    return CvxpyLayer(prob, parameters=[A], variables=[X])
-
-
-
 class RotMatSDPSolver(torch.nn.Module):
     def __init__(self):
         super(RotMatSDPSolver, self).__init__()
         
         X = cp.Variable((10, 10), PSD=True)
         constraint_matrices, c_vec = rotation_matrix_constraints()
+        constraint_matrices, c_vec = torch.from_numpy(constraint_matrices), torch.from_numpy(c_vec)
+        
         constraints = [cp.trace(constraint_matrices[idx, :, :] @ X) == c_vec[idx]
                     for idx in range(constraint_matrices.shape[0])]
         A = cp.Parameter((10, 10), symmetric=True)
