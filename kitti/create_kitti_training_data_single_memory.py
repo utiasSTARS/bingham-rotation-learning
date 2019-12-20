@@ -45,31 +45,26 @@ def compute_vo_pose_errors(tm, pose_deltas, seq, eval_type='train', add_reverse=
 
     for p_delta in pose_deltas:
 
-        if eval_type=='train':
-            pose_ids = range(len(tm.Twv_gt) - p_delta)
-        elif eval_type=='test':
-            pose_ids = range(0, len(tm.Twv_gt) - p_delta, p_delta)
-
-        coin_flip = np.random.rand(len(pose_ids)) > 1
-
+        pose_ids = range(len(tm.Twv_gt) - p_delta)
+    
         for i, p_idx in enumerate(pose_ids):
             T_21_gt = tm.Twv_gt[p_idx + p_delta].inv().dot(tm.Twv_gt[p_idx])
             T_21_est = tm.Twv_est[p_idx + p_delta].inv().dot(tm.Twv_est[p_idx])
 
-            turning_angle = np.linalg.norm(T_21_gt.rot.log())
-            if (turning_angle > min_turning_angle or coin_flip[i]) or eval_type == 'test':
+            turning_angle = np.linalg.norm(T_21_gt.rot.log())*(180./np.pi)
+            if (turning_angle > min_turning_angle):
                 T_21_gts.append(T_21_gt.as_matrix())
                 T_21_ests.append(T_21_est.as_matrix())
                 pair_pose_ids.append([p_idx, p_idx + p_delta])
                 seqs.append(seq)
 
-        if add_reverse and eval_type=='train':
+        if add_reverse:
             for i, p_idx in enumerate(pose_ids):
                 T_21_gt = tm.Twv_gt[p_idx].inv().dot(tm.Twv_gt[p_idx + p_delta])
                 T_21_est = tm.Twv_est[p_idx].inv().dot(tm.Twv_est[p_idx + p_delta])
 
-                turning_angle = np.linalg.norm(T_21_gt.rot.log())
-                if turning_angle > min_turning_angle or coin_flip[i]:
+                turning_angle = np.linalg.norm(T_21_gt.rot.log())*(180./np.pi)
+                if turning_angle > min_turning_angle: #or coin_flip[i]:
                     T_21_gts.append(T_21_gt.as_matrix())
                     T_21_ests.append(T_21_est.as_matrix())
                     pair_pose_ids.append([p_idx + p_delta, p_idx])
@@ -119,10 +114,10 @@ def main():
     #all_trials = ['00', '02', '05', '06']
     #all_trials = ['00', '01', '02', '04', '05', '06', '07', '08', '09', '10']
 
-    train_pose_deltas = [1] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
-    test_pose_delta = 1
+    train_pose_deltas = [2] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
+    test_pose_delta = 2
     add_reverse = True #Add reverse transformations
-    min_turning_angle = 0.0
+    min_turning_angle = 1.0 #Degrees
 
     #Where is the KITTI data?
 
@@ -159,7 +154,7 @@ def main():
         # (val_img_paths_rgb, val_corr, val_gt, val_est, val_tm_mat_file) = process_ground_truth([val_trial], tm_path, kitti_path, [test_pose_delta], 'test', add_reverse)
         # print('Processed {} validation image quads.'.format(len(val_corr)))
 
-        (test_pose_ids, test_sequences, test_T_21_gt, test_T_21_est, test_tm_mat_files) = process_ground_truth([test_trial], tm_path, [test_pose_delta], 'test', add_reverse)
+        (test_pose_ids, test_sequences, test_T_21_gt, test_T_21_est, test_tm_mat_files) = process_ground_truth([test_trial], tm_path, [test_pose_delta], 'test', add_reverse, min_turning_angle)
         print('Processed {} test poses.'.format(len(test_T_21_gt)))
 
         #Save the data!
@@ -180,7 +175,7 @@ def main():
         kitti_data['test_tm_mat_paths'] = test_tm_mat_files
         kitti_data['test_pose_delta'] = test_pose_delta
 
-        data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_{}_delta_{}_reverse_{}_minta_{}.pickle'.format(test_trial, test_pose_delta, add_reverse, min_turning_angle))
+        data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_{}_delta_{}_reverse_{}_min_turn_{:.1F}.pickle'.format(test_trial, test_pose_delta, add_reverse, min_turning_angle))
         #data_filename = os.path.join(data_path, 'kitti_singlefile_data_sequence_0910_delta_{}_reverse_{}.pickle'.format(test_pose_delta, add_reverse))
 
         print('Saving to {} ....'.format(data_filename))
