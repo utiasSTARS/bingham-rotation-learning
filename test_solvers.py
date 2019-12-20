@@ -108,10 +108,10 @@ def test_rotmat_wahba():
 #Creates num 55x55 A matrices and associated rotation matrices C
 #Based on the point-to-point rotation matrix wahba formulation
 def create_wahba_As(N=10):
-    A = torch.zeros(num, 10, 10, dtype=torch.double)
-    C = torch.empty(num ,3, 3, dtype=torch.double)
+    A = torch.zeros(N, 10, 10, dtype=torch.double)
+    C = torch.empty(N ,3, 3, dtype=torch.double)
     N_points = 100
-    for n in range(num):
+    for n in range(N):
         sigma = 0.
         C_n = SO3.exp(np.random.randn(3)).as_matrix()
         C[n] = torch.from_numpy(C_n)
