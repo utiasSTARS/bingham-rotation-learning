@@ -13,6 +13,33 @@ def make_rotation_matrix_sdp_layer():
     prob = cp.Problem(cp.Minimize(cp.trace(A @ X)), constraints)
     return CvxpyLayer(prob, parameters=[A], variables=[X])
 
+
+class RankOneHomogeneousMatrixExtractor(torch.autograd.Function):
+    """
+    Differentiable Rank-1 matrix extractor
+    Input: BxNxN symmetric rank-1 tensor 'X'
+    Output: BxN tensor 'x' s.t. X = x*x.T (outer product)
+    """
+
+    @staticmethod
+    def forward(ctx, X):
+        if X.dim() < 3:
+            X = X.unsqueeze()
+        eigvals, eigvecs = torch.symeig(X)
+        nu_min, eigval_argmin = torch.min(eigvals, 1)  # , keepdim=False, out=None)
+        x = eigvecs[torch.arange(X.shape[0]), :, eigval_argmin]
+        x = x / (torch.sign(x[:, -1]).unsqueeze(1))
+        ctx.save_for_backward(x, eigvals)
+
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        A, q, nu = ctx.saved_tensors
+        grad_qcqp = compute_grad_fast(A, nu, q)
+        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
+        return outgrad
+
 if __name__ == '__main__':
 
     # Sample code
