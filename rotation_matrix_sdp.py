@@ -135,9 +135,13 @@ def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=F
     return nu.value, R
 
 
-def check_KKT(cost_matrix, constraint_matrices, x, nu):
+def check_KKT(cost_matrix, constraint_matrices, x, nu, trunc=0):
     grad = cost_matrix.dot(x)
-    for idx in range(constraint_matrices.shape[0]):
+    if trunc == 0:
+        range_max = constraint_matrices.shape[0]
+    else:
+        range_max = trunc
+    for idx in range(range_max):
         grad = grad + nu[idx]*constraint_matrices[idx, :, :].dot(x)
     # gradient should be zero
     return grad
@@ -170,7 +174,7 @@ if __name__=='__main__':
     orth_check = np.zeros(n)
     right_handed_check = np.zeros(n)
     kkt_check = np.zeros(n)
-
+    kkt_check_trunc7 = np.zeros(n)
     start = time.time()
     pbar = tqdm.tqdm(total=n)
 
@@ -184,6 +188,7 @@ if __name__=='__main__':
         r_homog = np.vstack((r_homog, 1))
         primal_cost = np.dot(r_homog.T, np.dot(cost_matrix, r_homog))
         kkt_check[idx] = np.max(np.abs(check_KKT(cost_matrix, constraint_matrices, r_homog, nu)))
+        kkt_check_trunc7[idx] = np.max(np.abs(check_KKT(cost_matrix, constraint_matrices, r_homog, nu, trunc=7)))
         # print("Second eigenvalue: ")
         # Z_eigs = np.linalg.eigvals(Z)
         # print(Z_eigs[1])
@@ -219,6 +224,9 @@ if __name__=='__main__':
 
     print("Max KKT violation: ")
     print(np.max(kkt_check))
+
+    print("Max truncated KKT violation: ")
+    print(np.max(kkt_check_trunc7))
 
     total_time = time.time() - start
     pbar.close()
