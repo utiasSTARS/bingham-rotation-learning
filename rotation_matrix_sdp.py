@@ -131,10 +131,10 @@ def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=F
     r = r[0:9]/r[9]
     R = np.reshape(r, (3, 3), order='F')
     return nu.value, R
-
+    
 if __name__=='__main__':
 
-    n = 1000
+    n = 100
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
     # R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
