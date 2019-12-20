@@ -428,7 +428,7 @@ def compute_rotation_QCQP_grad(A, E, nu, x):
     I_ij[:, i, idx[0], idx[1]] = 1.
     I_ij[:, i, idx[1], idx[0]] = 1.
     # I_ij = I_ij.expand(A.shape[0], 55, 10, 10)
-    X = np.zeros((A.shape[0], 10, 55))
+    X = np.zeros((A.shape[0], 10+22, 55))
     for idx in range(A.shape[0]):
         for jdx in range(55):
             b[idx, :10, jdx] = I_ij[idx, jdx, :, :].dot(x[idx, :])
