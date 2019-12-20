@@ -2,8 +2,8 @@ import cvxpy as cp
 import torch
 from cvxpylayers.torch import CvxpyLayer
 from rotation_matrix_sdp import rotation_matrix_constraints
-
-
+from convex_layers import *
+import time
 def make_rotation_matrix_sdp_layer():
     X = cp.Variable((10, 10), PSD=True)
     constraint_matrices, c_vec = rotation_matrix_constraints()
@@ -62,5 +62,28 @@ if __name__ == '__main__':
     #
     # # compute the gradient of the sum of the solution with respect to A, b
     # solution.sum().backward()
-
+    
+    num_samples = 1000
     sdp_rot_layer = make_rotation_matrix_sdp_layer()
+    A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
+    A =  convert_Avec_to_A(A_vec)
+
+    start = time.time()
+    Cmat = sdp_rot_layer(A)
+    print('Solved {} SDPs in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
+
+
+    start = time.time()
+    r = HomogeneousRotationQCQPFastSolver.apply(A_vec)
+    print('Solved {} SDPs in {:.3F} sec using custom solver.'.format(num_samples, time.time() - start))
+
+
+    qcqp_solver = QuadQuatFastSolver.apply
+    A_vec = torch.randn((num_samples, 10), dtype=torch.double, requires_grad=True)
+
+    start = time.time()
+    q = qcqp_solver(A_vec)
+    print('Solved {} Quat QCQPs in {:.3F} sec.'.format(num_samples, time.time() - start))
+
+
+
