@@ -3,6 +3,7 @@ import torch
 from utils import *
 import numpy as np
 from liegroups.torch import SO3
+from sdp_layers import x_from_xxT
 
 def test_rotmat_quat_conversions():
     print('Rotation matrix to quaternion conversions...')
@@ -23,7 +24,15 @@ def test_rot_angles():
     assert(allclose(angles_1, angles_3))
     print('All passed.')
 
+def test_xxT():
+    print('Testing x_from_xxT...')
+    x = torch.randn(100, 10, dtype=torch.double)
+    x[:,-1] = 1.
+    X = outer(x, x)
+    assert(allclose(x, x_from_xxT(X)))
+    print('All passed.')
+
 if __name__=='__main__':
     test_rotmat_quat_conversions()
     test_rot_angles()
-    
+    test_xxT()
