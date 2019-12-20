@@ -36,6 +36,11 @@ def test_rotmat_sdp_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2)
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
     A_vec = convert_Avec_to_Avec_psd(A_vec)
     A_vec = normalize_Avec(A_vec)
+
+    # A, _ = create_wahba_As(num_samples)
+    # A_vec = convert_A_to_Avec(A)
+    # A_vec.requires_grad = True
+
     input = (A_vec,)
     grad_test = gradcheck(sdp_solver, input, eps=eps, atol=tol)
     assert (grad_test == True)
@@ -132,7 +137,7 @@ def create_wahba_As(N=10):
 def test_rotmat_sdp_wahba():
     N = 1000
     print('Checking accuracy of SDP rotmat solver with {} datasets.'.format(N))
-    A, C = create_wahba_As(100)
+    A, C = create_wahba_As(N)
     sdp_solver = RotMatSDPSolver()
     A_vec = convert_A_to_Avec(A)
 
@@ -209,5 +214,5 @@ if __name__=='__main__':
     #test_rotmat_wahba()
     # print("=============")
     # test_rotmat_pytorch_analytic_gradient()
-    # print("=============")
+    #print("=============")
     #test_rotmat_sdp_pytorch_analytic_gradient()
