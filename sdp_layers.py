@@ -79,6 +79,7 @@ def compare_solver_time():
 
 if __name__ == '__main__':
 
+    #compare_solver_time()
     num_samples = 1000
     sdp_rot_solver = RotMatSDPSolver()
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
