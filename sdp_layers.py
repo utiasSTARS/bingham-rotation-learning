@@ -82,7 +82,7 @@ if __name__ == '__main__':
     num_samples = 1000
     sdp_rot_solver = RotMatSDPSolver()
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
-    #A_vec = convert_Avec_to_Avec_psd(A_vec)
+    A_vec = convert_Avec_to_Avec_psd(A_vec)
 
     start = time.time()
     rotmat = sdp_rot_solver(A_vec)
