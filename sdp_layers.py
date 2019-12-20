@@ -46,13 +46,13 @@ class RotMatSDPSolver(torch.nn.Module):
         return rotmat.squeeze()
 
 
-if __name__ == '__main__':
-
-    num_samples = 100
+def compare_solver_time():
+    num_samples = 1000
     sdp_rot_solver = RotMatSDPSolver()
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
     start = time.time()
     rotmat = sdp_rot_solver(A_vec)
+    rotmat.sum().backward()
     print('Solved {} SDPs in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
 
 
@@ -70,5 +70,16 @@ if __name__ == '__main__':
     q = qcqp_solver(A_vec)
     print('Solved {} Quat QCQPs in {:.3F} sec.'.format(num_samples, time.time() - start))
 
+if __name__ == '__main__':
 
+    num_samples = 1000
+    sdp_rot_solver = RotMatSDPSolver()
+    A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
+    #A_vec = convert_Avec_to_Avec_psd(A_vec)
+
+    start = time.time()
+    rotmat = sdp_rot_solver(A_vec)
+    print('Solved {} SDPs in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
+
+    rotmat.sum().backward()
 
