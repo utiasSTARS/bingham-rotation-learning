@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--optical_flow', action='store_true', default=False)
     parser.add_argument('--batchnorm', action='store_true', default=False)
     
+    parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
@@ -51,7 +52,9 @@ def main():
 
     seq_prefix = 'seq_'
 
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+    #kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_1.0.pickle'.format(args.seq)
+    
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=True)
@@ -64,7 +67,7 @@ def main():
 
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
-        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=True, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model_sym = QuatFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
