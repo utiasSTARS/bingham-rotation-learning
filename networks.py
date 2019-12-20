@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from convex_layers import *
 from utils import sixdim_to_rotmat
 import torchvision
+from sdp_layers import RotMatSDPSolver
 
 
 class RotMat6DDirect(torch.nn.Module):
@@ -137,6 +138,23 @@ class RotMat6DFlowNet(torch.nn.Module):
     def forward(self, x):
         vecs = self.net(x)
         C = sixdim_to_rotmat(vecs)
+        return C
+
+class RotMatSDPFlowNet(torch.nn.Module):
+    def __init__(self, dim_in=2, enforce_psd=True, unit_frob_norm=True, batchnorm=True):
+        super(RotMatSDPFlowNet, self).__init__()        
+        self.net = BasicCNN(dim_in=dim_in, dim_out=55, normalize_output=False, batchnorm=batchnorm)
+        self.sdp_solver = RotMatSDPSolver()
+        self.enforce_psd = enforce_psd
+        self.unit_frob_norm = unit_frob_norm
+
+    def forward(self, x):
+        A_vec = self.net(x)
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        C = self.sdp_solver(A_vec)
         return C
 
 class QuatFlowNet(torch.nn.Module):
