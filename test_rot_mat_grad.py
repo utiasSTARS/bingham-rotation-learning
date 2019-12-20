@@ -26,7 +26,7 @@ def test_einsums():
     mu = torch.from_numpy(mu)
     x = torch.from_numpy(x)
     print(E)
-    print(mu)
+    # print(mu)
     print(x)
 
     print("E and mu: ")
@@ -35,8 +35,10 @@ def test_einsums():
     M2 = torch.einsum('bi,imn->bmn', mu, E)
     print(M2)
     print("E and x: ")
-    B = torch.einsum('mij,bj->bim', E, x)
-    print(B)
+    #B = torch.einsum('mij,bj->bim', E, x)
+    B = torch.einsum('mij,bj->mib', E, x)
+    
+    print(B.transpose(0,2))
 
 if __name__ == '__main__':
 

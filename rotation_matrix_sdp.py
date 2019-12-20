@@ -145,7 +145,7 @@ def check_KKT(cost_matrix, constraint_matrices, x, nu):
 
 if __name__=='__main__':
 
-    n = 1000
+    n = 100
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
     # R = np.array([[0, -1, 0], [1, 0, 0], [0, 0, 1]])
