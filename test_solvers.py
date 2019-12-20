@@ -118,7 +118,7 @@ def create_wahba_As(N=10):
     N_points = 100
     for n in range(N):
         sigma = 0.
-        C_n = SO3.exp(np.random.randn(3)).as_matrix()
+        C_n = SO3.exp(np.random.rand(3)).as_matrix()
         C[n] = torch.from_numpy(C_n)
         #Create two sets of vectors (normalized to unit l2 norm)
         x_1 = normalized(np.random.randn(N_points, 3), axis=1)
@@ -135,9 +135,15 @@ def create_wahba_As(N=10):
     return A, C
 
 def test_rotmat_sdp_wahba():
-    N = 1000
+    N = 10
     print('Checking accuracy of SDP rotmat solver with {} datasets.'.format(N))
     A, C = create_wahba_As(N)
+
+    # from matplotlib import pyplot as plt
+    # print(np.unique(A[0].numpy()))
+    # plt.imshow(A[0].numpy(), cmap='gray')
+    # plt.colorbar()
+    # plt.show()
     sdp_solver = RotMatSDPSolver()
     A_vec = convert_A_to_Avec(A)
 
