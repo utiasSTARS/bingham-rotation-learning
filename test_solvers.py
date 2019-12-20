@@ -105,7 +105,9 @@ def test_rotmat_wahba():
     print('Angle difference: {:.3E} deg'.format(rotmat_angle_diff(torch.from_numpy(C), torch.from_numpy(C_solve), units='deg').item()))
 
 
-def create_wahba_As(num=10):
+#Creates num 55x55 A matrices and associated rotation matrices C
+#Based on the point-to-point rotation matrix wahba formulation
+def create_wahba_As(N=10):
     A = torch.zeros(num, 10, 10, dtype=torch.double)
     C = torch.empty(num ,3, 3, dtype=torch.double)
     N_points = 100
@@ -125,7 +127,6 @@ def create_wahba_As(num=10):
             mat[:,:9] = np.kron(x_1[i], np.eye(3))
             mat[:,9] = -x_2[i]
             A[n] += torch.from_numpy(mat.T.dot(mat))
-    
     return A, C
 
 def test_rotmat_sdp_wahba():
