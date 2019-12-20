@@ -6,6 +6,7 @@ from convex_layers import *
 from quaternions import *
 from helpers_sim import *
 import os
+from sdp_layers import RotMatSDPSolver
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
@@ -22,6 +23,16 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
 def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
     print('Checking PyTorch rotmat gradients (random A, batch_size: {})'.format(num_samples))
     qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
+    A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
+    #A_vec = convert_Avec_to_Avec_psd(A_vec)
+    input = (A_vec,)
+    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    assert (grad_test == True)
+    print('Batch...Passed.')
+
+def test_rotmat_sdp_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
+    print('Checking PyTorch / CVXPYLayers SDP solver gradients (random A, batch_size: {})'.format(num_samples))
+    qcqp_solver = RotMatSDPSolver()
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
     #A_vec = convert_Avec_to_Avec_psd(A_vec)
     input = (A_vec,)
@@ -163,5 +174,7 @@ if __name__=='__main__':
     # test_pytorch_manual_analytic_gradient()
 
     #test_rotmat_wahba()
+    # print("=============")
+    # test_rotmat_pytorch_analytic_gradient()
     print("=============")
-    test_rotmat_pytorch_analytic_gradient()
+    test_rotmat_sdp_pytorch_analytic_gradient()
