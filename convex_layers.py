@@ -70,34 +70,13 @@ class RotmatQCQPSolver(torch.nn.Module):
         super(RotmatQCQPSolver, self).__init__()
         constraint_matrices, c_vec = rotation_matrix_constraints()
         self.constraint_matrices = constraint_matrices
-        self.c_vec = constraint_matrices
+        self.c_vec = c_vec
 
     def forward(self, A):
         return HomogeneousRotationQCQPFastSolver.apply(A, self.constraint_matrices, self.c_vec)
 
 
 #=========================PYTORCH (FAST) SOLVER=========================
-class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
-    """
-
-    """
-    @staticmethod
-    def forward(ctx, A_vec):
-        if A_vec.dim() < 2:
-            A_vec = A_vec.unsqueeze()
-        A = convert_Avec_to_A(A_vec)
-        r, nu = solve_rotation_qcqp(A, CONSTRAINT_MATRICES, C_VEC)
-        ctx.save_for_backward(A, r, nu)
-        return r
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        A, r, nu = ctx.saved_tensors
-        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
-        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
-        return outgrad
-
-
 class QuadQuatFastSolver(torch.autograd.Function):
     """
     Differentiable QCQP solver
@@ -149,10 +128,38 @@ def solve_wahba_fast(A, compute_gap=False):
 
     return q_opt, nu_opt#, t_solve, gap
 
+def solve_rotation_qcqp(A, constraint_matrices, constraint_vec):
+    r_out = A.new_zeros((A.shape[0], 10))
+    nu_out = A.new_zeros((A.shape[0], 22))
+    for idx in range(A.shape[0]):
+        nu, R = solve_equality_QCQP_dual(A[idx, :, :], constraint_matrices, constraint_vec, is_torch=True)
+        r_out[idx, :] = torch.from_numpy(np.append(np.reshape(R, (9,), order='F'), 1.))
+        nu_out[idx, :] = torch.from_numpy(nu)
+    return r_out, nu_out
+
+class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
+    """
+    
+    """
+    @staticmethod
+    def forward(ctx, A_vec):
+        if A_vec.dim() < 2:
+            A_vec = A_vec.unsqueeze()
+        A = convert_Avec_to_A(A_vec)
+        r, nu = solve_rotation_qcqp(A, CONSTRAINT_MATRICES, C_VEC)
+        ctx.save_for_backward(A, r, nu)
+        return r
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        A, r, nu = ctx.saved_tensors
+        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
+        return outgrad
 
 def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     """
-    Input: A_vec: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
+    Input: A: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
            E: (22,10,10) tensor (quadratic symmetric equality constraint matrices)
            nu: (B,22) tensor (optimal lagrange multipliers)
            x: (B,10) tensor (optimal vectorized rotation matrices with homogenizing 10th entry of 1)
@@ -176,7 +183,8 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     #     B[:, :, 10*idx:10*(idx+1)] = torch.matmul(E[:, idx, :, :], x[:, :, None])
     B = torch.einsum('mij,bj->bim', E, x)
     M[:, :10, 10:] = B
-    M[:, 10:, :10] = torch.transpose(B, 1, 2)
+    M[:, 10:, :10] = B.transpose(1, 2)
+    
     b = A.new_zeros((A.shape[0], 10+22, 55))
     # symmetric matrix indices
     idx = torch.triu_indices(10, 10)
@@ -193,7 +201,9 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
 
     # This solves all gradients simultaneously!
     X, _ = torch.solve(b, M)
+
     grad = -1 * X[:, :10, :]
+
     return grad
 
 def compute_grad_fast(A, nu, q):
@@ -378,11 +388,4 @@ def q_from_qqT(qqT):
     return q
 
 
-def solve_rotation_qcqp(A, constraint_matrices, constraint_vec):
-    r_out = A.new_zeros((A.shape[0], 10))
-    nu_out = A.new_zeros((A.shape[0], 22))
-    for idx in range(A.shape[0]):
-        nu, R = solve_equality_QCQP_dual(A[idx, :, :], constraint_matrices, constraint_vec, is_torch=True)
-        r_out[idx, :] = torch.from_numpy(np.append(np.reshape(R, (9,), order='F'), 1))
-        nu_out[idx, :] = torch.from_numpy(nu)
-    return r_out, nu_out
+

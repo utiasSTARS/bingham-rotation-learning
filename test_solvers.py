@@ -4,7 +4,7 @@ import numpy as np
 from liegroups.numpy import SO3
 from convex_layers import *
 from quaternions import *
-from sim_helpers import *
+from helpers_sim import *
 import os
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -21,10 +21,10 @@ def test_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=3):
 
 def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
     print('Checking PyTorch rotmat gradients (random A, batch_size: {})'.format(num_samples))
-    # qcqp_solver = RotmatQCQPSolver.apply
     qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
-    A = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
-    input = (A,)
+    A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
+    #A_vec = convert_Avec_to_Avec_psd(A_vec)
+    input = (A_vec,)
     grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
     assert (grad_test == True)
     print('Batch...Passed.')
@@ -63,36 +63,34 @@ def test_compare_fast_and_slow_solvers(eps=1e-6, tol=1e-4, num_samples=5):
     # print(q_out)
     # print(q_out_fast)
 
-# TODO: Figure out why this doesn't work (I think the symmetric perturbation is incorrect)
-# def test_pytorch_manual_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=1):
-#     A = torch.randn((num_samples, 4, 4), dtype=torch.double, requires_grad=False)
-#     A = 0.5*(A.transpose(1, 2) + A)
-#     q_opt, nu_opt, _, _ = solve_wahba_fast(A)
+def test_rotmat_wahba():
+    print('Checking accuracy of QCQP rotmat solver')
+    N = 1000
+    sigma = 0.
+    C = SO3.exp(np.random.randn(3)).as_matrix()
+    #Create two sets of vectors (normalized to unit l2 norm)
+    x_1 = normalized(np.random.randn(N, 3), axis=1)
+    #Rotate and add noise
+    noise = np.random.randn(N,3)
+    noise = (noise.T*sigma).T
+    x_2 = C.dot(x_1.T).T + noise
 
-#     for i in range(num_samples):
-#         G_numerical = numerical_grad_fast(A[i], eps)
-#         G_analytic = torch.from_numpy(compute_grad(A[i].detach().numpy(), nu_opt[i].detach().numpy(), q_opt[i].detach().numpy()))
-        
-#         rel_diff = matrix_diff(G_analytic.numpy(), G_numerical.numpy())
+    A = np.zeros((10,10))
+    for i in range(N):
+        mat = np.zeros((3,10))
+        mat[:,:9] = np.kron(x_1[i], np.eye(3))
+        mat[:,9] = -x_2[i]
+        A += mat.T.dot(mat)
 
-#         print(G_numerical - G_analytic)
-#         assert(rel_diff < tol)
-#         print('Sample {}/{}...Passed.'.format(i+1, num_samples))
 
-# def numerical_grad_fast(A, eps):
-#     if A.dim() < 3:
-#         A = A.unsqueeze(0)
+    constraint_matrices, c_vec = rotation_matrix_constraints()
+    _, C_solve = solve_equality_QCQP_dual(A, constraint_matrices, c_vec)
+    print('Ground truth:')
+    print(C)
+    print('Solved:')
+    print(C_solve)
+    print('Angle difference: {:.3E} deg'.format(rotmat_angle_diff(torch.from_numpy(C), torch.from_numpy(C_solve), units='deg').item()))
 
-#     G_numerical = torch.zeros((4, 4, 4))
-#     for i in range(4):
-#         for j in range(4):
-#             dA_ij = torch.zeros((1,4,4))
-#             dA_ij[0,i,j] = eps
-#             dA_ij[0,j,i] = eps
-#             q_plus,_,_,_ =  solve_wahba_fast(A+dA_ij)
-#             q_minus,_,_,_ =  solve_wahba_fast(A-dA_ij)
-#             G_numerical[:,i,j] = (q_plus.squeeze() - q_minus.squeeze())/(2.*eps)
-#     return G_numerical
 
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
@@ -156,5 +154,6 @@ if __name__=='__main__':
     # print("=============")
     # test_pytorch_manual_analytic_gradient()
 
+    test_rotmat_wahba()
     print("=============")
     test_rotmat_pytorch_analytic_gradient()
