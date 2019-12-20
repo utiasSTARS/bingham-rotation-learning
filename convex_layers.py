@@ -197,18 +197,19 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     assert(x.dim() > 1)
 
     # Remove redundant/SO(3) constraints
-    M = A.new_zeros((A.shape[0], 10 + 7, 10 + 7))
+    num_constraints = 7
+    M = A.new_zeros((A.shape[0], 10 + num_constraints, 10 + num_constraints))
 
     # TODO: are all 22 E's needed, or just the 7 of interest? Should be all 22 for KKT definitino
     M[:, :10, :10] = A + torch.einsum('bi,imn->bmn', nu, E)
-    B = torch.einsum('mij,bj->bim', E[:7, :, :], x)
+    B = torch.einsum('mij,bj->bim', E[:num_constraints, :, :], x)
     M[:, :10, 10:] = B
     M[:, 10:, :10] = B.transpose(1, 2)
 
     # Eig check
     eigs, _ = torch.symeig(M)
 
-    b = A.new_zeros((A.shape[0], 10+7, 55))
+    b = A.new_zeros((A.shape[0], 10+num_constraints, 55))
     # symmetric matrix indices
     idx = torch.triu_indices(10, 10)
 

@@ -85,6 +85,14 @@ def test_rotmat_wahba():
 
     constraint_matrices, c_vec = rotation_matrix_constraints()
     _, C_solve = solve_equality_QCQP_dual(A, constraint_matrices, c_vec)
+
+
+    qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
+    A_vec = convert_A_to_Avec(torch.from_numpy(A).expand(2, 10, 10))
+    A_vec.requires_grad = True
+    input = (A_vec,)
+    grad_test = gradcheck(qcqp_solver, input, eps=1e-6, atol=1e-4)
+
     print('Ground truth:')
     print(C)
     print('Solved:')
@@ -154,6 +162,6 @@ if __name__=='__main__':
     # print("=============")
     # test_pytorch_manual_analytic_gradient()
 
-    test_rotmat_wahba()
+    #test_rotmat_wahba()
     print("=============")
     test_rotmat_pytorch_analytic_gradient()
