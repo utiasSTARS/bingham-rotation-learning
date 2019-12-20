@@ -9,7 +9,7 @@ from quaternions import *
 
 def x_from_xxT(xxT):
     """
-    Input: BxNxN symmetric rank 1 tensor \
+    Input: BxNxN symmetric rank 1 tensor 
     Output: BxN tensor x s.t. xxT = x*x.T (outer product), assumes last element must be positive to resolve sign ambiguities
     """
 
@@ -36,12 +36,19 @@ class RotMatSDPSolver(torch.nn.Module):
         self.sdp_solver = CvxpyLayer(prob, parameters=[A], variables=[X])
     
     def forward(self, A_vec):
+        
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze(dim=0)
 
         A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
-        r_vec = x_from_xxT(X)[:, :9]
+
+        x = x_from_xxT(X)
+
+        if x.dim() < 2:
+            x = x.unsqueeze(dim=0)
+
+        r_vec = x[:, :9]
         rotmat = r_vec.view(-1, 3,3).transpose(1,2)
         return rotmat.squeeze()
 
