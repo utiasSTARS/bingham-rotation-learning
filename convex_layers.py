@@ -93,8 +93,8 @@ class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         A, r, nu = ctx.saved_tensors
-        # grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
-        grad_qcqp = compute_rotation_QCQP_grad(A, CONSTRAINT_MATRICES, nu, r)
+        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+        # grad_qcqp = compute_rotation_QCQP_grad(A, CONSTRAINT_MATRICES, nu, r)
         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
         return outgrad
 
@@ -168,17 +168,19 @@ def compute_rotation_QCQP_grad_fast(A, E, nu, x):
     assert(nu.dim() > 1)
     assert(x.dim() > 1)
 
-    M = A.new_zeros((A.shape[0], 10 + 22, 10 + 22))
-    # TODO: check this expansion
+    # Remove redundant/SO(3) constraints
+    M = A.new_zeros((A.shape[0], 10 + 7, 10 + 7))
+
+    # TODO: are all 22 E's needed, or just the 7 of interest? Should be all 22 for KKT definitino
     M[:, :10, :10] = A + torch.einsum('bi,imn->bmn', nu, E)
-    # TODO: figure out how to do the batch concatenation and matrix multiplication
-    # B = A.new_zeros((A.shape[0], 10, 22))
-    # for idx in range(22):
-    #     B[:, :, 10*idx:10*(idx+1)] = torch.matmul(E[:, idx, :, :], x[:, :, None])
-    B = torch.einsum('mij,bj->bim', E, x)
+    B = torch.einsum('mij,bj->bim', E[:7, :, :], x)
     M[:, :10, 10:] = B
     M[:, 10:, :10] = torch.transpose(B, 1, 2)
-    b = A.new_zeros((A.shape[0], 10+22, 55))
+
+    # Eig check
+    eigs, _ = torch.symeig(M)
+
+    b = A.new_zeros((A.shape[0], 10+7, 55))
     # symmetric matrix indices
     idx = torch.triu_indices(10, 10)
 
@@ -411,7 +413,7 @@ def compute_rotation_QCQP_grad(A, E, nu, x):
     nu = nu.detach().numpy()
     x = x.detach().numpy()
 
-    M = np.zeros((A.shape[0], 10 + 22, 10 + 22))
+    M = np.zeros((A.shape[0], 10 + 7, 10 + 7))
     for idx in range(M.shape[0]):
         M[idx, :10, :10] = A[idx, :, :] #+ torch.einsum('bi,imn->bmn', nu, E)
         for jdx in range(E.shape[0]):
@@ -420,18 +422,20 @@ def compute_rotation_QCQP_grad(A, E, nu, x):
             M[idx, :10, 10+jdx] = B
             M[idx, 10+jdx, :10] = B.T
 
-    b = np.zeros((A.shape[0], 10+22, 55))
+    e1 = np.min(np.abs(np.linalg.eigvals(M[0, :, :])))
+    e2 = np.min(np.abs(np.linalg.eigvals(M[1, :, :])))
+    b = np.zeros((A.shape[0], 10+7, 55))
     # symmetric matrix indices
-    idx = np.triu_indices(10)
+    inds = np.triu_indices(10)
     i = np.arange(55)
-    I_ij = np.zeros((A.shape[0], 55, 10, 10))
-    I_ij[:, i, idx[0], idx[1]] = 1.
-    I_ij[:, i, idx[1], idx[0]] = 1.
+    I_ij = np.zeros((55, 10, 10))
+    I_ij[i, inds[0], inds[1]] = 1.
+    I_ij[i, inds[1], inds[0]] = 1.
     # I_ij = I_ij.expand(A.shape[0], 55, 10, 10)
-    X = np.zeros((A.shape[0], 10+22, 55))
+    X = np.zeros((A.shape[0], 10+7, 55))
     for idx in range(A.shape[0]):
         for jdx in range(55):
-            b[idx, :10, jdx] = I_ij[idx, jdx, :, :].dot(x[idx, :])
+            b[idx, :10, jdx] = I_ij[jdx, :, :].dot(x[idx, :])
             X[idx, :, jdx] = np.linalg.solve(M[idx, :, :], b[idx, :, jdx])
 
     # b[:, :10, :] = torch.einsum('bkij,bi->bjk', I_ij, x)
