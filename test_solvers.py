@@ -32,11 +32,11 @@ def test_rotmat_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
 
 def test_rotmat_sdp_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2):
     print('Checking PyTorch / CVXPYLayers SDP solver gradients (random A, batch_size: {})'.format(num_samples))
-    qcqp_solver = RotMatSDPSolver()
+    sdp_solver = RotMatSDPSolver()
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
-    #A_vec = convert_Avec_to_Avec_psd(A_vec)
+    A_vec = convert_Avec_to_Avec_psd(A_vec)
     input = (A_vec,)
-    grad_test = gradcheck(qcqp_solver, input, eps=eps, atol=tol)
+    grad_test = gradcheck(sdp_solver, input, eps=eps, atol=tol)
     assert (grad_test == True)
     print('Batch...Passed.')
 
@@ -176,5 +176,5 @@ if __name__=='__main__':
     #test_rotmat_wahba()
     # print("=============")
     # test_rotmat_pytorch_analytic_gradient()
-    print("=============")
+    # print("=============")
     test_rotmat_sdp_pytorch_analytic_gradient()

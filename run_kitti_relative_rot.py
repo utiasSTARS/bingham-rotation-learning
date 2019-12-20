@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
-    parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
+    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', '6D', 'quat'], default='A_sym')
 
     #Randomly select within this range
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -71,6 +71,14 @@ def main():
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
+        (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+
+    elif args.model == 'A_sym_rot':
+        print('==============Using A (Sym) MODEL====================')
+        model_sym = RotMatSDPFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = True
+        valid_loader.dataset.rotmat_targets = True
+        loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
     elif args.model == '6D':
