@@ -92,6 +92,7 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
     return constraint_matrices, np.array(c)
 
 
+# PyTorch tensors for fast backprop
 CONSTRAINT_MATRICES, C_VEC = rotation_matrix_constraints()
 CONSTRAINT_MATRICES = from_numpy(CONSTRAINT_MATRICES)
 C_VEC = from_numpy(C_VEC)
@@ -108,6 +109,7 @@ def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
     vals, vecs = np.linalg.eig(Z.value)
     R = np.reshape(vecs[0:9, 0]/vecs[-1, 0], (3,3), order='F')
     return Z.value, R, prob.solution.opt_val
+
 
 def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=False):
     if is_torch:
@@ -131,6 +133,15 @@ def solve_equality_QCQP_dual(cost_matrix, constraint_matrices, c_vec, is_torch=F
     r = r[0:9]/r[9]
     R = np.reshape(r, (3, 3), order='F')
     return nu.value, R
+
+
+def check_KKT(cost_matrix, constraint_matrices, x, nu):
+    grad = cost_matrix.dot(x)
+    for idx in range(constraint_matrices.shape[0]):
+        grad = grad + nu[idx]*constraint_matrices[idx, :, :].dot(x)
+    # gradient should be zero
+    return grad
+
 
 if __name__=='__main__':
 
@@ -158,6 +169,7 @@ if __name__=='__main__':
     dual_check = np.zeros(n)
     orth_check = np.zeros(n)
     right_handed_check = np.zeros(n)
+    kkt_check = np.zeros(n)
 
     start = time.time()
     pbar = tqdm.tqdm(total=n)
@@ -171,6 +183,7 @@ if __name__=='__main__':
         r_homog = np.reshape(R, (9, 1), order='F')
         r_homog = np.vstack((r_homog, 1))
         primal_cost = np.dot(r_homog.T, np.dot(cost_matrix, r_homog))
+        kkt_check[idx] = np.max(np.abs(check_KKT(cost_matrix, constraint_matrices, r_homog, nu)))
         # print("Second eigenvalue: ")
         # Z_eigs = np.linalg.eigvals(Z)
         # print(Z_eigs[1])
@@ -203,6 +216,9 @@ if __name__=='__main__':
 
     print("Max dual/SDP deviation: ")
     print(np.max(np.abs(dual_check)))
+
+    print("Max KKT violation: ")
+    print(np.max(kkt_check))
 
     total_time = time.time() - start
     pbar.close()

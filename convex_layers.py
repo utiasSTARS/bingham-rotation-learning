@@ -93,7 +93,8 @@ class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         A, r, nu = ctx.saved_tensors
-        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+        # grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+        grad_qcqp = compute_rotation_QCQP_grad(A, CONSTRAINT_MATRICES, nu, r)
         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
         return outgrad
 
@@ -386,3 +387,55 @@ def solve_rotation_qcqp(A, constraint_matrices, constraint_vec):
         r_out[idx, :] = torch.from_numpy(np.append(np.reshape(R, (9,), order='F'), 1))
         nu_out[idx, :] = torch.from_numpy(nu)
     return r_out, nu_out
+
+
+def compute_rotation_QCQP_grad(A, E, nu, x):
+    """
+    Input: A_vec: (B,10,10) tensor (parametrices B symmetric 4x4 matrices)
+           E: (22,10,10) tensor (quadratic symmetric equality constraint matrices)
+           nu: (B,22) tensor (optimal lagrange multipliers)
+           x: (B,10) tensor (optimal vectorized rotation matrices with homogenizing 10th entry of 1)
+
+    Output: grad: (B, 10, 55) tensor (gradient)
+
+    Applies the implicit function theorem to compute gradients of the solution to an equality-constrained
+    homogeneous rotation matrix QCQP.
+    """
+    assert(A.dim() > 2)
+    assert(E.dim() > 2)
+    assert(nu.dim() > 1)
+    assert(x.dim() > 1)
+
+    A = A.detach().numpy()
+    E = E.numpy()
+    nu = nu.detach().numpy()
+    x = x.detach().numpy()
+
+    M = np.zeros((A.shape[0], 10 + 22, 10 + 22))
+    for idx in range(M.shape[0]):
+        M[idx, :10, :10] = A[idx, :, :] #+ torch.einsum('bi,imn->bmn', nu, E)
+        for jdx in range(E.shape[0]):
+            M[idx, :10, :10] = M[idx, :10, :10] + nu[idx, jdx]*E[jdx, :, :]
+            B = E[jdx, :, :].dot(x[idx, :])
+            M[idx, :10, 10+jdx] = B
+            M[idx, 10+jdx, :10] = B.T
+
+    b = np.zeros((A.shape[0], 10+22, 55))
+    # symmetric matrix indices
+    idx = np.triu_indices(10)
+    i = np.arange(55)
+    I_ij = np.zeros((A.shape[0], 55, 10, 10))
+    I_ij[:, i, idx[0], idx[1]] = 1.
+    I_ij[:, i, idx[1], idx[0]] = 1.
+    # I_ij = I_ij.expand(A.shape[0], 55, 10, 10)
+    X = np.zeros((A.shape[0], 10, 55))
+    for idx in range(A.shape[0]):
+        for jdx in range(55):
+            b[idx, :10, jdx] = I_ij[idx, jdx, :, :].dot(x[idx, :])
+            X[idx, :, jdx] = np.linalg.solve(M[idx, :, :], b[idx, :, jdx])
+
+    # b[:, :10, :] = torch.einsum('bkij,bi->bjk', I_ij, x)
+    # This solves all gradients simultaneously!
+    # X, _ = torch.solve(b, M)
+    grad = -1 * X[:, :10, :]
+    return torch.from_numpy(grad)
