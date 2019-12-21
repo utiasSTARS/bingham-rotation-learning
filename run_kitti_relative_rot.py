@@ -74,7 +74,7 @@ def main():
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
     elif args.model == 'A_sym_rot_16':
-        print('==============Using A (Sym) RotMat MODEL====================')
+        print('==============Using A (Sym 16) RotMat MODEL====================')
         model_sym = RotMatSDPFlowNet(dim_rep=16, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
