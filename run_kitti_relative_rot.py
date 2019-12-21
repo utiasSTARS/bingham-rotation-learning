@@ -75,7 +75,7 @@ def main():
 
     elif args.model == 'A_sym_rot':
         print('==============Using A (Sym) RotMat MODEL====================')
-        model_sym = RotMatSDPFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model_sym = RotMatSDPFlowNet(enforce_psd=True, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
