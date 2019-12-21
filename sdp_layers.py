@@ -22,6 +22,43 @@ def x_from_xxT(xxT):
     x = x * signs
     return x.squeeze()
 
+def kronecker(A, B):
+
+    assert(A.dim() == B.dim())
+    assert(A.dim() > 1)
+    if A.dim() < 3:
+        A = A.unsqueeze(dim=0)
+        B = B.unsqueeze(dim=0)
+    assert(A.shape[0] == B.shape[0])
+
+    return torch.einsum("nab,ncd->nacbd", A, B).view(A.shape[0], A.shape[1]*B.shape[1],  A.shape[2]*B.shape[2]).squeeze()
+
+def A_from_16_vec(vec):
+    if vec.dim() < 2:
+        vec = vec.unsqueeze(dim=0)
+    assert(vec.shape[1] == 16)
+
+    idx = torch.triu_indices(3,3)
+    A = vec.new_zeros((vec.shape[0], 10, 10))
+
+    M = vec.new_zeros((vec.shape[0], 3, 3))
+    M[:, idx[0], idx[1]] = vec[:, :6]
+    M[:, idx[1], idx[0]] = vec[:, :6]
+    
+    I = vec.new_zeros((vec.shape[0], 3, 3))
+    I[:, torch.arange(3), torch.arange(3)] = 1. 
+
+    A[:, :9, :9] = kronecker(M, I)
+    A[:, :9, 9] = vec[:, 6:-1]
+    A[:, 9, :9] = vec[:, 6:-1]
+    A[:, 9, 9] = vec[:, -1]
+    return A
+    
+
+
+    
+
+
 
 class RotMatSDPSolver(torch.nn.Module):
     def __init__(self):
@@ -39,10 +76,9 @@ class RotMatSDPSolver(torch.nn.Module):
         
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze(dim=0)
-
-        A = convert_Avec_to_A(A_vec)
+        A = A_from_16_vec(A_vec)
+        #A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
-
         x = x_from_xxT(X)
 
         if x.dim() < 2:
@@ -52,6 +88,14 @@ class RotMatSDPSolver(torch.nn.Module):
         rotmat = r_vec.view(-1, 3,3).transpose(1,2)
         return rotmat.squeeze()
 
+
+def test_16_vec():
+    num_samples = 1000
+    A_vec = torch.randn((num_samples, 16), dtype=torch.double, requires_grad=True)
+    sdp_rot_solver = RotMatSDPSolver()
+    start = time.time()
+    rotmat = sdp_rot_solver(A_vec)
+    print('Solved {} SDPs (16 parameters) in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
 
 def compare_solver_time():
     num_samples = 1000
@@ -78,16 +122,16 @@ def compare_solver_time():
     print('Solved {} Quat QCQPs in {:.3F} sec.'.format(num_samples, time.time() - start))
 
 if __name__ == '__main__':
-
+    test_16_vec()
     #compare_solver_time()
-    num_samples = 1000
-    sdp_rot_solver = RotMatSDPSolver()
-    A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
-    A_vec = convert_Avec_to_Avec_psd(A_vec)
+    # num_samples = 1000
+    # sdp_rot_solver = RotMatSDPSolver()
+    # A_vec = torch.rand((num_samples, 55), dtype=torch.double, requires_grad=True)
+    # A_vec = convert_Avec_to_Avec_psd(A_vec)
 
-    start = time.time()
-    rotmat = sdp_rot_solver(A_vec)
-    print('Solved {} SDPs in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
+    # start = time.time()
+    # rotmat = sdp_rot_solver(A_vec)
+    # print('Solved {} SDPs in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
 
-    rotmat.sum().backward()
+    # rotmat.sum().backward()
 
