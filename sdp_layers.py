@@ -71,16 +71,17 @@ class RotMatSDPSolver(torch.nn.Module):
         A = cp.Parameter((10, 10), symmetric=True)
         prob = cp.Problem(cp.Minimize(cp.trace(A @ X)), constraints)
         self.sdp_solver = CvxpyLayer(prob, parameters=[A], variables=[X])
-    
+
     def forward(self, A_vec):
         
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze(dim=0)
 
-      
-        A = A_from_16_vec(A_vec)
-        #print(A)
-        #A = convert_Avec_to_A(A_vec)
+        if A_vec.shape[1] == 16:
+            A = A_from_16_vec(A_vec)
+        else:
+            A = convert_Avec_to_A(A_vec)
+            
         X, = self.sdp_solver(A)
         x = x_from_xxT(X)
 
