@@ -143,7 +143,7 @@ class RotMat6DFlowNet(torch.nn.Module):
 class RotMatSDPFlowNet(torch.nn.Module):
     def __init__(self, dim_in=2, batchnorm=True):
         super(RotMatSDPFlowNet, self).__init__()        
-        self.net = BasicCNN(dim_in=dim_in, dim_out=16, normalize_output=False, batchnorm=batchnorm)
+        self.net = BasicCNN(dim_in=dim_in, dim_out=55, normalize_output=False, batchnorm=batchnorm)
         self.sdp_solver = RotMatSDPSolver()
 
     def forward(self, x):
