@@ -53,7 +53,7 @@ def main():
     seq_prefix = 'seq_'
 
     #kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_1.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_5_reverse_False_minta_0.0.pickle'.format(args.seq)
     
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_train, pin_memory=False,
@@ -75,7 +75,7 @@ def main():
 
     elif args.model == 'A_sym_rot':
         print('==============Using A (Sym) RotMat MODEL====================')
-        model_sym = RotMatSDPFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model_sym = RotMatSDPFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
