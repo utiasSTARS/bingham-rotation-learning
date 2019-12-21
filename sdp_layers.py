@@ -17,7 +17,7 @@ def x_from_xxT(xxT):
         xxT = xxT.unsqueeze(dim=0)
     assert(xxT.shape[1] == xxT.shape[2])
     N = xxT.shape[1]
-    x = torch.sqrt(xxT[:, torch.arange(N), torch.arange(N)])
+    x = torch.sqrt(torch.abs(xxT[:, torch.arange(N), torch.arange(N)]))
     signs = torch.sign(xxT[:, :, -1])
     x = x * signs
     return x.squeeze()
@@ -78,15 +78,12 @@ class RotMatSDPSolver(torch.nn.Module):
             A_vec = A_vec.unsqueeze(dim=0)
 
       
-        A = A_from_16_vec(A_vec)
+        #A = A_from_16_vec(A_vec)
         #print(A)
-        #A = convert_Avec_to_A(A_vec)
+        A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
-
         x = x_from_xxT(X)
-        print(X)
-        print(x)
-        
+
 
         if x.dim() < 2:
             x = x.unsqueeze(dim=0)
