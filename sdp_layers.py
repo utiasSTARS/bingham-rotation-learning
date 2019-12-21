@@ -76,8 +76,12 @@ class RotMatSDPSolver(torch.nn.Module):
         
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze(dim=0)
+
+        if torch.isnan(A_vec).any().item():
+            print(A_vec)
+            return         
         A = A_from_16_vec(A_vec)
-        print(A)
+        #print(A)
         #A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
         x = x_from_xxT(X)
@@ -96,6 +100,9 @@ def test_16_vec():
     sdp_rot_solver = RotMatSDPSolver()
     start = time.time()
     rotmat = sdp_rot_solver(A_vec)
+    rotmat.sum().backward()
+
+    print(torch.isnan(A_vec.grad).any())
     print('Solved {} SDPs (16 parameters) in {:.3F} sec using cvxpylayers.'.format(num_samples, time.time() - start))
 
 def compare_solver_time():
