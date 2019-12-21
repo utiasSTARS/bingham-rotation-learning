@@ -78,9 +78,9 @@ class RotMatSDPSolver(torch.nn.Module):
             A_vec = A_vec.unsqueeze(dim=0)
 
       
-        #A = A_from_16_vec(A_vec)
+        A = A_from_16_vec(A_vec)
         #print(A)
-        A = convert_Avec_to_A(A_vec)
+        #A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
         x = x_from_xxT(X)
 
