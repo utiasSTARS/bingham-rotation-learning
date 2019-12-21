@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
-    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', '6D', 'quat'], default='A_sym')
+    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
 
     #Randomly select within this range
     parser.add_argument('--lr', type=float, default=5e-4)
