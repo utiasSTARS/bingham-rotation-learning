@@ -77,14 +77,13 @@ class RotMatSDPSolver(torch.nn.Module):
         if A_vec.dim() < 2:
             A_vec = A_vec.unsqueeze(dim=0)
 
-        if torch.isnan(A_vec).any().item():
-            print(A_vec)
-            return         
+      
         A = A_from_16_vec(A_vec)
         #print(A)
         #A = convert_Avec_to_A(A_vec)
         X, = self.sdp_solver(A)
         x = x_from_xxT(X)
+
 
         if x.dim() < 2:
             x = x.unsqueeze(dim=0)

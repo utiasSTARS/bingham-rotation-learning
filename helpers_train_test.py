@@ -16,7 +16,7 @@ def train(model, loss_fn, optimizer, x, q_gt):
     q_est = model.forward(x)
     
     loss = loss_fn(q_est, q_gt)
-
+    print(loss)
     # Backward
     loss.backward()
 
