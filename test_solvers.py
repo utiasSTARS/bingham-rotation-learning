@@ -36,6 +36,11 @@ def test_rotmat_sdp_pytorch_analytic_gradient(eps=1e-6, tol=1e-4, num_samples=2)
     A_vec = torch.randn((num_samples, 55), dtype=torch.double, requires_grad=True)
     A_vec = convert_Avec_to_Avec_psd(A_vec)
     A_vec = normalize_Avec(A_vec)
+
+    # A, _ = create_wahba_As(num_samples)
+    # A_vec = convert_A_to_Avec(A)
+    # A_vec.requires_grad = True
+
     input = (A_vec,)
     grad_test = gradcheck(sdp_solver, input, eps=eps, atol=tol)
     assert (grad_test == True)
@@ -98,19 +103,55 @@ def test_rotmat_wahba():
     constraint_matrices, c_vec = rotation_matrix_constraints()
     _, C_solve = solve_equality_QCQP_dual(A, constraint_matrices, c_vec)
 
-
-    qcqp_solver = HomogeneousRotationQCQPFastSolver.apply
-    A_vec = convert_A_to_Avec(torch.from_numpy(A).expand(2, 10, 10))
-    A_vec.requires_grad = True
-    input = (A_vec,)
-    grad_test = gradcheck(qcqp_solver, input, eps=1e-6, atol=1e-4)
-
     print('Ground truth:')
     print(C)
     print('Solved:')
     print(C_solve)
     print('Angle difference: {:.3E} deg'.format(rotmat_angle_diff(torch.from_numpy(C), torch.from_numpy(C_solve), units='deg').item()))
 
+
+#Creates num 55x55 A matrices and associated rotation matrices C
+#Based on the point-to-point rotation matrix wahba formulation
+def create_wahba_As(N=10):
+    A = torch.zeros(N, 10, 10, dtype=torch.double)
+    C = torch.empty(N ,3, 3, dtype=torch.double)
+    N_points = 100
+    for n in range(N):
+        sigma = 0.
+        C_n = SO3.exp(np.random.rand(3)).as_matrix()
+        C[n] = torch.from_numpy(C_n)
+        #Create two sets of vectors (normalized to unit l2 norm)
+        x_1 = normalized(np.random.randn(N_points, 3), axis=1)
+        #Rotate and add noise
+        noise = np.random.randn(N_points,3)
+        noise = (noise.T*sigma).T
+        x_2 = C_n.dot(x_1.T).T + noise
+
+        for i in range(N_points):
+            mat = np.zeros((3,10))
+            mat[:,:9] = np.kron(x_1[i], np.eye(3))
+            mat[:,9] = -x_2[i]
+            A[n] += torch.from_numpy(mat.T.dot(mat))
+    return A, C
+
+def test_rotmat_sdp_wahba():
+    N = 10
+    print('Checking accuracy of SDP rotmat solver with {} datasets.'.format(N))
+    A, C = create_wahba_As(N)
+
+    # from matplotlib import pyplot as plt
+    # print(np.unique(A[0].numpy()))
+    # plt.imshow(A[0].numpy(), cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    sdp_solver = RotMatSDPSolver()
+    A_vec = convert_A_to_Avec(A)
+
+    start = time.time()
+    C_solve = sdp_solver(A_vec)
+    mean_error = rotmat_angle_diff(C, C_solve, units='deg').item()
+
+    print('Mean angle error: {:.3E} deg. Total solve time: {:.3F} sec.'.format(mean_error, time.time() - start))
 
 def numerical_grad(A, eps):
     G_numerical = np.zeros((4, 4, 4))
@@ -174,8 +215,10 @@ if __name__=='__main__':
     # print("=============")
     # test_pytorch_manual_analytic_gradient()
 
+    #print('===============')
+    #test_rotmat_sdp_wahba()
     #test_rotmat_wahba()
     # print("=============")
     # test_rotmat_pytorch_analytic_gradient()
-    # print("=============")
+    print("=============")
     test_rotmat_sdp_pytorch_analytic_gradient()
