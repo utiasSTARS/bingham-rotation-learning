@@ -29,7 +29,7 @@ def main():
     parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
-    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', '6D', 'quat'], default='A_sym')
+    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
 
     #Randomly select within this range
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -53,7 +53,7 @@ def main():
     seq_prefix = 'seq_'
 
     #kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_1.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_2.0.pickle'.format(args.seq)
     
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_train, pin_memory=False,
@@ -73,9 +73,17 @@ def main():
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
+    elif args.model == 'A_sym_rot_16':
+        print('==============Using A (Sym 16) RotMat MODEL====================')
+        model_sym = RotMatSDPFlowNet(dim_rep=16, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = True
+        valid_loader.dataset.rotmat_targets = True
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+
     elif args.model == 'A_sym_rot':
-        print('==============Using A (Sym) MODEL====================')
-        model_sym = RotMatSDPFlowNet(enforce_psd=True, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        print('==============Using A (Sym) RotMat MODEL====================')
+        model_sym = RotMatSDPFlowNet(dim_rep=55, enforce_psd=True, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
