@@ -74,6 +74,13 @@ def main():
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
 
+    #Train and test with new representation
+    elif args.model == 'A_sym_rot_16':
+        print('===================TRAINING A sym (55 param RotMat) MODEL=======================')
+        model = RotMatSDPNet(dim_rep=16, enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+
 
     if args.save_model:
         saved_data_file_name = 'synthetic_wahba_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
