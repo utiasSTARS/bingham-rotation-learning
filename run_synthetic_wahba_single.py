@@ -26,9 +26,9 @@ def main():
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
-    parser.add_argument('--comparison', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
+    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
 
 
     args = parser.parse_args()
@@ -45,33 +45,44 @@ def main():
         #Data will be generated on the fly
         train_data, test_data = None, None
 
-    #Train and test direct model
-    if args.comparison:
+
+    if args.model == '6D':
+        #Train and test direct model
         print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
-        model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+        model = RotMat6DDirect().to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
-        (_, _) = train_test_model(args, train_data, test_data, model_6D, loss_fn, rotmat_targets=True, tensorboard_output=True)
+        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
 
-
+    elif args.model == 'quat':
         print('===================TRAINING DIRECT QUAT MODEL=======================')
-        model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+        model = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (_, _) = train_test_model(args, train_data, test_data, model_quat, loss_fn, rotmat_targets=False, tensorboard_output=True)
+        (_, _) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
 
     #Train and test with new representation
-    print('===================TRAINING REP MODEL=======================')
-    model_rep = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-    loss_fn = quat_squared_loss
-    (train_stats_rep, test_stats_rep) = train_test_model(args, train_data, test_data, model_rep, loss_fn,  rotmat_targets=False, tensorboard_output=True)
+    elif args.model == 'A_sym':
+        print('===================TRAINING A sym (Quat) MODEL=======================')
+        model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        loss_fn = quat_squared_loss
+        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
 
-    
+
+    #Train and test with new representation
+    elif args.model == 'A_sym_rot':
+        print('===================TRAINING A sym (55 param RotMat) MODEL=======================')
+        model = RotMatSDPNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+
+
     if args.save_model:
-        saved_data_file_name = 'synthetic_wahba_model_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        saved_data_file_name = 'synthetic_wahba_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
         torch.save({
-                'model_rep': model_rep.state_dict(),
-                'train_stats_rep': train_stats_rep.detach().cpu(),
-                'test_stats_rep': test_stats_rep.detach().cpu(),
+                'model_type': args.model,
+                'model': model.state_dict(),
+                'train_stats_rep': train_stats.detach().cpu(),
+                'test_stats_rep': test_stats.detach().cpu(),
                 'args': args,
             }, full_saved_path)
 
