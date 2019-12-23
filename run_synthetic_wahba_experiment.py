@@ -69,18 +69,18 @@ def main():
         (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model_quat, loss_fn, rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
-        print('==============TRAINING A (Sym) MODEL====================')
+        print('==============TRAINING A (16 sym quat) MODEL====================')
         model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model_A_sym, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
-        print('==============TRAINING A (16 param quat) MODEL====================')
+        print('==============TRAINING A (16 psd quat) MODEL====================')
         model_A_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
-        print('==============TRAINING A (55 parm rotmat) MODEL====================')
+        print('==============TRAINING A (55 psd rotmat) MODEL====================')
         model_A_rotmat = RotMatSDPNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=False)
