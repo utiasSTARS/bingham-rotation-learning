@@ -85,7 +85,9 @@ def main():
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=False)
 
-
+        #Memory leak in cvxpylayer?
+        del(model_A_rotmat)
+        
         lrs[t_i] = lr
         train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd, train_stats_A_rotmat])
         test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_A_sym, test_stats_A_psd, test_stats_A_rotmat])
