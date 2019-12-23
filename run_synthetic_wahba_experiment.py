@@ -75,15 +75,20 @@ def main():
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model_A_sym, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
         #Train and test with new representation
-        print('==============TRAINING A (PSD) MODEL====================')
+        print('==============TRAINING A (16 param quat) MODEL====================')
         model_A_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
+        print('==============TRAINING A (55 parm rotmat) MODEL====================')
+        model_A_rotmat = RotMatSDPNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+
 
         lrs[t_i] = lr
-        train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
-        test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
+        train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd, train_stats_A_rotmat])
+        test_stats_list.append([test_stats_6d, test_stats_quat, test_stats_A_sym, test_stats_A_psd, test_stats_A_rotmat])
         
     saved_data_file_name = 'diff_lr_synthetic_wahba_experiment_4models_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
@@ -91,7 +96,7 @@ def main():
     torch.save({
         'train_stats_list': train_stats_list,
         'test_stats_list': test_stats_list,
-        'named_approaches': ['6D', 'Quat', 'A (sym)', 'A (psd)'],
+        'named_approaches': ['6D', 'Quat', 'A (quat-sym)', 'A (quat-psd)', 'A (rotmat-psd)'],
         'learning_rates': lrs,
         'args': args
     }, full_saved_path)
