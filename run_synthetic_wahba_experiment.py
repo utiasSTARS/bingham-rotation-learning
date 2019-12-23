@@ -83,7 +83,7 @@ def main():
         print('==============TRAINING A (55 parm rotmat) MODEL====================')
         model_A_rotmat = RotMatSDPNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+        (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=False)
 
 
         lrs[t_i] = lr
