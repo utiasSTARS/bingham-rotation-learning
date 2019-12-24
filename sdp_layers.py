@@ -82,7 +82,7 @@ class RotMatSDPSolver(torch.nn.Module):
         else:
             A = convert_Avec_to_A(A_vec)
             
-        X, = self.sdp_solver(A)
+        X, = self.sdp_solver(A.cpu())
         x = x_from_xxT(X)
 
 
