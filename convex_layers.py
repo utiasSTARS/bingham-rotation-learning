@@ -4,7 +4,7 @@ from liegroups.numpy import SO3
 import cvxpy as cp
 import time
 import torch
-from rotation_matrix_sdp import solve_equality_QCQP_dual, rotation_matrix_constraints, CONSTRAINT_MATRICES, C_VEC
+# from rotation_matrix_sdp import solve_equality_QCQP_dual, rotation_matrix_constraints
 
 def normalize_Avec(A_vec):
     """ Normalizes BxM vectors such that resulting symmetric BxNxN matrices have unit Frobenius norm"""
@@ -76,27 +76,27 @@ class RotmatQCQPSolver(torch.nn.Module):
         return HomogeneousRotationQCQPFastSolver.apply(A, self.constraint_matrices, self.c_vec)
 
 
-#=========================PYTORCH (FAST) SOLVER=========================
-class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
-    """
+# #=========================PYTORCH (FAST) SOLVER=========================
+# class HomogeneousRotationQCQPFastSolver(torch.autograd.Function):
+#     """
 
-    """
-    @staticmethod
-    def forward(ctx, A_vec):
-        if A_vec.dim() < 2:
-            A_vec = A_vec.unsqueeze()
-        A = convert_Avec_to_A(A_vec)
-        r, nu = solve_rotation_qcqp(A, CONSTRAINT_MATRICES, C_VEC)
-        ctx.save_for_backward(A, r, nu)
-        return r
+#     """
+#     @staticmethod
+#     def forward(ctx, A_vec):
+#         if A_vec.dim() < 2:
+#             A_vec = A_vec.unsqueeze()
+#         A = convert_Avec_to_A(A_vec)
+#         r, nu = solve_rotation_qcqp(A, CONSTRAINT_MATRICES, C_VEC)
+#         ctx.save_for_backward(A, r, nu)
+#         return r
 
-    @staticmethod
-    def backward(ctx, grad_output):
-        A, r, nu = ctx.saved_tensors
-        grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
-        # grad_qcqp = compute_rotation_QCQP_grad(A, CONSTRAINT_MATRICES, nu, r)
-        outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
-        return outgrad
+#     @staticmethod
+#     def backward(ctx, grad_output):
+#         A, r, nu = ctx.saved_tensors
+#         grad_qcqp = compute_rotation_QCQP_grad_fast(A, CONSTRAINT_MATRICES, nu, r)
+#         # grad_qcqp = compute_rotation_QCQP_grad(A, CONSTRAINT_MATRICES, nu, r)
+#         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
+#         return outgrad
 
 
 class QuadQuatFastSolver(torch.autograd.Function):
