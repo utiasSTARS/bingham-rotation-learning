@@ -11,7 +11,7 @@ class RotMatSDPNet(torch.nn.Module):
     def __init__(self, dim_rep=55, enforce_psd=True, unit_frob_norm=True, batchnorm=True):
         super(RotMatSDPNet, self).__init__()        
         self.net = PointNet(dim_out=dim_rep, normalize_output=False, batchnorm=batchnorm)
-        self.sdp_solver = RotMatSDPSolver()
+        self.rotation_layer = RotMatSDPSolver()
         self.enforce_psd = enforce_psd
         self.unit_frob_norm = unit_frob_norm
 
@@ -23,9 +23,7 @@ class RotMatSDPNet(torch.nn.Module):
             if self.unit_frob_norm:
                 A_vec = normalize_Avec(A_vec)
 
-        C = self.sdp_solver(A_vec.cpu())
-        C = C.to(x.device)
-        
+        C = self.rotation_layer(A_vec)
         return C
 
 
