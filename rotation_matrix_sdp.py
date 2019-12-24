@@ -92,11 +92,11 @@ def rotation_matrix_constraints(redundant=True, right_handed=True, homogeneous=T
     return constraint_matrices, np.array(c)
 
 
-# PyTorch tensors for fast backprop
-CONSTRAINT_MATRICES, C_VEC = rotation_matrix_constraints()
-CONSTRAINT_MATRICES = from_numpy(CONSTRAINT_MATRICES)
-C_VEC = from_numpy(C_VEC)
-# def solve_rotation_SDP(cost_matrix, redundant=True, right_handed=True, homogeneous=True):
+# # PyTorch tensors for fast backprop
+# CONSTRAINT_MATRICES, C_VEC = rotation_matrix_constraints()
+# CONSTRAINT_MATRICES = from_numpy(CONSTRAINT_MATRICES)
+# C_VEC = from_numpy(C_VEC)
+# # def solve_rotation_SDP(cost_matrix, redundant=True, right_handed=True, homogeneous=True):
 
 
 def solve_equality_SDP(cost_matrix, constraint_matrices, c_vec):
