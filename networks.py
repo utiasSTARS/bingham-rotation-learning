@@ -22,7 +22,10 @@ class RotMatSDPNet(torch.nn.Module):
                 A_vec = convert_Avec_to_Avec_psd(A_vec)
             if self.unit_frob_norm:
                 A_vec = normalize_Avec(A_vec)
-        C = self.sdp_solver(A_vec)
+
+        C = self.sdp_solver(A_vec.cpu())
+        C = C.to(x.device)
+        
         return C
 
 
