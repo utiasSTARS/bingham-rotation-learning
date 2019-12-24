@@ -6,6 +6,7 @@ from helpers_sim import *
 from datetime import datetime
 import argparse
 from utils import loguniform
+from pympler.tracker import SummaryTracker
 
 def main():
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
@@ -80,10 +81,12 @@ def main():
         loss_fn = quat_squared_loss
         (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
 
+        tracker = SummaryTracker()
         print('==============TRAINING A (55 psd rotmat) MODEL====================')
         model_A_rotmat = RotMatSDPNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=False)
+        tracker.print_diff()
         
         lrs[t_i] = lr
         train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd, train_stats_A_rotmat])
