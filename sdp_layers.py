@@ -64,13 +64,8 @@ class RotMatSDPSolver(torch.nn.Module):
     def __init__(self):
         super(RotMatSDPSolver, self).__init__()
         
-        self.X = cp.Variable((10, 10), PSD=True)
         self.constraint_matrices, self.c_vec = rotation_matrix_constraints()
-        self.constraints = [cp.trace(self.constraint_matrices[idx, :, :] @ self.X) == self.c_vec[idx]
-                    for idx in range(self.constraint_matrices.shape[0])]
-        self.A = cp.Parameter((10, 10), symmetric=True)
-        self.prob = cp.Problem(cp.Minimize(cp.trace(self.A @ self.X)), self.constraints)
-        self.sdp_solver = CvxpyLayer(self.prob, parameters=[self.A], variables=[self.X])
+        #self.sdp_solver = 
 
     def forward(self, A_vec):
         
@@ -81,8 +76,15 @@ class RotMatSDPSolver(torch.nn.Module):
             A = A_from_16_vec(A_vec)
         else:
             A = convert_Avec_to_A(A_vec)
-            
-        X, = self.sdp_solver(A)
+
+        X_cp = cp.Variable((10, 10), PSD=True)
+        A_cp = cp.Parameter((10, 10), symmetric=True)
+        constraints = [cp.trace(self.constraint_matrices[idx, :, :] @ X_cp) == self.c_vec[idx]
+            for idx in range(self.constraint_matrices.shape[0])]
+        prob = cp.Problem(cp.Minimize(cp.trace(A_cp @ X_cp)), constraints)
+        solver = CvxpyLayer(prob, parameters=[A_cp], variables=[X_cp])
+
+        X, = solver(A)
         x = x_from_xxT(X)
 
 
