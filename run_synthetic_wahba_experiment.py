@@ -6,7 +6,6 @@ from helpers_sim import *
 from datetime import datetime
 import argparse
 from utils import loguniform
-from mem_top import mem_top
 
 def main():
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
@@ -97,8 +96,6 @@ def main():
         train_data, test_data = None, None
         (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
         del(model_A_psd)
-
-        print(mem_top())
 
         lrs[t_i] = lr
         train_stats_list.append([train_stats_6d, train_stats_quat, train_stats_A_sym, train_stats_A_psd, train_stats_A_rotmat])
