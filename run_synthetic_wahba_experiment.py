@@ -6,8 +6,6 @@ from helpers_sim import *
 from datetime import datetime
 import argparse
 from utils import loguniform
-from pympler.tracker import SummaryTracker
-
 def main():
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
     parser.add_argument('--sim_sigma', type=float, default=1e-2)
@@ -66,7 +64,7 @@ def main():
         train_data, test_data = None, None
         (train_stats_A_rotmat, test_stats_A_rotmat) = train_test_model(args, train_data, test_data, model_A_rotmat, loss_fn,  rotmat_targets=True, tensorboard_output=False)
         del(model_A_rotmat)
-        
+
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
         model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
