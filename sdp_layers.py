@@ -144,3 +144,6 @@ if __name__ == '__main__':
 
     # rotmat.sum().backward()
 
+    iden_test = torch.einsum('bij,bjk->bik', rotmat, rotmat.transpose(1, 2)) - torch.eye(3)
+    print("Max deviation from identity: ")
+    print(torch.max(torch.abs(iden_test)))
