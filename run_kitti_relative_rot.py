@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--batchnorm', action='store_true', default=False)
     
     parser.add_argument('--unit_frob', action='store_true', default=False)
+    parser.add_argument('--save_model', action='store_true', default=False)
 
     parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
     parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
