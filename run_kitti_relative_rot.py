@@ -66,6 +66,9 @@ def main():
     #Train and test with new representation
     dim_in = 2 if args.optical_flow else 6
 
+    print(len(valid_loader))
+    print(len(train_loader))
+    
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
         model = QuatFlowNet(enforce_psd=False, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
