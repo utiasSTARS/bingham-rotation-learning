@@ -114,10 +114,10 @@ def main():
     #all_trials = ['00', '02', '05', '06']
     all_trials = ['01', '04']
 
-    train_pose_deltas = [2] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
-    test_pose_delta = 2
+    train_pose_deltas = [1] #How far apart should each quad image be? (KITTI is at 10hz, can input multiple)
+    test_pose_delta = 1
     add_reverse = True #Add reverse transformations
-    min_turning_angle = 1.0 #Degrees
+    min_turning_angle = 0.0 #Degrees
 
     #Where is the KITTI data?
 
