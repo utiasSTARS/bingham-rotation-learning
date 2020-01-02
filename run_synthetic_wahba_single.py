@@ -11,7 +11,7 @@ def main():
 
 
     parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
-    parser.add_argument('--sim_sigma', type=float, default=1e-6)
+    parser.add_argument('--sim_sigma', type=float, default=1e-2)
     parser.add_argument('--N_train', type=int, default=500)
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
