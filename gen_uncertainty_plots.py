@@ -86,7 +86,7 @@ def collect_vo_errors(saved_file):
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
     T_21_vo = valid_loader.dataset.T_21_vo
-    q_vo = torch.stack([rotmat_to_quat(T[:3,:3]) for T in T_21_vo], dim=0)
+    q_vo = torch.stack([rotmat_to_quat(torch.from_numpy(T[:3,:3])) for T in T_21_vo], dim=0)
     return q_vo
 
 def collect_errors(saved_file, validation_transform=None):
