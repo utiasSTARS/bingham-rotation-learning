@@ -16,7 +16,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
 
 
-def evaluate_rotmat_model(loader, model):
+def evaluate_rotmat_model(loader, model, device, tensor_type):
     q_est = []
     q_target = []
     
@@ -35,7 +35,7 @@ def evaluate_rotmat_model(loader, model):
     
     return (q_est, q_target)
 
-def evaluate_A_model(loader, model):
+def evaluate_A_model(loader, model, device, tensor_type):
     q_est = []
     q_target = []
     A_pred = []
@@ -98,14 +98,14 @@ def collect_errors(saved_file, validation_transform=None):
     if args.model == 'A_sym':
         model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
-        A_predt, q_estt, q_targett = evaluate_A_model(train_loader, model)
-        A_pred, q_est, q_target = evaluate_A_model(valid_loader, model)
+        A_predt, q_estt, q_targett = evaluate_A_model(train_loader, model, device, tensor_type)
+        A_pred, q_est, q_target = evaluate_A_model(valid_loader, model, device, tensor_type)
         return ((A_predt, q_estt, q_targett), (A_pred, q_est, q_target))
     else:
         model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
-        q_estt, q_targett = evaluate_rotmat_model(train_loader, model)
-        q_est, q_target = evaluate_rotmat_model(valid_loader, model)
+        q_estt, q_targett = evaluate_rotmat_model(train_loader, model, device, tensor_type)
+        q_est, q_target = evaluate_rotmat_model(valid_loader, model, device, tensor_type)
         return ((q_estt, q_targett), (q_est, q_target))
 
 def create_kitti_data():
