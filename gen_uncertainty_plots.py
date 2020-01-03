@@ -147,7 +147,7 @@ def create_kitti_data():
 
 
     transform_erase_prob = 0.5
-    transform = torchvision.transforms.RandomErasing(p=transform_erase_prob)
+    transform = torchvision.transforms.RandomErasing(p=1)
     print('Collecting transformed data....')
     data_6D_transformed = []
     for file_6D in file_list_6D:
@@ -184,7 +184,7 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
-    colors = ['tab:red', 'tab:blue', 'tab:green']
+    colors = ['tab:red', 'tab:blue', 'black']
     width = 0.4/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
         ax.bar(x - 0.2 + width*i, height, width, label=label, color=colors[i], alpha=0.8)
@@ -217,7 +217,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     return fig
 
 def create_plots():
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-02-2020-19-28-23.pt'
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantile = 0.75
@@ -268,8 +268,8 @@ def create_plots():
         (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
         mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
 
-    bar_labels = ['VO','6D', 'A (Sym)', 'A (Sym) + Filter']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_vo, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  ']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -283,5 +283,5 @@ def create_plots():
 
 
 if __name__=='__main__':
-    create_kitti_data()
-    #create_plots()
+    #create_kitti_data()
+    create_plots()
