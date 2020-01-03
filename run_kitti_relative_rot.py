@@ -113,6 +113,7 @@ def main():
         full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
         torch.save({
                 'model_type': args.model,
+                'kitti_data_pickle_file': kitti_data_pickle_file,
                 'model': model.state_dict(),
                 'train_stats_rep': train_stats.detach().cpu(),
                 'test_stats_rep': test_stats.detach().cpu(),
