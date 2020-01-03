@@ -8,11 +8,12 @@ from convex_layers import *
 from torch.utils.data import Dataset, DataLoader
 from loaders import KITTIVODatasetPreTransformed
 import numpy as np
-import matplotlib.pyplot as plt
 import torchvision
+import matplotlib
 matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+import matplotlib.pyplot as plt
 
 
 def evaluate_rotmat_model(loader, model):
