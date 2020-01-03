@@ -19,7 +19,13 @@ def quat_consistency_loss(qs, q_target, reduce=True):
     losses =  d1*d1 + d2*d2 + d3*d3
     loss = losses.mean() if reduce else losses
     return loss
-    
+
+def quat_chordal_squared_loss(q, q_target, reduce=True):
+    assert(q.shape == q_target.shape)
+    d = quat_norm_diff(q, q_target)
+    losses =  2*d*d*(4. - d*d) 
+    loss = losses.mean() if reduce else losses
+    return loss    
 
 def quat_squared_loss(q, q_target, reduce=True):
     assert(q.shape == q_target.shape)
