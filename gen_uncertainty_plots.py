@@ -225,6 +225,8 @@ def create_plots():
     mean_err = []
     mean_err_filter = []
     mean_err_6D = []
+    mean_err_vo = []
+    
     mean_err_corrupted = []
     mean_err_corrupted_filter = []
     mean_err_corrupted_6D = []
@@ -235,7 +237,8 @@ def create_plots():
         thresh = ll_threshold(A_predt, quantile)
         mask = wigner_log_likelihood(A_pred) < thresh
         mean_err_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
-
+        mean_err_vo.append(quat_angle_diff(data['data_VO'][s_i], q_target))
+        
         #Create scatter plot
         fig = _create_scatter_plot(thresh, 
         [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
@@ -265,8 +268,8 @@ def create_plots():
         (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
         mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) + Filter']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
+    bar_labels = ['VO','6D', 'A (Sym)', 'A (Sym) + Filter']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_vo, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
