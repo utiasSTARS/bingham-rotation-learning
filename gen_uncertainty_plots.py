@@ -133,9 +133,9 @@ def create_kitti_data():
     file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
     
     print('Collecting normal data....')
-    data_vo = []
+    data_VO = []
     for file_A in file_list_A_sym:
-        data_vo.append(collect_vo_errors(prefix + file_A))
+        data_VO.append(collect_vo_errors(prefix + file_A))
 
     data_6D = []
     for file_6D in file_list_6D:
@@ -165,6 +165,7 @@ def create_kitti_data():
     torch.save({
                 'file_list_6D': file_list_6D,
                 'file_list_A_sym': file_list_A_sym,
+                'data_VO': data_VO,
                 'data_6D': data_6D,
                 'data_A': data_A,
                 'data_6D_transformed': data_6D_transformed,
