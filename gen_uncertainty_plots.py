@@ -73,6 +73,22 @@ def ll_threshold(A, quantile=0.75):
 
 
 
+def collect_vo_errors(saved_file):
+    checkpoint = torch.load(saved_file)
+    args = checkpoint['args']
+    seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+    if args.megalith:
+        seqs_base_path = '/media/datasets/KITTI/single_files'
+    seq_prefix = 'seq_'
+    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+
+    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
+                                batch_size=args.batch_size_test, pin_memory=False,
+                                shuffle=False, num_workers=args.num_workers, drop_last=False)
+    T_21_vo = valid_loader.T_21_vo
+    q_vo = torch.stack([rotmat_to_quat(T[:3,:3]) for T in T_21_vo], dim=0)
+    return q_vo
+
 def collect_errors(saved_file, validation_transform=None):
     checkpoint = torch.load(saved_file)
     args = checkpoint['args']
@@ -95,6 +111,8 @@ def collect_errors(saved_file, validation_transform=None):
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
     dim_in = 6
 
+    
+
     if args.model == 'A_sym':
         model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
@@ -115,6 +133,10 @@ def create_kitti_data():
     file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
     
     print('Collecting normal data....')
+    data_vo = []
+    for file_A in file_list_A_sym:
+        data_vo.append(collect_vo_errors(prefix + file_A))
+
     data_6D = []
     for file_6D in file_list_6D:
         data_6D.append(collect_errors(prefix + file_6D, validation_transform=None))
@@ -122,6 +144,7 @@ def create_kitti_data():
     data_A = []
     for file_A in file_list_A_sym:
         data_A.append(collect_errors(prefix + file_A, validation_transform=None))
+
 
     transform_erase_prob = 0.5
     transform = torchvision.transforms.RandomErasing(p=transform_erase_prob)
@@ -256,5 +279,5 @@ def create_plots():
 
 
 if __name__=='__main__':
-    #create_kitti_data()
-    create_plots()
+    create_kitti_data()
+    #create_plots()
