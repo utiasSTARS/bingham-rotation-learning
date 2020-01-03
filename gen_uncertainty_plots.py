@@ -85,7 +85,7 @@ def collect_vo_errors(saved_file):
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=None, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
-    T_21_vo = valid_loader.T_21_vo
+    T_21_vo = valid_loader.dataset.T_21_vo
     q_vo = torch.stack([rotmat_to_quat(T[:3,:3]) for T in T_21_vo], dim=0)
     return q_vo
 
