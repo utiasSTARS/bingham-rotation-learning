@@ -22,7 +22,7 @@ def evaluate_rotmat_model(loader, model, device, tensor_type):
     
     with torch.no_grad():
         model.eval()
-        print('Loading rotmat model...')
+        print('Evaluating rotmat model...')
         for _, (x, target) in enumerate(loader):
             #Move all data to appropriate device
             x = x.to(device=device, dtype=tensor_type)
@@ -42,7 +42,7 @@ def evaluate_A_model(loader, model, device, tensor_type):
 
     with torch.no_grad():
         model.eval()
-        print('Loading A model...')
+        print('Evaluating A model...')
         for _, (x, target) in enumerate(loader):
             #Move all data to appropriate device
             x = x.to(device=device, dtype=tensor_type)
@@ -153,15 +153,108 @@ def create_kitti_data():
 
     return
 
+def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0.05, 0.2]):
+    plt.rc('text', usetex=True)
+    fig, ax = plt.subplots()
+    fig.set_size_inches(4,2)
+
+    x = np.arange(len(x_labels))
+    N = len(bar_labels)
+    colors = ['tab:red', 'tab:blue', 'tab:green']
+    width = 0.4/N
+    for i, (label, height) in enumerate(zip(bar_labels, heights)):
+        ax.bar(x - 0.2 + width*i, height, width, label=label, color=colors[i], alpha=0.8)
+    ax.set_xticks(x)
+    ax.set_xticklabels(x_labels)
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(xlabel)
+    ax.set_ylim(ylim)
+    ax.legend(loc='upper right', fontsize = 8)
+    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+    return fig
+
+def _scatter(ax, x, y, title, color='tab:red', marker=".", size=4):
+    ax.scatter(x, y, color=color, s=size, marker=marker, label=title)
+    return
+
+def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
+    fig, ax = plt.subplots()
+    fig.set_size_inches(4,2)
+    ax.axvline(thresh, c='k', ls='--', label='Threshold')
+    colors = ['tab:blue', 'tab:red']
+    for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
+        _scatter(ax, ll, error, label, color=colors[i])
+    ax.legend(loc='upper left')
+    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+    ax.set_ylabel('rotation error (deg)')
+    ax.set_xlabel('Wigner log likelihood')
+    ax.set_yscale('log')
+    #ax.set_ylim(ylim)
+    return fig
+
 def create_plots():
-
-    mean_err = quat_angle_diff(q_est, q_target, reduce=True)
-
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-02-2020-19-28-23.pt'
+    data = torch.load(saved_data_file)
+    seqs = ['00', '02', '05']
     quantile = 0.75
-    thresh = ll_threshold(A_predt, quantile)
-    mask = wigner_log_likelihood(A_pred) < thresh
 
-    mean_err_filter = quat_angle_diff(q_est[mask], q_target[mask])
+    mean_err = []
+    mean_err_filter = []
+    mean_err_6D = []
+    mean_err_corrupted = []
+    mean_err_corrupted_filter = []
+    mean_err_corrupted_6D = []
+
+    for s_i, seq in enumerate(seqs):
+        (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A'][s_i]
+        mean_err.append(quat_angle_diff(q_est, q_target, reduce=True))
+        thresh = ll_threshold(A_predt, quantile)
+        mask = wigner_log_likelihood(A_pred) < thresh
+        mean_err_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
+
+        #Create scatter plot
+        fig = _create_scatter_plot(thresh, 
+        [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
+        [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+        output_file = 'plots/kitti_scatter_seq_{}.pdf'.format(seq)
+        fig.savefig(output_file, bbox_inches='tight')
+        plt.close(fig)
+
+
+        (q_estt, q_targett), (q_est, q_target) = data['data_6D'][s_i]
+        mean_err_6D.append(quat_angle_diff(q_est, q_target, reduce=True))
+
+        (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A_transformed'][s_i]
+        mean_err_corrupted.append(quat_angle_diff(q_est, q_target, reduce=True))
+        thresh = ll_threshold(A_predt, quantile)
+        mask = wigner_log_likelihood(A_pred) < thresh
+        mean_err_corrupted_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
+
+        #Create scatter plot
+        fig = _create_scatter_plot(thresh, 
+        [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
+        [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+        output_file = 'plots/kitti_scatter_seq_{}_corrupted.pdf'.format(seq)
+        fig.savefig(output_file, bbox_inches='tight')
+        plt.close(fig)
+
+        (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
+        mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
+
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) + Filter']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
+    output_file = 'plots/kitti_normal.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) + Filter']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], xlabel='KITTI sequence (with corruption)', ylim=[0,0.45])
+    output_file = 'plots/kitti_corrupted.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+
+
 
 if __name__=='__main__':
-    create_kitti_data()
+    #create_kitti_data()
+    create_plots()
