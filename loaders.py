@@ -219,8 +219,10 @@ class KITTIVODatasetPreTransformed(Dataset):
                 img_input = torch.cat([self.prep_img(self.seq_images[seq][p_ids[0]]),
                             self.prep_img(self.seq_images[seq][p_ids[1]])], dim=0)
 
-        if idx in self.output_image_idx
-            torchvision.utils.save_image(img_input[0], 'img_{0}.png'.format(idx))
+        if idx in self.output_image_idx:
+            file_name = 'img_{0}.png'.format(idx)
+            print('Saving....{}'.format(file_name))
+            torchvision.utils.save_image(img_input[0], file_name)
     
             
 
