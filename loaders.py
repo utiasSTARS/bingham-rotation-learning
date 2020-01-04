@@ -122,7 +122,7 @@ class KITTIVODatasetPreTransformed(Dataset):
             print(self.output_image_idx)
         else:
             self.output_image_idx = []
-            
+
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
             kitti_data = pickle.load(handle)
@@ -224,7 +224,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         if idx in self.output_image_idx:
             file_name = 'img_{0}.png'.format(idx)
             print('Saving....{}'.format(file_name))
-            torchvision.utils.save_image(img_input[0], file_name)
+            torchvision.utils.save_image(img_input[:2], file_name)
     
             
 
