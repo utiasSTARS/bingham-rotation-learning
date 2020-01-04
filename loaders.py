@@ -100,11 +100,12 @@ class SevenScenesData(Dataset):
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
+    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, transform_second_half_only=False, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
         self.transform_img = transform_img
+        self.transform_second_half_only = transform_second_half_only
         self.seq_prefix = seq_prefix
         self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
         self.use_flow = use_flow
@@ -156,10 +157,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         return len(self.T_21_gt)
 
     def prep_img(self, img):
-        if self.transform_img is not None:
-            return self.transform_img(img.float()/255.)
-        else:
-            return img.float() / 255.
+        return img.float() / 255.
 
     def compute_flow(self, img1, img2, idx, apply_blur = False):
         #Convert back to W x H x C
@@ -195,8 +193,22 @@ class KITTIVODatasetPreTransformed(Dataset):
         if self.use_flow:
             img_input = self.compute_flow(self.seq_images[seq][p_ids[0]], self.seq_images[seq][p_ids[1]], idx, self.apply_blur)
         else:
-            img_input = torch.cat([self.prep_img(self.seq_images[seq][p_ids[0]]),
-                       self.prep_img(self.seq_images[seq][p_ids[1]])], dim=0)
+            #Should we transform?
+            transform_img_flag = False
+            if self.transform_img is not None:
+                if self.transform_second_half_only:
+                    if idx > len(self.T_21_gt)/2:
+                        transform_img_flag = True
+                else:
+                    transform_img_flag = True
+
+
+            if transform_img_flag:
+                img_input = torch.cat([self.transform_img(self.prep_img(self.seq_images[seq][p_ids[0]])),
+                            self.transform_img(self.prep_img(self.seq_images[seq][p_ids[1]]))], dim=0)
+            else:
+                img_input = torch.cat([self.prep_img(self.seq_images[seq][p_ids[0]]),
+                            self.prep_img(self.seq_images[seq][p_ids[1]])], dim=0)
 
         if self.rotmat_targets:
             return img_input, torch.from_numpy(C_21_gt).float()

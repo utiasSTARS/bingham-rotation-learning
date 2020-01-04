@@ -106,7 +106,7 @@ def collect_errors(saved_file, validation_transform=None):
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
+    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
     dim_in = 6
@@ -146,8 +146,9 @@ def create_kitti_data():
         data_A.append(collect_errors(prefix + file_A, validation_transform=None))
 
 
-    transform_erase_prob = 0.5
+    transform_erase_prob = 1
     transform = torchvision.transforms.RandomErasing(p=1)
+
     print('Collecting transformed data....')
     data_6D_transformed = []
     for file_6D in file_list_6D:
@@ -268,7 +269,7 @@ def create_plots():
         (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
         mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  ']
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  Filter']
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
