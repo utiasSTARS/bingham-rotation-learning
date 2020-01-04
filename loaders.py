@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets.folder import default_loader
+import torchvision
 import os.path as osp
 from PIL import Image
 import os
@@ -100,17 +101,25 @@ class SevenScenesData(Dataset):
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, transform_img=None, transform_second_half_only=False, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
+    def __init__(self, kitti_dataset_file, seqs_base_path, output_sample_images=0, transform_img=None, transform_second_half_only=False, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
         self.transform_img = transform_img
         self.transform_second_half_only = transform_second_half_only
+
         self.seq_prefix = seq_prefix
         self.load_kitti_data(run_type, use_only_seq)  # Loads self.image_quad_paths and self.labels
         self.use_flow = use_flow
         self.reverse_images = reverse_images
         self.rotmat_targets = rotmat_targets
+        
+        #Output for visualization
+        self.output_sample_images = output_sample_images
+        if self.output_sample_images > 0:
+            self.output_image_idx = np.random.choice(len(self.T_21_gt), self.output_sample_images, replace=False)
+            print('Will output image at idx:')
+            print(self.output_image_idx)
 
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
@@ -209,6 +218,11 @@ class KITTIVODatasetPreTransformed(Dataset):
             else:
                 img_input = torch.cat([self.prep_img(self.seq_images[seq][p_ids[0]]),
                             self.prep_img(self.seq_images[seq][p_ids[1]])], dim=0)
+
+        if idx in self.output_image_idx
+            torchvision.utils.save_image(img_input[0], 'img_{0}.png'.format(idx))
+    
+            
 
         if self.rotmat_targets:
             return img_input, torch.from_numpy(C_21_gt).float()
