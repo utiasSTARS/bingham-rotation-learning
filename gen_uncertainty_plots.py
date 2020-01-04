@@ -106,7 +106,12 @@ def collect_errors(saved_file, validation_transform=None):
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
+    if validation_transform is not None:
+        output_sample_images = 4
+    else:
+        output_sample_images = 0
+        
+    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, output_sample_images=output_sample_images, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
     dim_in = 6
@@ -147,7 +152,7 @@ def create_kitti_data():
 
 
     transform_erase_prob = 1
-    transform = torchvision.transforms.RandomErasing(p=1)
+    transform = torchvision.transforms.RandomErasing(p=1, scale=(0.25, 0.5), ratio=(0.33, 3))
 
     print('Collecting transformed data....')
     data_6D_transformed = []
@@ -218,7 +223,8 @@ def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     return fig
 
 def create_plots():
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
+    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantile = 0.75
@@ -257,7 +263,12 @@ def create_plots():
         thresh = ll_threshold(A_predt, quantile)
         mask = wigner_log_likelihood(A_pred) < thresh
         mean_err_corrupted_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
-
+        
+        true_mask = np.zeros(mask.shape)
+        true_mask[:int(true_mask.shape[0]/2)] = 1.
+        num_correct = int((true_mask*mask).sum())
+        num_picked_out = mask.sum()
+        print('{}/{} correct ({:.2F} precision)'.format(num_correct,num_picked_out, num_correct/num_picked_out))
         #Create scatter plot
         fig = _create_scatter_plot(thresh, 
         [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
