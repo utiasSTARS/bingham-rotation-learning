@@ -15,6 +15,7 @@ matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+from matplotlib.colors import to_rgba
 
 def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
@@ -204,7 +205,9 @@ def create_kitti_data():
 
     return
 
-def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0.05, 0.2], legend=True):
+
+
+def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0., 0.8], legend=True):
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots()
     fig.set_size_inches(2,2)
@@ -212,10 +215,10 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
-    colors = ['tab:red', 'tab:blue', 'black']
+    colors = ['tab:green', 'tab:red', 'tab:blue', 'black']
     width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.25 + width*i, height, width, label=label, color=colors[i], alpha=0.8, edgecolor='k', linewidth=0.5)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=0.5), edgecolor=colors[i], linewidth=0.5)
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
@@ -230,14 +233,14 @@ def _scatter(ax, x, y, title, color='tab:red', marker=".", size =4, rasterized=F
     return
 
 def _plot_curve(ax, x, y, label, style):
-    ax.plot(x, y,  style, linewidth=1.5, label=label)
+    ax.plot(x, y,  style, linewidth=1., label=label)
     return
 
 def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     fig, ax = plt.subplots()
     fig.set_size_inches(4,2)
     ax.axvline(thresh, c='k', ls='--', label='Threshold')
-    colors = ['grey', 'tab:blue']
+    colors = ['grey', 'tab:orange']
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
         _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
@@ -263,10 +266,10 @@ def compute_prec_recall(A_train, A_test, quantile):
     return precision, recall
 
 def create_precision_recall_plot():
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
-    colors = ['tab:blue', 'tab:red', 'black']
+    colors = ['--k', '-.k', '-k']
 
     quantiles = np.arange(0.04, 1., 0.02)
     selected_quantile = 0.75
@@ -284,7 +287,7 @@ def create_precision_recall_plot():
         _plot_curve(ax, recall, precision, 'Seq '+seq, colors[s_i])
         p, r = compute_prec_recall(A_train, A_test, selected_quantile)
         label = '0.75 quantile' if s_i == 0 else ''
-        ax.scatter(r, p, label=label, facecolors='none', edgecolors=colors[s_i], s=50, zorder=s_i)
+        ax.scatter(r, p, label=label, marker='D', color='black', s=10, zorder=s_i)
 
 
 
@@ -292,17 +295,65 @@ def create_precision_recall_plot():
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
-    ax.set_ylim([0.5, 1])
+    #ax.set_ylim([0.7, 1])
     output_file = 'plots/kitti_prec_recall.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
+
+
+def create_table_stats():
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    data = torch.load(saved_data_file)
+    seqs = ['00', '02', '05']
+    quantiles = [0.25, 0.5, 0.75]
+    for s_i, seq in enumerate(seqs):
+        _, (q_est, q_target) = data['data_quat'][s_i]
+        mean_err_quat = quat_angle_diff(q_est, q_target)
+
+        _, (q_est, q_target) = data['data_6D'][s_i]
+        mean_err_6D = quat_angle_diff(q_est, q_target)
+
+        (A_train, _, _), (A_test, q_est, q_target) = data['data_A'][s_i]
+        mean_err_A = quat_angle_diff(q_est, q_target)
+
+        print('Seq: {}. Total Pairs: {}.'.format(seq, q_est.shape[0]))
+        
+        print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
+
+        for q_i, quantile in enumerate(quantiles):
+            thresh = ll_threshold(A_train, quantile)
+            mask = wigner_log_likelihood(A_test) < thresh
+            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            
+            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
+
+        
+        _, (q_est, q_target) = data['data_quat_transformed'][s_i]
+        mean_err_quat = quat_angle_diff(q_est, q_target)
+
+        _, (q_est, q_target) = data['data_6D_transformed'][s_i]
+        mean_err_6D = quat_angle_diff(q_est, q_target)
+
+        (A_train, _, _), (A_test, q_est, q_target) = data['data_A_transformed'][s_i]
+        mean_err_A = quat_angle_diff(q_est, q_target)
+
+        print('-- CORRUPTED --')
+        print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
+
+        for q_i, quantile in enumerate(quantiles):
+            thresh = ll_threshold(A_train, quantile)
+            mask = wigner_log_likelihood(A_test) < thresh
+            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            precision, recall = compute_prec_recall(A_train, A_test, quantile)
+
+            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
 
 
 
 def create_bar_and_scatter_plots(output_scatter=True):
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-08-20.pt'
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantile = 0.75
@@ -372,13 +423,13 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 
     bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) +  WLLT']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.8])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
     bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) +  WLLT']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.45], legend=False)
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.8], legend=False)
     output_file = 'plots/kitti_corrupted.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -388,4 +439,5 @@ def create_bar_and_scatter_plots(output_scatter=True):
 if __name__=='__main__':
     #create_kitti_data()
     #create_bar_and_scatter_plots(output_scatter=False)
-    create_precision_recall_plot()
+    #create_precision_recall_plot()
+    create_table_stats()
