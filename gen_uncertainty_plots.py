@@ -271,7 +271,7 @@ def create_precision_recall_plot():
     quantiles = np.arange(0.04, 1., 0.02)
     selected_quantile = 0.75
     fig, ax = plt.subplots()
-    fig.set_size_inches(4,2)
+    fig.set_size_inches(4,1.5)
 
     for s_i, seq in enumerate(seqs):
         precision = np.empty(len(quantiles))
@@ -292,7 +292,7 @@ def create_precision_recall_plot():
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
-    ax.set_ylim([0, 1])
+    ax.set_ylim([0.5, 1])
     output_file = 'plots/kitti_prec_recall.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -386,6 +386,6 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 
 if __name__=='__main__':
-    create_kitti_data()
+    #create_kitti_data()
     #create_bar_and_scatter_plots(output_scatter=False)
-    #create_precision_recall_plot()
+    create_precision_recall_plot()
