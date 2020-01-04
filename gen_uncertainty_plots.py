@@ -14,7 +14,7 @@ matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
-
+import matplotlib.ticker as mtick
 
 def evaluate_rotmat_model(loader, model, device, tensor_type):
     q_est = []
@@ -183,46 +183,101 @@ def create_kitti_data():
 
     return
 
-def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0.05, 0.2]):
+def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0.05, 0.2], legend=True):
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots()
-    fig.set_size_inches(4,2)
+    fig.set_size_inches(2,2)
+    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
     colors = ['tab:red', 'tab:blue', 'black']
-    width = 0.4/N
+    width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.2 + width*i, height, width, label=label, color=colors[i], alpha=0.8)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=colors[i], alpha=0.8, edgecolor='k', linewidth=0.5)
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     ax.set_ylim(ylim)
-    ax.legend(loc='upper right', fontsize = 8)
-    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+    if legend:
+        ax.legend(loc='upper right', fontsize = 8)
     return fig
 
-def _scatter(ax, x, y, title, color='tab:red', marker=".", size=4):
-    ax.scatter(x, y, color=color, s=size, marker=marker, label=title)
+def _scatter(ax, x, y, title, color='tab:red', marker=".", size =4, rasterized=False):
+    ax.scatter(x, y, color=color, s=size, marker=marker, label=title, rasterized=rasterized)
+    return
+
+def _plot_curve(ax, x, y, label, style):
+    ax.plot(x, y,  style, linewidth=1.5, label=label)
     return
 
 def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     fig, ax = plt.subplots()
     fig.set_size_inches(4,2)
     ax.axvline(thresh, c='k', ls='--', label='Threshold')
-    colors = ['tab:blue', 'tab:red']
+    colors = ['grey', 'tab:blue']
+    markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
-        _scatter(ax, ll, error, label, color=colors[i])
+        _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
     ax.legend(loc='upper left')
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('rotation error (deg)')
     ax.set_xlabel('Wigner log likelihood')
     ax.set_yscale('log')
+    #ax.set_xscale('symlog')
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0e'))
     #ax.set_ylim(ylim)
     return fig
 
-def create_plots():
+def compute_prec_recall(A_train, A_test, quantile):
+    thresh = ll_threshold(A_train, quantile)
+    mask = wigner_log_likelihood(A_test) < thresh
+    true_mask = np.zeros(mask.shape)
+    true_mask[:int(true_mask.shape[0]/2)] = 1.
+    num_correct = int((true_mask*mask).sum())
+    num_picked_out = mask.sum()
+    precision = num_correct/(num_picked_out + 1e-8)
+    recall = num_correct/true_mask.sum()
+    return precision, recall
+
+def create_precision_recall_plot():
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
+    data = torch.load(saved_data_file)
+    seqs = ['00', '02', '05']
+    colors = ['tab:blue', 'tab:red', 'black']
+
+    quantiles = np.arange(0.04, 1., 0.02)
+    selected_quantile = 0.75
+    fig, ax = plt.subplots()
+    fig.set_size_inches(4,2)
+
+    for s_i, seq in enumerate(seqs):
+        precision = np.empty(len(quantiles))
+        recall = np.empty(len(quantiles))
+        
+        for q_i, quantile in enumerate(quantiles):
+            (A_train, _, _), (A_test, _, _) = data['data_A_transformed'][s_i]
+            precision[q_i], recall[q_i] = compute_prec_recall(A_train, A_test, quantile)
+
+        _plot_curve(ax, recall, precision, 'Seq '+seq, colors[s_i])
+        p, r = compute_prec_recall(A_train, A_test, selected_quantile)
+        label = '0.75 quantile' if s_i == 0 else ''
+        ax.scatter(r, p, label=label, facecolors='none', edgecolors=colors[s_i], s=50, zorder=s_i)
+
+
+
+    ax.legend(loc='lower left')
+    ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+    ax.set_ylabel('precision')
+    ax.set_xlabel('recall')
+    ax.set_ylim([0, 1])
+    output_file = 'plots/kitti_prec_recall.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+
+
+def create_bar_plots():
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
     saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
     data = torch.load(saved_data_file)
@@ -268,7 +323,7 @@ def create_plots():
         true_mask[:int(true_mask.shape[0]/2)] = 1.
         num_correct = int((true_mask*mask).sum())
         num_picked_out = mask.sum()
-        print('{}/{} correct ({:.2F} precision)'.format(num_correct,num_picked_out, num_correct/num_picked_out))
+        print('{}/{} correct ({:.2F} precision, {:.2F} recall)'.format(num_correct,num_picked_out, num_correct/num_picked_out, num_correct/true_mask.sum()))
         #Create scatter plot
         fig = _create_scatter_plot(thresh, 
         [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
@@ -280,14 +335,14 @@ def create_plots():
         (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
         mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  Filter']
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  WLLT']
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) + Filter']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], xlabel='KITTI sequence (with corruption)', ylim=[0,0.45])
+    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  WLLT']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.45], legend=False)
     output_file = 'plots/kitti_corrupted.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -295,5 +350,6 @@ def create_plots():
 
 
 if __name__=='__main__':
-    create_kitti_data()
-    #create_plots()
+    #create_kitti_data()
+    create_bar_plots()
+    #create_precision_recall_plot()
