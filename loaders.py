@@ -224,7 +224,7 @@ class KITTIVODatasetPreTransformed(Dataset):
         if idx in self.output_image_idx:
             file_name = 'img_{0}.png'.format(idx)
             print('Saving....{}'.format(file_name))
-            torchvision.utils.save_image(img_input[:2], file_name)
+            torchvision.utils.save_image(img_input[:3], file_name)
     
             
 
