@@ -284,5 +284,5 @@ def create_plots():
 
 
 if __name__=='__main__':
-    #create_kitti_data()
-    create_plots()
+    create_kitti_data()
+    #create_plots()
