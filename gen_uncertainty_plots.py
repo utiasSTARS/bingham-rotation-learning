@@ -110,7 +110,7 @@ def collect_errors(saved_file, validation_transform=None):
         output_sample_images = 4
     else:
         output_sample_images = 0
-        
+
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, output_sample_images=output_sample_images, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
@@ -295,5 +295,5 @@ def create_plots():
 
 
 if __name__=='__main__':
-    create_kitti_data()
-    #create_plots()
+    #create_kitti_data()
+    create_plots()
