@@ -106,10 +106,11 @@ def collect_errors(saved_file, validation_transform=None):
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    if validation_transform is not None:
-        output_sample_images = 4
-    else:
-        output_sample_images = 0
+    # if validation_transform is not None:
+    #     output_sample_images = 4
+    # else:
+    #     output_sample_images = 0
+    output_sample_images = 0
 
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, output_sample_images=output_sample_images, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
@@ -124,6 +125,12 @@ def collect_errors(saved_file, validation_transform=None):
         A_predt, q_estt, q_targett = evaluate_A_model(train_loader, model, device, tensor_type)
         A_pred, q_est, q_target = evaluate_A_model(valid_loader, model, device, tensor_type)
         return ((A_predt, q_estt, q_targett), (A_pred, q_est, q_target))
+    elif args.model == 'quat':
+        model = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model.load_state_dict(checkpoint['model'], strict=False)
+        q_estt, q_targett = evaluate_rotmat_model(train_loader, model, device, tensor_type)
+        q_est, q_target = evaluate_rotmat_model(valid_loader, model, device, tensor_type)
+        return ((q_estt, q_targett), (q_est, q_target))
     else:
         model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
@@ -136,6 +143,7 @@ def create_kitti_data():
     prefix = 'saved_data/kitti/'
     file_list_6D = ['kitti_model_6D_seq_00_01-02-2020-14-21-01.pt', 'kitti_model_6D_seq_02_01-02-2020-15-13-10.pt','kitti_model_6D_seq_05_01-02-2020-16-09-34.pt']
     file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
+    file_list_quat = ['kitti_model_quat_seq_00_01-04-2020-02-56-31.pt','kitti_model_quat_seq_02_01-04-2020-03-47-36.pt', 'kitti_model_quat_seq_05_01-04-2020-04-43-22.pt']
     
     print('Collecting normal data....')
     data_VO = []
@@ -150,6 +158,9 @@ def create_kitti_data():
     for file_A in file_list_A_sym:
         data_A.append(collect_errors(prefix + file_A, validation_transform=None))
 
+    data_quat = []
+    for file_quat in file_list_quat:
+        data_quat.append(collect_errors(prefix + file_quat, validation_transform=None))
 
     transform_erase_prob = 1
     transform = torchvision.transforms.RandomErasing(p=1, scale=(0.25, 0.5), ratio=(0.33, 3))
@@ -163,6 +174,10 @@ def create_kitti_data():
     for file_A in file_list_A_sym:
         data_A_transformed.append(collect_errors(prefix + file_A, validation_transform=transform))
 
+    data_quat_transformed = []
+    for file_quat in file_list_quat:
+        data_quat_transformed.append(collect_errors(prefix + file_quat, validation_transform=transform))
+
     print('Done')
 
     saved_data_file_name = 'kitti_comparison_data_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
@@ -171,11 +186,14 @@ def create_kitti_data():
     torch.save({
                 'file_list_6D': file_list_6D,
                 'file_list_A_sym': file_list_A_sym,
+                'file_list_quat': file_list_quat,
+                'data_quat': data_quat,
                 'data_VO': data_VO,
                 'data_6D': data_6D,
                 'data_A': data_A,
                 'data_6D_transformed': data_6D_transformed,
                 'data_A_transformed': data_A_transformed,
+                'data_quat_transformed': data_quat_transformed,
                 'transform_erase_prob': transform_erase_prob
     }, full_saved_path)
 
@@ -350,6 +368,6 @@ def create_bar_plots():
 
 
 if __name__=='__main__':
-    #create_kitti_data()
-    create_bar_plots()
+    create_kitti_data()
+    #create_bar_plots()
     #create_precision_recall_plot()
