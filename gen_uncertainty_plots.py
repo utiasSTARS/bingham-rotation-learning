@@ -386,6 +386,6 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 
 if __name__=='__main__':
-    #create_kitti_data()
-    create_bar_and_scatter_plots(output_scatter=False)
+    create_kitti_data()
+    #create_bar_and_scatter_plots(output_scatter=False)
     #create_precision_recall_plot()
