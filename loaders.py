@@ -120,7 +120,9 @@ class KITTIVODatasetPreTransformed(Dataset):
             self.output_image_idx = np.random.choice(len(self.T_21_gt), self.output_sample_images, replace=False)
             print('Will output image at idx:')
             print(self.output_image_idx)
-
+        else:
+            self.output_image_idx = []
+            
     def load_kitti_data(self, run_type, use_only_seq):
         with open(self.kitti_dataset_file, 'rb') as handle:
             kitti_data = pickle.load(handle)
