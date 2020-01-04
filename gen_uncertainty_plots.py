@@ -149,22 +149,22 @@ def create_kitti_data():
     file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
     file_list_quat = ['kitti_model_quat_seq_00_01-04-2020-02-56-31.pt','kitti_model_quat_seq_02_01-04-2020-03-47-36.pt', 'kitti_model_quat_seq_05_01-04-2020-04-43-22.pt']
     
-    print('Collecting normal data....')
-    data_VO = []
-    for file_A in file_list_A_sym:
-        data_VO.append(collect_vo_errors(prefix + file_A))
+    # print('Collecting normal data....')
+    # data_VO = []
+    # for file_A in file_list_A_sym:
+    #     data_VO.append(collect_vo_errors(prefix + file_A))
 
-    data_6D = []
-    for file_6D in file_list_6D:
-        data_6D.append(collect_errors(prefix + file_6D, validation_transform=None))
+    # data_6D = []
+    # for file_6D in file_list_6D:
+    #     data_6D.append(collect_errors(prefix + file_6D, validation_transform=None))
 
-    data_A = []
-    for file_A in file_list_A_sym:
-        data_A.append(collect_errors(prefix + file_A, validation_transform=None))
+    # data_A = []
+    # for file_A in file_list_A_sym:
+    #     data_A.append(collect_errors(prefix + file_A, validation_transform=None))
 
-    data_quat = []
-    for file_quat in file_list_quat:
-        data_quat.append(collect_errors(prefix + file_quat, validation_transform=None))
+    # data_quat = []
+    # for file_quat in file_list_quat:
+    #     data_quat.append(collect_errors(prefix + file_quat, validation_transform=None))
 
     transform_erase_prob = 1
     transform = torchvision.transforms.RandomErasing(p=1, scale=(0.25, 0.5), ratio=(0.33, 3))
