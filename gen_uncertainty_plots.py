@@ -110,11 +110,11 @@ def collect_errors(saved_file, validation_transform=None):
                                 batch_size=args.batch_size_test, pin_memory=False,
                                 shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    # if validation_transform is not None:
-    #     output_sample_images = 4
-    # else:
-    #     output_sample_images = 0
-    output_sample_images = 0
+    if validation_transform is not None:
+        output_sample_images = 4
+    else:
+        output_sample_images = 0
+    #output_sample_images = 0
 
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, output_sample_images=output_sample_images, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
@@ -437,7 +437,7 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 
 if __name__=='__main__':
-    #create_kitti_data()
+    create_kitti_data()
     #create_bar_and_scatter_plots(output_scatter=False)
     #create_precision_recall_plot()
-    create_table_stats()
+    #create_table_stats()
