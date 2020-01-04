@@ -169,13 +169,13 @@ def scatter_shapenet_example():
         ax.set_yticklabels([])
         ax.set_zticklabels([])
 
-        #ax.axis('off')
+        ax.axis('off')
         ax.autoscale_view('tight')
         
         if i == N - 1:
             break
 
-    output_file = 'plots/shapenet.pdf'
+    output_file = 'plots/shapenet_plain.pdf'
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
