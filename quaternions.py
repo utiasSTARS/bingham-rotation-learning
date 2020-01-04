@@ -152,7 +152,10 @@ def rotmat_to_quat(mat, ordering='xyzw'):
         R = mat.unsqueeze(dim=0)
     else:
         R = mat
-
+        
+    assert(mat.shape[1] == mat.shape[2])
+    assert(mat.shape[1] == 3)
+    
     qw = 0.5 * torch.sqrt(1. + R[:, 0, 0] + R[:, 1, 1] + R[:, 2, 2])
     qx = qw.new_empty(qw.shape)
     qy = qw.new_empty(qw.shape)

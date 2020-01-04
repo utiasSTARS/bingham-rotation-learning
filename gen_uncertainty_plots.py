@@ -16,7 +16,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
-def evaluate_rotmat_model(loader, model, device, tensor_type):
+def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
     q_target = []
     
@@ -26,7 +26,10 @@ def evaluate_rotmat_model(loader, model, device, tensor_type):
         for _, (x, target) in enumerate(loader):
             #Move all data to appropriate device
             x = x.to(device=device, dtype=tensor_type)
-            q = rotmat_to_quat(model.forward(x).squeeze().cpu())
+            if rotmat_output:
+                q = rotmat_to_quat(model.forward(x).squeeze().cpu())
+            else:
+                q = model.forward(x).squeeze().cpu()
             q_est.append(q)
             q_target.append(target.cpu())
             
@@ -128,14 +131,14 @@ def collect_errors(saved_file, validation_transform=None):
     elif args.model == 'quat':
         model = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
-        q_estt, q_targett = evaluate_rotmat_model(train_loader, model, device, tensor_type)
-        q_est, q_target = evaluate_rotmat_model(valid_loader, model, device, tensor_type)
+        q_estt, q_targett = evaluate_model(train_loader, model, device, tensor_type,rotmat_output=False)
+        q_est, q_target = evaluate_model(valid_loader, model, device, tensor_type,rotmat_output=False)
         return ((q_estt, q_targett), (q_est, q_target))
     else:
         model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
-        q_estt, q_targett = evaluate_rotmat_model(train_loader, model, device, tensor_type)
-        q_est, q_target = evaluate_rotmat_model(valid_loader, model, device, tensor_type)
+        q_estt, q_targett = evaluate_model(train_loader, model, device, tensor_type,rotmat_output=True)
+        q_est, q_target = evaluate_model(valid_loader, model, device, tensor_type, rotmat_output=True)
         return ((q_estt, q_targett), (q_est, q_target))
 
 def create_kitti_data():
@@ -295,9 +298,11 @@ def create_precision_recall_plot():
     plt.close(fig)
 
 
-def create_bar_plots():
+
+def create_bar_and_scatter_plots(output_scatter=True):
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
+    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-08-20.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantile = 0.75
@@ -305,11 +310,13 @@ def create_bar_plots():
     mean_err = []
     mean_err_filter = []
     mean_err_6D = []
-    mean_err_vo = []
+    mean_err_vo= []
+    mean_err_quat = []
     
     mean_err_corrupted = []
     mean_err_corrupted_filter = []
     mean_err_corrupted_6D = []
+    mean_err_corrupted_quat = []
 
     for s_i, seq in enumerate(seqs):
         (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A'][s_i]
@@ -319,17 +326,21 @@ def create_bar_plots():
         mean_err_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
         mean_err_vo.append(quat_angle_diff(data['data_VO'][s_i], q_target))
         
-        #Create scatter plot
-        fig = _create_scatter_plot(thresh, 
-        [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
-        [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
-        output_file = 'plots/kitti_scatter_seq_{}.pdf'.format(seq)
-        fig.savefig(output_file, bbox_inches='tight')
-        plt.close(fig)
+        if output_scatter:
+            #Create scatter plot
+            fig = _create_scatter_plot(thresh, 
+            [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
+            [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+            output_file = 'plots/kitti_scatter_seq_{}.pdf'.format(seq)
+            fig.savefig(output_file, bbox_inches='tight')
+            plt.close(fig)
 
 
         (q_estt, q_targett), (q_est, q_target) = data['data_6D'][s_i]
         mean_err_6D.append(quat_angle_diff(q_est, q_target, reduce=True))
+
+        (q_estt, q_targett), (q_est, q_target) = data['data_quat'][s_i]
+        mean_err_quat.append(quat_angle_diff(q_est, q_target, reduce=True))
 
         (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A_transformed'][s_i]
         mean_err_corrupted.append(quat_angle_diff(q_est, q_target, reduce=True))
@@ -342,25 +353,32 @@ def create_bar_plots():
         num_correct = int((true_mask*mask).sum())
         num_picked_out = mask.sum()
         print('{}/{} correct ({:.2F} precision, {:.2F} recall)'.format(num_correct,num_picked_out, num_correct/num_picked_out, num_correct/true_mask.sum()))
-        #Create scatter plot
-        fig = _create_scatter_plot(thresh, 
-        [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
-        [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
-        output_file = 'plots/kitti_scatter_seq_{}_corrupted.pdf'.format(seq)
-        fig.savefig(output_file, bbox_inches='tight')
-        plt.close(fig)
+        
+        if output_scatter:
+            #Create scatter plot
+            fig = _create_scatter_plot(thresh, 
+            [wigner_log_likelihood(A_predt), wigner_log_likelihood(A_pred)],
+            [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+            output_file = 'plots/kitti_scatter_seq_{}_corrupted.pdf'.format(seq)
+            fig.savefig(output_file, bbox_inches='tight')
+            plt.close(fig)
 
         (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
         mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  WLLT']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
+        (q_estt, q_targett), (q_est, q_target) = data['data_quat_transformed'][s_i]
+        mean_err_corrupted_quat.append(quat_angle_diff(q_est, q_target, reduce=True))    
+
+
+
+    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) +  WLLT']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.45])
     output_file = 'plots/kitti_normal.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
-    bar_labels = ['6D', 'A (Sym)', 'A (Sym) +  WLLT']
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.45], legend=False)
+    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) +  WLLT']
+    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.45], legend=False)
     output_file = 'plots/kitti_corrupted.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -368,6 +386,6 @@ def create_bar_plots():
 
 
 if __name__=='__main__':
-    create_kitti_data()
-    #create_bar_plots()
+    #create_kitti_data()
+    create_bar_and_scatter_plots(output_scatter=False)
     #create_precision_recall_plot()
