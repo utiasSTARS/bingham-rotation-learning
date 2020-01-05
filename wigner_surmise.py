@@ -10,7 +10,7 @@ if __name__ == '__main__':
     # Parameters
     n = 4
     N = int((n+1)*n/2)
-    n_runs = 1000000
+    n_runs = 100000
     sigma = 1.0
     mu = 0.0
     inds = np.triu_indices(n)
