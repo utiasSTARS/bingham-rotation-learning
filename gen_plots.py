@@ -5,7 +5,10 @@ matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
-
+from loaders import PointNetDataset, pointnet_collate
+from torch.utils.data import Dataset, DataLoader
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 def _plot_curve(ax, x, y, label, style):
     ax.grid(True, which='both')
     ax.plot(x, y,  style, linewidth=1.5, label=label)
@@ -145,6 +148,39 @@ def plot_learning_rate_wahba_experiment():
     plt.close(fig)
 
 
+def scatter_shapenet_example():
+    pointnet_data = '/Users/valentinp/Dropbox/Postdoc/projects/misc/RotationContinuity/shapenet/data/pc_plane'
+    valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', load_into_memory=True, device=torch.device('cpu'), rotations_per_batch=10, dtype=torch.float, test_mode=True),
+                        batch_size=1, pin_memory=True, collate_fn=pointnet_collate,
+                        shuffle=True, num_workers=1, drop_last=False)
+    
+    N = 4
+    fig = plt.figure()
+    fig.set_size_inches(4,4)
+    
+    for i, (x, target) in enumerate(valid_loader):
+        pc1 = x[:,0,:,:].transpose(1,2)
+        pc2 = x[:,1,:,:].transpose(1,2)
+
+        ax = fig.add_subplot(2, 2, i+1, projection='3d')
+        ax.scatter(pc1[0,0,:],pc1[0,1,:],pc1[0,2,:], c='tab:blue',s=0.1, marker=",")
+        ax.scatter(pc2[0,0,:],pc2[0,1,:],pc2[0,2,:], c='tab:green',s=0.1, marker=",")
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_zticklabels([])
+
+        ax.axis('off')
+        ax.autoscale_view('tight')
+        
+        if i == N - 1:
+            break
+
+    output_file = 'plots/shapenet_plain.pdf'
+    fig.tight_layout()
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+
 if __name__=='__main__':
     #plot_wahba_training_comparisons()
-    plot_learning_rate_wahba_experiment()
+    #plot_learning_rate_wahba_experiment()
+    scatter_shapenet_example()
