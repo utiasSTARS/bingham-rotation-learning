@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def project(u, v):
     """Project vector u onto vector v."""
     return u.dot(v)*v/(np.linalg.norm(v))
@@ -69,8 +68,8 @@ if __name__ == '__main__':
         VV1 = V1.T.dot(V1)
         VV2 = V2.T.dot(V2)
         double_cover_invariance_check[idx] = np.max(np.abs(VV1-VV2))
-    print("Max deviation: {:}".format(np.max(max_check)))
-    print("Min eigenvalue: {:}".format(np.min(rank_check)))
-    print("Double cover invariance check: {:}".format(np.max(double_cover_invariance_check)))
+    print("Max deviation (should be 0): {:}".format(np.max(max_check)))
+    print("Min eigenvalue (should be 1): {:}".format(np.min(rank_check)))
+    print("Double cover invariance check (should be 0): {:}".format(np.max(double_cover_invariance_check)))
 
 
