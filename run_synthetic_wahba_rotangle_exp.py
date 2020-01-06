@@ -78,16 +78,16 @@ def main():
         saved_data_file_name = 'rotangle_synthetic_wahba_experiment_3models_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
-        torch.save({
-            'models_quat': models_quat,
-            'models_6D': models_6D,
-            'models_A_sym': models_A_sym,
-            'max_angles': max_angles,
-            'named_approaches': ['6D', 'Quat', 'A (quat-sym)'],
-            'args': args
-        }, full_saved_path)
+    torch.save({
+        'models_quat': models_quat,
+        'models_6D': models_6D,
+        'models_A_sym': models_A_sym,
+        'max_angles': max_angles,
+        'named_approaches': ['6D', 'Quat', 'A (quat-sym)'],
+        'args': args
+    }, full_saved_path)
 
-        print('Saved data to {}.'.format(full_saved_path))
+    print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
