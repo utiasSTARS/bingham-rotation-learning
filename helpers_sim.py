@@ -37,7 +37,6 @@ def test_model(model, loss_fn, x, targets, **kwargs):
     with torch.no_grad():
         out = model.forward(x, **kwargs)
         loss = loss_fn(out, targets)
-
     return (out, loss.item())
 
 def pretrain(A_net, train_data, test_data):
