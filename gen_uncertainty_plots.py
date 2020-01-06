@@ -403,7 +403,7 @@ def create_box_plots(cache_data=True):
                 print('Evaluating rand A model...')
                 batch = 50
                 iters = int(x_rand.shape[0] / batch)
-                for ikin range(iters):
+                for k in range(iters):
                     #Move all data to appropriate device
                     start, end = k * batch, (k + 1) * batch
                     x = x_randn[start:end].to(device=device, dtype=tensor_type)
