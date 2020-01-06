@@ -246,9 +246,9 @@ def _plot_curve(ax, x, y, label, style):
 
 def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     fig, ax = plt.subplots()
-    fig.set_size_inches(4,2)
+    fig.set_size_inches(4,1.5)
     ax.axvline(thresh, c='k', ls='--', label='Threshold')
-    colors = ['grey', 'tab:orange']
+    colors = ['tab:orange','grey']
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
         _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
@@ -256,10 +256,10 @@ def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('rotation error (deg)')
     ax.set_xlabel('first eigenvalue gap')
-    ax.set_yscale('log')
+    #ax.set_yscale('log')
     #ax.set_xscale('symlog')
-   #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0e'))
-    #ax.set_ylim(ylim)
+    #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0e'))
+    ax.set_ylim(ylim)
     return fig
 
 def compute_prec_recall(A_train, A_test, quantile):
@@ -427,7 +427,7 @@ def create_box_plots(cache_data=True):
         }, full_saved_path)
         print('Saved data to {}.'.format(full_saved_path))
     else:
-        full_saved_path = "saved_data/kitti/kitti_boxplot_data_01-06-2020-13-06-35.pt"
+        full_saved_path = "saved_data/kitti/kitti_boxplot_data_01-06-2020-13-26-15.pt"
     
     
     data = torch.load(full_saved_path)
@@ -435,9 +435,9 @@ def create_box_plots(cache_data=True):
 
     for i, As in enumerate(data['A_list']):
         fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
-        fig.set_size_inches(4,2)
+        fig.set_size_inches(5,2)
         ax.boxplot([epistemic_measure(As[0]),epistemic_measure(As[1]), epistemic_measure(As[2]), epistemic_measure(As[3]), epistemic_measure(As[4])], 
-        labels=['Training \n (Res / City)', 'Seq ' + seqs[i] + '\n (Res)', 'Seq 01 \n (Road)', 'Seq ' + seqs[i] + '\n (100\% Corrupted)', 'Random Input'])
+        labels=['Training \n (Res / City)', 'Seq ' + seqs[i] + '\n (Res)', 'Seq 01 \n (Road)', 'Seq ' + seqs[i] + '\n (Corrupted)', 'Random Input'])
         ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
         ax.set_ylabel('first eigenvalue gap')    
         output_file = 'plots/kitti_box_seq_{}.pdf'.format(seqs[i])
@@ -474,8 +474,8 @@ def create_bar_and_scatter_plots(output_scatter=True):
         if output_scatter:
             #Create scatter plot
             fig = _create_scatter_plot(thresh, 
-            [epistemic_measure(A_predt), epistemic_measure(A_pred)],
-            [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+            [epistemic_measure(A_pred), epistemic_measure(A_predt)],
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], labels=['Validation', 'Training'], ylim=[1e-4, 5])
             output_file = 'plots/kitti_scatter_seq_{}.pdf'.format(seq)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -503,8 +503,8 @@ def create_bar_and_scatter_plots(output_scatter=True):
         if output_scatter:
             #Create scatter plot
             fig = _create_scatter_plot(thresh, 
-            [epistemic_measure(A_predt), epistemic_measure(A_pred)],
-            [quat_angle_diff(q_estt, q_targett, reduce=False), quat_angle_diff(q_est, q_target, reduce=False)], labels=['Training', 'Validation'], ylim=[1e-4, 10])
+            [epistemic_measure(A_pred), epistemic_measure(A_predt)],
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], labels=['Validation', 'Training'], ylim=[1e-4, 5])
             output_file = 'plots/kitti_scatter_seq_{}_corrupted.pdf'.format(seq)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -533,7 +533,7 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 if __name__=='__main__':
     #create_kitti_data()
-    #create_bar_and_scatter_plots(output_scatter=True)
+    create_bar_and_scatter_plots(output_scatter=True)
     #create_precision_recall_plot()
     #create_table_stats()
-    create_box_plots(cache_data=True)
+    #create_box_plots(cache_data=False)
