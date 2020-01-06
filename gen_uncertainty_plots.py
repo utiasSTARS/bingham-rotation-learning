@@ -533,7 +533,7 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 if __name__=='__main__':
     #create_kitti_data()
-    create_bar_and_scatter_plots(output_scatter=True)
+    #create_bar_and_scatter_plots(output_scatter=True)
     #create_precision_recall_plot()
     #create_table_stats()
-    #create_box_plots(cache_data=False)
+    create_box_plots(cache_data=True)
