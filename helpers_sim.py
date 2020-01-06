@@ -100,7 +100,7 @@ def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets
         if args.dataset is not 'static':
             beachball = (args.dataset == 'dynamic_beachball')
             beachball_factors = args.beachball_sigma_factors
-            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, sigma=args.sim_sigma, beachball=beachball, beachball_factors=beachball_factors, device=device, dtype=tensor_type)
+            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, max_rotation_angle=args.max_rotation_angle, sigma=args.sim_sigma, beachball=beachball, beachball_factors=beachball_factors, device=device, dtype=tensor_type)
 
         #Train model
         if verbose:
@@ -260,10 +260,19 @@ class SyntheticData():
         self.A_prior = A_prior
 
 
-def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, dtype=torch.double):
+def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, max_rotation_angle=None, dtype=torch.double):
     ##Simulation
     #Create a random rotation
-    C = SO3_torch.exp(torch.randn(N_rotations, 3, dtype=dtype)).as_matrix()
+    axis = torch.randn(N_rotations, 3, dtype=dtype)
+    axis = axis / axis.norm(dim=1, keepdim=True)
+    if max_rotation_angle:
+        max_angle = max_rotation_angle*np.pi/180.
+    else:
+        max_angle = np.pi
+    
+    angle = max_angle*torch.rand(N_rotations, 1)
+
+    C = SO3_torch.exp(angle*axis).as_matrix()
     #Create two sets of vectors (normalized to unit l2 norm)
     x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation, dtype=dtype)
     x_1 = x_1/x_1.norm(dim=1,keepdim=True)    
@@ -298,14 +307,14 @@ def gen_sim_data_beachball(N_rotations, N_matches_per_rotation, sigma, factors, 
     x_2 = C.bmm(x_1) + noise
     return C, x_1, x_2
 
-def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, beachball=False, beachball_factors=None, device=torch.device('cpu'), dtype=torch.double):
+def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=100, sigma=0.01, beachball=False, max_rotation_angle=None, beachball_factors=None, device=torch.device('cpu'), dtype=torch.double):
     
     if beachball:
         C_train, x_1_train, x_2_train = gen_sim_data_beachball(N_train, N_matches_per_sample, sigma, beachball_factors)
         C_test, x_1_test, x_2_test = gen_sim_data_beachball(N_test, N_matches_per_sample, sigma, beachball_factors)
     else:
-        C_train, x_1_train, x_2_train = gen_sim_data_fast(N_train, N_matches_per_sample, sigma)
-        C_test, x_1_test, x_2_test = gen_sim_data_fast(N_test, N_matches_per_sample, sigma)
+        C_train, x_1_train, x_2_train = gen_sim_data_fast(N_train, N_matches_per_sample, sigma, max_rotation_angle=max_rotation_angle)
+        C_test, x_1_test, x_2_test = gen_sim_data_fast(N_test, N_matches_per_sample, sigma, max_rotation_angle=max_rotation_angle)
 
     x_train = torch.empty(N_train, 2, N_matches_per_sample, 3, dtype=dtype, device=device)
     x_train[:,0,:,:] = x_1_train.transpose(1,2)

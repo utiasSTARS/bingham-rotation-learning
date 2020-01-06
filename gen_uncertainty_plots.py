@@ -357,7 +357,75 @@ def create_table_stats():
 
             print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
 
+def create_box_plots(cache_data=True):
+    if cache_data:
+        file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
+        A_list = []
+        for path in file_list_A_sym:
+            checkpoint = torch.load(path)
+            args = checkpoint['args']
+            print(args)
+            device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+            tensor_type = torch.double if args.double else torch.float
 
+            transform = None
+            seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+            if args.megalith:
+                seqs_base_path = '/media/datasets/KITTI/single_files'
+            seq_prefix = 'seq_'
+            kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+            train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
+                                        batch_size=args.batch_size_test, pin_memory=False,
+                                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+            valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
+                                        batch_size=args.batch_size_test, pin_memory=False,
+                                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+            kitti_data_pickle_file_new = 'kitti/kitti_singlefile_data_sequence_01_delta_1_reverse_True_min_turn_0.0.pickle'
+            valid_loader2 = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file_new, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
+                                        batch_size=args.batch_size_test, pin_memory=False,
+                                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+            model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+            valid_loader.dataset.rotmat_targets = False
+            valid_loader2.dataset.rotmat_targets = False
+            model.load_state_dict(checkpoint['model'], strict=False)
+
+            #Train and test with new representation
+            dim_in = 2 if args.optical_flow else 6
+            A_predt, _, _ = evaluate_A_model(train_loader, model, device, tensor_type)
+            A_pred, _, _ = evaluate_A_model(valid_loader, model, device, tensor_type)
+            A_pred2, _, _ = evaluate_A_model(valid_loader2, model, device, tensor_type)
+
+            x = torch.randn(1000, 6, 224, 224)
+            x = x.to(device=device, dtype=tensor_type)
+            model.eval()
+            with torch.no_grad():
+                A_randn = model.output_A(x).cpu()
+            A_list.append((A_predt, A_pred, A_pred2, A_randn))
+        
+        saved_data_file_name = 'kitti_boxplot_data_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
+
+        torch.save({
+                    'A_list': A_list,
+                    'file_list_A_sym': file_list_A_sym,
+        }, full_saved_path)
+        print('Saved data to {}.'.format(full_saved_path))
+    else:
+        full_saved_path = ""
+    
+    
+    data = torch.load(full_saved_path)
+    seqs = ['00', '02', '05']
+
+    for i, As in enumerate(data['A_list']):
+        fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
+        ax.boxplot([epistemic_measure(As[0]),epistemic_measure(As[1]), epistemic_measure(As[2]), epistemic_measure(As[3])], 
+        labels=['Training (Residential / City)', 'Seq ' + seqs[i] + ' (Residential)', 'Seq 01 (Road)', 'Random Input'])
+        ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+        ax.set_ylabel('first eigenvalue gap')    
+        output_file = 'plots/kitti_box_seq_{}.pdf'.format(seqs[i])
+        fig.savefig(output_file, bbox_inches='tight')
+        plt.close(fig)
 
 def create_bar_and_scatter_plots(output_scatter=True):
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
@@ -450,4 +518,5 @@ if __name__=='__main__':
     #create_kitti_data()
     #create_bar_and_scatter_plots(output_scatter=False)
     #create_precision_recall_plot()
-    create_table_stats()
+    #create_table_stats()
+    create_box_plots(cache_data=True)

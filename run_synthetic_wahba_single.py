@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--lr', type=float, default=5e-4)
 
     parser.add_argument('--dataset', choices=['static', 'dynamic', 'dynamic_beachball'], default='dynamic')
+    parser.add_argument('--max_rotation_angle', type=float, default=180., help='In degrees. Maximum axis-angle rotation of simulated rotation.')
     parser.add_argument('--beachball_sigma_factors', type=lambda s: [float(item) for item in s.split(',')], default=[0.1, 0.5, 2, 10])
 
     parser.add_argument('--cuda', action='store_true', default=False)
