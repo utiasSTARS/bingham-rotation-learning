@@ -215,7 +215,7 @@ def rotmat_angle_table_stats():
         with torch.no_grad():
             q_quat = model_quat.forward(test_data.x).cpu()
             q_A = model_A_sym.forward(test_data.x).cpu()
-            q_6D = rotmat_to_quat(model_A_sym.forward(test_data.x).cpu())
+            q_6D = rotmat_to_quat(model_6D.forward(test_data.x).cpu())
         
         error_quat = quat_angle_diff(q_quat, test_data.q, reduce=False)
         error_A = quat_angle_diff(q_A, test_data.q, reduce=False)
