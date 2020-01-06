@@ -406,7 +406,7 @@ def create_box_plots(cache_data=True):
                 for k in range(iters):
                     #Move all data to appropriate device
                     start, end = k * batch, (k + 1) * batch
-                    x = x_randn[start:end].to(device=device, dtype=tensor_type)
+                    x = x_rand[start:end].to(device=device, dtype=tensor_type)
                     A_randn.append(model.output_A(x).cpu())
             A_randn = torch.cat(A_randn, dim=0)
             A_list.append((A_predt, A_pred, A_pred2, A_randn))
