@@ -200,7 +200,7 @@ def rotmat_angle_table_stats():
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
 
-    for m_i, max_angle in enumerate(path['max_angles']):
+    for m_i, max_angle in enumerate(data['max_angles']):
         train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, max_rotation_angle=max_angle, sigma=args.sim_sigma, beachball=beachball, beachball_factors=beachball_factors, device=device, dtype=tensor_type)
 
         model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
