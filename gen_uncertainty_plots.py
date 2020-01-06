@@ -396,7 +396,7 @@ def create_box_plots(cache_data=True):
             A_pred, _, _ = evaluate_A_model(valid_loader, model, device, tensor_type)
             A_pred2, _, _ = evaluate_A_model(valid_loader2, model, device, tensor_type)
 
-            x = torch.randn(1000, 6, 224, 224)
+            x = torch.randn(500, 6, 224, 224)
             x = x.to(device=device, dtype=tensor_type)
             model.eval()
             with torch.no_grad():
