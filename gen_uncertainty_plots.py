@@ -385,13 +385,13 @@ def create_box_plots(cache_data=True):
             valid_loader2 = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file_new, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
                                         batch_size=args.batch_size_test, pin_memory=False,
                                         shuffle=False, num_workers=args.num_workers, drop_last=False)
+            dim_in = 6
             model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
             valid_loader.dataset.rotmat_targets = False
             valid_loader2.dataset.rotmat_targets = False
             model.load_state_dict(checkpoint['model'], strict=False)
 
             #Train and test with new representation
-            dim_in = 2 if args.optical_flow else 6
             A_predt, _, _ = evaluate_A_model(train_loader, model, device, tensor_type)
             A_pred, _, _ = evaluate_A_model(valid_loader, model, device, tensor_type)
             A_pred2, _, _ = evaluate_A_model(valid_loader2, model, device, tensor_type)
