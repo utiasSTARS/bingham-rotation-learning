@@ -54,6 +54,8 @@ def evaluate_A_model(loader, model, device, tensor_type):
             q_est.append(q)
             q_target.append(target.cpu())
             A_pred.append(model.output_A(x).cpu())
+            del x
+            torch.cuda.empty_cache()
             
     A_pred = torch.cat(A_pred, dim=0)
     q_est = torch.cat(q_est, dim=0)
@@ -357,7 +359,7 @@ def create_table_stats():
 
             print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
 
-def create_box_plots(cache_data=True):
+def create_box_plots(cache_data=True, seq='00'):
     if cache_data:
         prefix = 'saved_data/kitti/'
         file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
