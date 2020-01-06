@@ -194,7 +194,7 @@ def test_wabha_model(model, x, targets, **kwargs):
     return (out, loss.item())
 
 def rotmat_angle_table_stats():
-    path = 'saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-18-14-18.pt'
+    path = 'saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-18-46-57.pt'
     data = torch.load(path)
     args = data['args']
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
