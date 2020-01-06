@@ -258,7 +258,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, ylim=None):
     ax.set_xlabel('first eigenvalue gap')
     ax.set_yscale('log')
     #ax.set_xscale('symlog')
-    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0e'))
+   #ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0e'))
     #ax.set_ylim(ylim)
     return fig
 
@@ -385,6 +385,12 @@ def create_box_plots(cache_data=True):
             valid_loader2 = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file_new, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
                                         batch_size=args.batch_size_test, pin_memory=False,
                                         shuffle=False, num_workers=args.num_workers, drop_last=False)
+
+            transform = torchvision.transforms.RandomErasing(p=1, scale=(0.25, 0.5), ratio=(0.33, 3))
+            valid_loader3 = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
+                                        batch_size=args.batch_size_test, pin_memory=False,
+                                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+   
             dim_in = 6
             model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
             valid_loader.dataset.rotmat_targets = False
@@ -395,7 +401,8 @@ def create_box_plots(cache_data=True):
             A_predt, _, _ = evaluate_A_model(train_loader, model, device, tensor_type)
             A_pred, _, _ = evaluate_A_model(valid_loader, model, device, tensor_type)
             A_pred2, _, _ = evaluate_A_model(valid_loader2, model, device, tensor_type)
-            
+            A_pred3, _, _ = evaluate_A_model(valid_loader3, model, device, tensor_type)
+
             x_rand = torch.randn(1000, 6, 224, 224)
             A_randn = []
             with torch.no_grad():
@@ -409,7 +416,7 @@ def create_box_plots(cache_data=True):
                     x = x_rand[start:end].to(device=device, dtype=tensor_type)
                     A_randn.append(model.output_A(x).cpu())
             A_randn = torch.cat(A_randn, dim=0)
-            A_list.append((A_predt, A_pred, A_pred2, A_randn))
+            A_list.append((A_predt, A_pred, A_pred2, A_pred3, A_randn))
         
         saved_data_file_name = 'kitti_boxplot_data_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
@@ -420,7 +427,7 @@ def create_box_plots(cache_data=True):
         }, full_saved_path)
         print('Saved data to {}.'.format(full_saved_path))
     else:
-        full_saved_path = ""
+        full_saved_path = "saved_data/kitti/kitti_boxplot_data_01-06-2020-13-06-35.pt"
     
     
     data = torch.load(full_saved_path)
@@ -428,8 +435,9 @@ def create_box_plots(cache_data=True):
 
     for i, As in enumerate(data['A_list']):
         fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
-        ax.boxplot([epistemic_measure(As[0]),epistemic_measure(As[1]), epistemic_measure(As[2]), epistemic_measure(As[3])], 
-        labels=['Training (Residential / City)', 'Seq ' + seqs[i] + ' (Residential)', 'Seq 01 (Road)', 'Random Input'])
+        fig.set_size_inches(4,2)
+        ax.boxplot([epistemic_measure(As[0]),epistemic_measure(As[1]), epistemic_measure(As[2]), epistemic_measure(As[3]), epistemic_measure(As[4])], 
+        labels=['Training \n (Res / City)', 'Seq ' + seqs[i] + '\n (Res)', 'Seq 01 \n (Road)', 'Seq ' + seqs[i] + '\n (100\% Corrupted)', 'Random Input'])
         ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
         ax.set_ylabel('first eigenvalue gap')    
         output_file = 'plots/kitti_box_seq_{}.pdf'.format(seqs[i])
@@ -525,7 +533,7 @@ def create_bar_and_scatter_plots(output_scatter=True):
 
 if __name__=='__main__':
     #create_kitti_data()
-    #create_bar_and_scatter_plots(output_scatter=False)
+    create_bar_and_scatter_plots(output_scatter=True)
     #create_precision_recall_plot()
     #create_table_stats()
-    create_box_plots(cache_data=True)
+    #create_box_plots(cache_data=False)
