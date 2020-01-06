@@ -47,6 +47,10 @@ def main():
 
 
     max_angles = [5, 25, 100, 150, 180]
+    models_quat = []
+    models_6D = []
+    models_A_sym = []
+    
     for max_angle in max_angles:
         args.max_rotation_angle = max_angle
 
@@ -56,29 +60,29 @@ def main():
         model = RotMat6DDirect().to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats_6D, test_stats_6D) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+        models_6D.append(model.state_dict())
 
         print('===================TRAINING DIRECT QUAT MODEL=======================')
         model = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
-
+        models_quat.append(model.state_dict())
+        
 
         print('===================TRAINING A sym (Quat) MODEL=======================')
         model = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
-
+        models_A_sym.append(model.state_dict())
 
         saved_data_file_name = 'rotangle_synthetic_wahba_experiment_3models_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
         torch.save({
-            'train_stats_6D': train_stats_6D,
-            'test_stats_6D': test_stats_6D,
-            'train_stats_quat': train_stats_quat,
-            'test_stats_quat': test_stats_quat,
-            'train_stats_A_sym': train_stats_A_sym,
-            'test_stats_A_sym': test_stats_A_sym,
+            'models_quat': models_quat,
+            'models_6D': models_6D,
+            'models_A_sym': models_A_sym,
+            'max_angles': max_angles,
             'named_approaches': ['6D', 'Quat', 'A (quat-sym)'],
             'args': args
         }, full_saved_path)
