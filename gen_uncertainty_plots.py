@@ -359,10 +359,11 @@ def create_table_stats():
 
 def create_box_plots(cache_data=True):
     if cache_data:
+        prefix = 'saved_data/kitti/'
         file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
         A_list = []
         for path in file_list_A_sym:
-            checkpoint = torch.load(path)
+            checkpoint = torch.load(prefix+path)
             args = checkpoint['args']
             print(args)
             device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
