@@ -16,7 +16,7 @@ def main():
     parser.add_argument('--N_test', type=int, default=100)
     parser.add_argument('--matches_per_sample', type=int, default=100)
 
-    parser.add_argument('--epochs', type=int, default=250)
+    parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--batch_size_train', type=int, default=100)
     parser.add_argument('--batch_size_test', type=int, default=100)
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -29,8 +29,7 @@ def main():
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
-    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
-
+    
 
     args = parser.parse_args()
     print(args)
@@ -47,54 +46,48 @@ def main():
         train_data, test_data = None, None
 
 
-    if args.model == '6D':
-        #Train and test direct model
-        print('===================TRAINING DIRECT 6D ROTMAT MODEL=======================')
+    max_angles = [10, 25, 100, 150, 160, 170, 180]
+    models_quat = []
+    models_6D = []
+    models_A_sym = []
+    
+    for max_angle in max_angles:
+        args.max_rotation_angle = max_angle
+
+        print('===================MAX ANGLE: {:.2F}======================='.format(max_angle))
+
+        print('===================TRAINING DIRECT 6D ROTMAT MODEL |=======================')
         model = RotMat6DDirect().to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+        (train_stats_6D, test_stats_6D) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
+        models_6D.append(model.state_dict())
 
-    elif args.model == 'quat':
         print('===================TRAINING DIRECT QUAT MODEL=======================')
         model = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (_, _) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
+        (train_stats_quat, test_stats_quat) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
+        models_quat.append(model.state_dict())
+        
 
-    #Train and test with new representation
-    elif args.model == 'A_sym':
         print('===================TRAINING A sym (Quat) MODEL=======================')
-        model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
-        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
+        (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
+        models_A_sym.append(model.state_dict())
 
-
-    #Train and test with new representation
-    elif args.model == 'A_sym_rot':
-        print('===================TRAINING A sym (55 param RotMat) MODEL=======================')
-        model = RotMatSDPNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-        loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
-
-    #Train and test with new representation
-    elif args.model == 'A_sym_rot_16':
-        print('===================TRAINING A sym (16 param RotMat) MODEL=======================')
-        model = RotMatSDPNet(dim_rep=16, enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-        loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
-
-
-    if args.save_model:
-        saved_data_file_name = 'synthetic_wahba_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        saved_data_file_name = 'rotangle_synthetic_wahba_experiment_3models_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
-        torch.save({
-                'model_type': args.model,
-                'model': model.state_dict(),
-                'train_stats_rep': train_stats.detach().cpu(),
-                'test_stats_rep': test_stats.detach().cpu(),
-                'args': args,
-            }, full_saved_path)
 
-        print('Saved data to {}.'.format(full_saved_path))
+    torch.save({
+        'models_quat': models_quat,
+        'models_6D': models_6D,
+        'models_A_sym': models_A_sym,
+        'max_angles': max_angles,
+        'named_approaches': ['6D', 'Quat', 'A (quat-sym)'],
+        'args': args
+    }, full_saved_path)
+
+    print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
