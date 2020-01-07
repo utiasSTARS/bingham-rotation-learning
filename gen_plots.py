@@ -239,7 +239,7 @@ def rotmat_angle_table_stats():
 
         #plt.show()
 
-        print('{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F}'.format(error_quat.min(), error_quat.median(), error_quat.max(), error_6D.min(), error_6D.median(), error_6D.max(), error_A.min(), error_A.median(), error_A.max()))
+        #print('{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F}'.format(error_quat.min(), error_quat.median(), error_quat.max(), error_6D.min(), error_6D.median(), error_6D.max(), error_A.min(), error_A.median(), error_A.max()))
     
     output_file = 'plots/synthetic_rotangle_box.pdf'
     fig.tight_layout()
