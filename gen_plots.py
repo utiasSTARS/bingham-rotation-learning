@@ -239,7 +239,9 @@ def rotmat_angle_table_stats():
 
         axes[a_i].boxplot([error_quat, error_6D, error_A])
         axes[a_i].set(xticklabels=['Quat', '6D', 'A (sym)'], xlabel=str(max_angle))
-        axes[a_i].margins(0.05) # Optional
+        axes[a_i].grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+
+        #axes[a_i].margins(0.05) # Optional
         a_i += 1
         #plt.show()
 
