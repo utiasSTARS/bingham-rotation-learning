@@ -202,7 +202,7 @@ def rotmat_angle_table_stats():
     
     fig, axes = plt.subplots(ncols=3, sharey=True)
     fig.subplots_adjust(wspace=0)
-    fig.set_size_inches(4,1.5)
+    fig.set_size_inches(4,2.5)
 
     desired_angles = [10, 100, 180]
     a_i = 0
