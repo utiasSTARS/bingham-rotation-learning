@@ -199,7 +199,11 @@ def rotmat_angle_table_stats():
     args = data['args']
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
-    print(data.keys())
+    
+    fig, axes = plt.subplots(ncols=3, sharey=True)
+    fig.subplots_adjust(wspace=0)
+    fig.set_size_inches(4,2)
+
     for m_i, max_angle in enumerate(data['max_angles']):
         train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, max_rotation_angle=max_angle, sigma=args.sim_sigma, beachball=False, device=device, dtype=tensor_type)
 
@@ -227,8 +231,20 @@ def rotmat_angle_table_stats():
         # print('A_sym | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_A.min(), error_A.median(), error_A.max()))
         
         #print('Quat | 6D | A (sym)')
+
+
+        axes[m_i].boxplot([error_quat, error_6D, error_A])
+        axes[m_i].set(xticklabels=['Quat', '6D', 'A (sym)'], xlabel=str(max_angle))
+        axes[v].margins(0.05) # Optional
+
+        #plt.show()
+
         print('{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F}'.format(error_quat.min(), error_quat.median(), error_quat.max(), error_6D.min(), error_6D.median(), error_6D.max(), error_A.min(), error_A.median(), error_A.max()))
-           
+    
+    output_file = 'plots/synthetic_rotangle_box.pdf'
+    fig.tight_layout()
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
 
 
 if __name__=='__main__':
