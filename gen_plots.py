@@ -240,6 +240,8 @@ def rotmat_angle_table_stats():
         axes[a_i].boxplot([error_quat, error_6D, error_A])
         axes[a_i].set(xticklabels=['Quat', '6D', 'A'], xlabel=str(max_angle)+' deg')
         axes[a_i].grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
+        if a_i == 0:
+            axes[a_i].set_ylabel('error (deg)')
         #axes[a_i].set_yscale('log')
 
         #axes[a_i].margins(0.05) # Optional
