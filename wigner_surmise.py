@@ -32,7 +32,7 @@ if __name__ == '__main__':
     p = wigner_surmise(s)
 
     plt.figure()
-    plt.hist(spacings/mean_gap, color='green', bins=100, density=True, histtype='stepfilled')
+    plt.hist(spacings, color='green', bins=100, density=True, histtype='stepfilled')
     plt.grid()
     plt.plot(s, p, 'k-')
     plt.xlabel('Eigenvalue Gap/Mean Eigenvalue Gap')
