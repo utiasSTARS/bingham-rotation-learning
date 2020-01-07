@@ -222,10 +222,12 @@ def rotmat_angle_table_stats():
         error_6D = quat_angle_diff(q_6D, test_data.q.cpu(), reduce=False)
 
         print('Max Angle: {:.2F}'.format(max_angle))
-        print('Quat | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_quat.min(), error_quat.median(), error_quat.max()))
-        print('6D | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_6D.min(), error_6D.median(), error_6D.max()))
-        print('A_sym | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_A.min(), error_A.median(), error_A.max()))
+        # print('Quat | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_quat.min(), error_quat.median(), error_quat.max()))
+        # print('6D | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_6D.min(), error_6D.median(), error_6D.max()))
+        # print('A_sym | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_A.min(), error_A.median(), error_A.max()))
         
+        print('Quat | 6D | A (sym)')
+        print('{:.2F}, {:.2F}, {:.2F},{:.2F}, {:.2F}, {:.2F},{:.2F}, {:.2F}, {:.2F}'.format(error_quat.min(), error_quat.median(), error_quat.max(), error_6D.min(), error_6D.median(), error_6D.max(), error_A.min(), error_A.median(), error_A.max()))
            
 
 
