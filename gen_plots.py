@@ -204,7 +204,11 @@ def rotmat_angle_table_stats():
     fig.subplots_adjust(wspace=0)
     fig.set_size_inches(4,2)
 
+    desired_angles = [10, 100, 180]
+    a_i = 0
     for m_i, max_angle in enumerate(data['max_angles']):
+        if max_angle not in desired_angles:
+            continue
         train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, max_rotation_angle=max_angle, sigma=args.sim_sigma, beachball=False, device=device, dtype=tensor_type)
 
         model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
@@ -233,10 +237,10 @@ def rotmat_angle_table_stats():
         #print('Quat | 6D | A (sym)')
 
 
-        axes[m_i].boxplot([error_quat, error_6D, error_A])
-        axes[m_i].set(xticklabels=['Quat', '6D', 'A (sym)'], xlabel=str(max_angle))
-        axes[m_i].margins(0.05) # Optional
-
+        axes[a_i].boxplot([error_quat, error_6D, error_A])
+        axes[a_i].set(xticklabels=['Quat', '6D', 'A (sym)'], xlabel=str(max_angle))
+        axes[a_i].margins(0.05) # Optional
+        a_i += 1
         #plt.show()
 
         #print('{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F},{:.2F}'.format(error_quat.min(), error_quat.median(), error_quat.max(), error_6D.min(), error_6D.median(), error_6D.max(), error_A.min(), error_A.median(), error_A.max()))
