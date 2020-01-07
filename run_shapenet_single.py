@@ -29,11 +29,16 @@ def main():
     parser.add_argument('--batchnorm', action='store_true', default=False)
 
     parser.add_argument('--double', action='store_true', default=False)
+    parser.add_argument('--save_model', action='store_true', default=False)
+
     
-    #Randomly select within this range
-    parser.add_argument('--lr_min', type=float, default=1e-4)
-    parser.add_argument('--lr_max', type=float, default=1e-3)
-    parser.add_argument('--trials', type=int, default=10)
+    parser.add_argument('--enforce_psd', action='store_true', default=False)
+    parser.add_argument('--unit_frob', action='store_true', default=False)
+
+    parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
+
+    parser.add_argument('--lr', type=float, default=5e-4)
+
 
 
     args = parser.parse_args()
@@ -58,66 +63,45 @@ def main():
     valid_loader = DataLoader(PointNetDataset(pointnet_data + '/points_test', load_into_memory=True, device=device, rotations_per_batch=args.rotations_per_batch_test, dtype=tensor_type, test_mode=True),
                         batch_size=args.batch_size_test, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-    
-    train_stats_list = []
-    test_stats_list = []
 
-    lrs = torch.empty(args.trials)
-    for t_i in range(args.trials):
-        #Train and test direct model
-        print('===================TRIAL {}/{}======================='.format(t_i+1, args.trials))
+    if args.model == 'A_sym':
+        print('==============TRAINING A (Sym) MODEL====================')
+        model_sym = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob,batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = False
+        valid_loader.dataset.rotmat_targets = False
+        loss_fn = quat_squared_loss
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
 
-        lr = loguniform(np.log(args.lr_min), np.log(args.lr_max))
-        args.lr = lr
-        print('Learning rate: {:.3E}'.format(lr))
+    elif args.model == '6D':
+        print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
+        model_6D = RotMat6DDirect(batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = True
+        valid_loader.dataset.rotmat_targets = True
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
+
+    elif args.model == 'quat':
 
         print('=========TRAINING DIRECT QUAT MODEL==================')
         model_quat = PointNet(dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
-        (train_stats_quat, test_stats_quat) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
-
-        print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
-        model_6D = RotMat6DDirect(batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
-        train_loader.dataset.rotmat_targets = True
-        valid_loader.dataset.rotmat_targets = True
-        loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats_6D, test_stats_6D) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
-
-
-               #Train and test with new representation
-        print('==============TRAINING A (Sym) MODEL====================')
-        model_sym = QuatNet(enforce_psd=False, unit_frob_norm=True,batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
-        train_loader.dataset.rotmat_targets = False
-        valid_loader.dataset.rotmat_targets = False
-        loss_fn = quat_squared_loss
-        (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
-
-        # #Train and test with new representation
-        # print('==============TRAINING A (PSD) MODEL====================')
-        # model_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
-        # loss_fn = quat_squared_loss
-        # (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, loss_fn, model_psd, train_loader, valid_loader, tensorboard_output=False)
-
-        lrs[t_i] = lr
-        #train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym, train_stats_A_psd])
-        #test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym, test_stats_A_psd])
-        train_stats_list.append([train_stats_6D, train_stats_quat, train_stats_A_sym])
-        test_stats_list.append([test_stats_6D, test_stats_quat, test_stats_A_sym])
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
         
-    saved_data_file_name = 'diff_lr_shapenet_experiment_3models_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    full_saved_path = 'saved_data/shapenet/{}.pt'.format(saved_data_file_name)
+    if args.save_model:
+        saved_data_file_name = 'shapenet_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/shapenet/{}.pt'.format(saved_data_file_name)
+        torch.save({
+                'model_type': args.model,
+                'model': model.state_dict(),
+                'train_stats': train_stats.detach().cpu(),
+                'test_stats': test_stats.detach().cpu(),
+                'args': args,
+            }, full_saved_path)
 
-    torch.save({
-        'train_stats_list': train_stats_list,
-        'test_stats_list': test_stats_list,
-        'named_approaches': ['6D', 'Quat', 'A (sym)'],
-        'learning_rates': lrs,
-        'args': args
-    }, full_saved_path)
+        print('Saved data to {}.'.format(full_saved_path))
 
-    print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
