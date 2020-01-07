@@ -46,7 +46,7 @@ def main():
         train_data, test_data = None, None
 
 
-    max_angles = [5, 25, 100, 150, 180]
+    max_angles = [10, 25, 100, 150, 160, 170, 180]
     models_quat = []
     models_6D = []
     models_A_sym = []
