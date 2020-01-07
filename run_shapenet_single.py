@@ -66,28 +66,28 @@ def main():
 
     if args.model == 'A_sym':
         print('==============TRAINING A (Sym) MODEL====================')
-        model_sym = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob,batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob,batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model_sym, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
     elif args.model == '6D':
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
-        model_6D = RotMat6DDirect(batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model = RotMat6DDirect(batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model_6D, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
     elif args.model == 'quat':
 
         print('=========TRAINING DIRECT QUAT MODEL==================')
-        model_quat = PointNet(dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model = PointNet(dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_squared_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model_quat, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
         
     if args.save_model:
         saved_data_file_name = 'shapenet_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
