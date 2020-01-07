@@ -221,9 +221,9 @@ def rotmat_angle_table_stats():
             q_A = model_A_sym.forward(test_data.x).cpu()
             q_6D = rotmat_to_quat(model_6D.forward(test_data.x).cpu())
         
-        error_quat = quat_angle_diff(q_quat, test_data.q.cpu(), reduce=False)
-        error_A = quat_angle_diff(q_A, test_data.q.cpu(), reduce=False)
-        error_6D = quat_angle_diff(q_6D, test_data.q.cpu(), reduce=False)
+        error_quat = quat_angle_diff(q_quat, test_data.q.cpu(), reduce=False).squeeze().numpy()
+        error_A = quat_angle_diff(q_A, test_data.q.cpu(), reduce=False).squeeze().numpy()
+        error_6D = quat_angle_diff(q_6D, test_data.q.cpu(), reduce=False).squeeze().numpy()
 
         #print('Max Angle: {:.2F}'.format(max_angle))
         # print('Quat | Min {:.2F}, Median {:.2F}, Max {:.2F},'.format(error_quat.min(), error_quat.median(), error_quat.max()))
@@ -235,7 +235,7 @@ def rotmat_angle_table_stats():
 
         axes[m_i].boxplot([error_quat, error_6D, error_A])
         axes[m_i].set(xticklabels=['Quat', '6D', 'A (sym)'], xlabel=str(max_angle))
-        axes[v].margins(0.05) # Optional
+        axes[m_i].margins(0.05) # Optional
 
         #plt.show()
 
