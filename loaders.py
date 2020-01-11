@@ -12,96 +12,14 @@ import pickle
 import cv2
 
 
-class SevenScenesData(Dataset):
-    def __init__(self, scene, data_path, train, transform=None, output_first_image=True, tensor_type=torch.float):
-        
-        """
-          :param scene: scene name: 'chess', 'pumpkin', ...
-          :param data_path: root 7scenes data directory.
-
-        """
-        self.transform = transform
-        self.train = train
-        self.tensor_type = tensor_type
-          # directories
-        base_dir = osp.join(osp.expanduser(data_path), scene)   
-          # decide which sequences to use
-        if train:
-            split_file = osp.join(base_dir, 'TrainSplit.txt')
-        else:
-            split_file = osp.join(base_dir, 'TestSplit.txt')
-        with open(split_file, 'r') as f:
-            seqs = [int(l.split('sequence')[-1]) for l in f if not l.startswith('#')]
-    
-        # read poses and collect image names
-        self.c_imgs = []
-        self.pose_files = []
-        self.gt_idx = np.empty((0,), dtype=np.int)
-        ps = {}
-        for seq in seqs:
-            seq_dir = osp.join(base_dir, 'seq-{:02d}'.format(seq))
-            p_filenames = [n for n in os.listdir(osp.join(seq_dir, '.')) if n.find('pose') >= 0]
-            frame_idx = np.array(range(len(p_filenames)), dtype=np.int)
-            pss = [np.loadtxt(osp.join(seq_dir, 'frame-{:06d}.pose.txt'.format(i))).flatten() for i in frame_idx]
-            ps[seq] = np.asarray(pss)
-            c_imgs = [osp.join(seq_dir, 'frame-{:06d}.color.png'.format(i)) for i in frame_idx]
-            self.c_imgs.extend(c_imgs)
-        
-        self.poses = np.empty((0,16))
-        for seq in seqs:
-            self.poses = np.vstack((self.poses,ps[seq]))
-
-        self.poses = torch.from_numpy(self.poses).to(dtype=tensor_type)
-
-
-        # self.extractor = cv2.ORB()
-        # self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-
-        if output_first_image:
-            self.first_image = self.transform(self.load_image(self.c_imgs[0])).to(dtype=tensor_type)
-            self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
-
-        else:
-            self.first_image = None
-
-
-        print('Loaded {} poses'.format(self.poses.shape[0]))
-
-    def __getitem__(self, index):
-        img = self.transform(self.load_image(self.c_imgs[index])).to(dtype=self.tensor_type)
-        pose = self.poses[index].view(4,4) #Poses are camera to world
-        C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
-        
-        if self.first_image is not None:
-            return (self.first_image, img), rotmat_to_quat(C_ci_w.mm(self.C_w_c0))
-        else:
-            return img, rotmat_to_quat(C_ci_w)
-
-    def __len__(self):
-        return self.poses.shape[0]
-
-
-    # def match_to_first_image(self, im):
-    #     kp2, des2 = self.extractor.detectAndCompute(im1,None)
-    #     matches = bf.match(des1,des2)
-    #     matches = sorted(matches, key = lambda x:x.distance)
-
-    def load_image(self, filename, loader=default_loader):
-        try:
-            img = loader(filename)
-        except IOError as e:
-            print('Could not load image {:s}, IOError: {:s}'.format(filename, e))
-            return None
-        except:
-            print('Could not load image {:s}, unexpected error'.format(filename))
-            return None
-        return img
-
-
 class KITTIVODatasetPreTransformed(Dataset):
     """KITTI Odometry Benchmark dataset with full memory read-ins."""
 
-    def __init__(self, kitti_dataset_file, seqs_base_path, output_sample_images=0, transform_img=None, transform_second_half_only=False, run_type='train', use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', use_only_seq=None, rotmat_targets=False):
+    def __init__(self, kitti_dataset_file, seqs_base_path, output_sample_images=0, 
+    transform_img=None, transform_second_half_only=False, run_type='train', 
+    use_flow=True, apply_blur=False, reverse_images=False, seq_prefix='seq_', 
+    use_only_seq=None, rotmat_targets=False):
+
         self.kitti_dataset_file = kitti_dataset_file
         self.seqs_base_path = seqs_base_path
         self.apply_blur = apply_blur
@@ -194,13 +112,6 @@ class KITTIVODatasetPreTransformed(Dataset):
             p_ids = [p_ids[1], p_ids[0]]
             C_21_gt = self.T_21_gt[idx][:3,:3].transpose(0,1)
 
-        #print('Loading seq: {}. ids: {}'.format(seq, p_ids))
-
-
-        #C_21_err = self.T_21_gt[idx].rot.as_matrix().dot(self.T_21_vo[idx].rot.as_matrix().transpose())
-
-        # image_pair = [self.prep_img(self.seq_images[seq][p_ids[0]]),
-        #               self.prep_img(self.seq_images[seq][p_ids[1]])]
         if self.use_flow:
             img_input = self.compute_flow(self.seq_images[seq][p_ids[0]], self.seq_images[seq][p_ids[1]], idx, self.apply_blur)
         else:
@@ -212,7 +123,6 @@ class KITTIVODatasetPreTransformed(Dataset):
                         transform_img_flag = True
                 else:
                     transform_img_flag = True
-
 
             if transform_img_flag:
                 img_input = torch.cat([self.transform_img(self.prep_img(self.seq_images[seq][p_ids[0]])),
@@ -226,8 +136,6 @@ class KITTIVODatasetPreTransformed(Dataset):
             print('Saving....{}'.format(file_name))
             torchvision.utils.save_image(img_input[:3], file_name)
     
-            
-
         if self.rotmat_targets:
             return img_input, torch.from_numpy(C_21_gt).float()
         else:
@@ -235,7 +143,6 @@ class KITTIVODatasetPreTransformed(Dataset):
 
 
 def pointnet_collate(batch):
-    #print(batch[0][1].shape)
     data = torch.cat([item[0] for item in batch], dim=0)
     target = torch.cat([item[1] for item in batch], dim=0)
     return [data, target]
@@ -266,6 +173,7 @@ class PointNetDataset(Dataset):
             print('Done')
         else:
             self.data = None
+    
     # See: https://github.com/papagina/RotationContinuity
     def _load_pc_list(self, d):
         files = [os.path.join(d, f) for f in os.listdir(d)] 
@@ -321,19 +229,93 @@ class PointNetDataset(Dataset):
         pc1 = pc1.view(1, point_num,3).expand(batch_num,point_num,3).transpose(1,2) #batch*3*p_num
         C = SO3.exp(torch.randn(batch_num, 3, dtype=torch.double)).as_matrix()
 
-        pc2 = torch.bmm(C, pc1)#(batch*point_num)*3*1
+        pc2 = torch.bmm(C, pc1) #(batch*point_num)*3*1
 
         x = torch.empty(batch_num, 2, point_num, 3)
         x[:,0,:,:] = pc1.transpose(1,2)
         x[:,1,:,:] = pc2.transpose(1,2)
 
-
         if self.rotmat_targets:
             targets = C
         else:
             targets = rotmat_to_quat(C, ordering='xyzw')
-
         targets = targets.to(self.dtype)
         x = x.to(self.dtype)
-
+        
         return (x, targets)
+
+
+class SevenScenesData(Dataset):
+    def __init__(self, scene, data_path, train, transform=None, output_first_image=True, tensor_type=torch.float):
+        
+        """
+          :param scene: scene name: 'chess', 'pumpkin', ...
+          :param data_path: root 7scenes data directory.
+
+        """
+        self.transform = transform
+        self.train = train
+        self.tensor_type = tensor_type
+          # directories
+        base_dir = osp.join(osp.expanduser(data_path), scene)   
+          # decide which sequences to use
+        if train:
+            split_file = osp.join(base_dir, 'TrainSplit.txt')
+        else:
+            split_file = osp.join(base_dir, 'TestSplit.txt')
+        with open(split_file, 'r') as f:
+            seqs = [int(l.split('sequence')[-1]) for l in f if not l.startswith('#')]
+    
+        # read poses and collect image names
+        self.c_imgs = []
+        self.pose_files = []
+        self.gt_idx = np.empty((0,), dtype=np.int)
+        ps = {}
+        for seq in seqs:
+            seq_dir = osp.join(base_dir, 'seq-{:02d}'.format(seq))
+            p_filenames = [n for n in os.listdir(osp.join(seq_dir, '.')) if n.find('pose') >= 0]
+            frame_idx = np.array(range(len(p_filenames)), dtype=np.int)
+            pss = [np.loadtxt(osp.join(seq_dir, 'frame-{:06d}.pose.txt'.format(i))).flatten() for i in frame_idx]
+            ps[seq] = np.asarray(pss)
+            c_imgs = [osp.join(seq_dir, 'frame-{:06d}.color.png'.format(i)) for i in frame_idx]
+            self.c_imgs.extend(c_imgs)
+        
+        self.poses = np.empty((0,16))
+        for seq in seqs:
+            self.poses = np.vstack((self.poses,ps[seq]))
+
+        self.poses = torch.from_numpy(self.poses).to(dtype=tensor_type)
+
+        if output_first_image:
+            self.first_image = self.transform(self.load_image(self.c_imgs[0])).to(dtype=tensor_type)
+            self.C_w_c0 = self.poses[0].view(4,4)[:3, :3]
+
+        else:
+            self.first_image = None
+
+
+        print('Loaded {} poses'.format(self.poses.shape[0]))
+
+    def __getitem__(self, index):
+        img = self.transform(self.load_image(self.c_imgs[index])).to(dtype=self.tensor_type)
+        pose = self.poses[index].view(4,4) #Poses are camera to world
+        C_ci_w = pose[:3,:3].transpose(0,1) #World to camera
+        
+        if self.first_image is not None:
+            return (self.first_image, img), rotmat_to_quat(C_ci_w.mm(self.C_w_c0))
+        else:
+            return img, rotmat_to_quat(C_ci_w)
+
+    def __len__(self):
+        return self.poses.shape[0]
+
+    def load_image(self, filename, loader=default_loader):
+        try:
+            img = loader(filename)
+        except IOError as e:
+            print('Could not load image {:s}, IOError: {:s}'.format(filename, e))
+            return None
+        except:
+            print('Could not load image {:s}, unexpected error'.format(filename))
+            return None
+        return img
