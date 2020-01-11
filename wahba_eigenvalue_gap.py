@@ -55,3 +55,4 @@ if __name__=='__main__':
 
     _gen_eigenvalue_gap_plot(sigma_vec, gap_data)
 
+np.linalg.solve
