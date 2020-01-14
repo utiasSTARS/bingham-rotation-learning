@@ -1,7 +1,10 @@
 import numpy as np
 from scipy.integrate import tplquad
+from scipy.interpolate import Rbf
 import functools
 from numpy import sin, cos
+
+import torch
 
 
 def bingham_integrand(phi3, phi2, phi1, lambdas):
@@ -12,6 +15,10 @@ def bingham_integrand(phi3, phi2, phi1, lambdas):
                   cos(phi1)])
     exponent = np.sum(lambdas*(t**2))
     return np.exp(exponent)*sin(phi1)**2*sin(phi2)
+
+
+def create_bingham_interpolator(data_file):
+    pass
 
 
 def bingham_normalization(lambdas, ):
@@ -32,6 +39,26 @@ def bingham_dist(q, lambdas, coeff_N=None):
         coeff_N, _ = bingham_normalization(lambdas)
 
     return np.exp(np.sum(lambdas*(q**2)))/coeff_N
+
+
+class RadialBasisFunction(torch.nn.Module):
+    """
+    Differentiable Radial Basis Function Layer
+    Input:
+    Output:
+    """
+
+    def __init__(self, rbf_model):
+        super(RadialBasisFunction, self).__init__()
+        self.rbf_model = rbf_model
+
+    @staticmethod
+    def forward(ctx, A_vec):
+        pass
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        pass
 
 
 if __name__ == '__main__':
