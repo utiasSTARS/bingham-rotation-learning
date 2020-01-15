@@ -39,6 +39,31 @@ def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     
     return (q_est, q_target)
 
+
+def evaluate_6D_model(loader, model, device, tensor_type):
+    q_est = []
+    q_target = []
+    six_vec = []
+
+    with torch.no_grad():
+        model.eval()
+        print('Evaluating rotmat model...')
+        for _, (x, target) in enumerate(loader):
+            #Move all data to appropriate device
+            x = x.to(device=device, dtype=tensor_type)
+            out = model.net.forward(x).squeeze().cpu()
+            q = rotmat_to_quat(sixdim_to_rotmat(out))
+
+            six_vec.append(out)
+            q_est.append(q)
+            q_target.append(target.cpu())
+            
+    q_est = torch.cat(q_est, dim=0)
+    q_target = torch.cat(q_target, dim=0)
+    six_vec = torch.cat(six_vec, dim=0)
+    
+    return (six_vec, q_est, q_target)
+
 def evaluate_A_model(loader, model, device, tensor_type):
     q_est = []
     q_target = []
@@ -73,18 +98,35 @@ def wigner_log_likelihood_measure(A, reduce=False):
 
 
 def first_eig_gap(A):
-    el, _ = np.linalg.eig(A)
-    el.sort(axis=1)
+    el = np.linalg.eigvalsh(A)
     spacings = np.diff(el, axis=1)
     return spacings[:, 0] 
 
 def det_inertia_mat(A):
-    A_inertia = -A
-    return np.linalg.det(A_inertia)
+    #A_inertia = -A
+    
+    els = np.linalg.eigvalsh(A)
 
-def trace_inertia_mat(A):
-    A_inertia = -A
-    return np.trace(A_inertia, axis1=1, axis2=2)
+    for i in range(4):
+        print('Eig {}: {:.3F} / {:.3F} / {:.3F} '.format(i, els[:,i].min(), els[:,i].mean(), els[:,i].max()))
+
+    els = els[:, 1:] + els[:, 0, None] 
+    # min_el = els[:,0]
+    # I = np.repeat(np.eye(4).reshape(1,4,4), A_inertia.shape[0], axis=0)
+    # A_inertia = A_inertia + I*min_el[:,None,None]
+
+    return els[:,0]*els[:,1]*els[:,2] #np.linalg.det(A_inertia)
+
+def sum_bingham_dispersion_coeff(A):
+    if len(A.shape) == 2:
+        A = A.reshape(1,4,4)
+    els = np.linalg.eigvalsh(A)
+    min_el = els[:,0]
+    I = np.repeat(np.eye(4).reshape(1,4,4), A.shape[0], axis=0)
+    return np.trace(-A + I*min_el[:,None,None], axis1=1, axis2=2)
+
+   
+
 
 def decode_metric_name(uncertainty_metric_fn):
     if uncertainty_metric_fn == first_eig_gap:
@@ -92,7 +134,7 @@ def decode_metric_name(uncertainty_metric_fn):
     elif uncertainty_metric_fn == det_inertia_mat:
         return 'Determinant of Inertia Matrix'
     elif uncertainty_metric_fn == trace_inertia_mat:
-        return 'Trace of Inertia Matrix'
+        return 'Trace of Inertia Matrix (min eigvalue added)'
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -107,7 +149,7 @@ def compute_mask(A, uncertainty_metric_fn, thresh):
     elif uncertainty_metric_fn == det_inertia_mat:
         return uncertainty_metric_fn(A) < thresh
     elif uncertainty_metric_fn == trace_inertia_mat:
-        return uncertainty_metric_fn(A) < thresh
+        return uncertainty_metric_fn(A) < thresh  
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -172,9 +214,9 @@ def collect_errors(saved_file, validation_transform=None):
     else:
         model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
-        q_estt, q_targett = evaluate_model(train_loader, model, device, tensor_type,rotmat_output=True)
-        q_est, q_target = evaluate_model(valid_loader, model, device, tensor_type, rotmat_output=True)
-        return ((q_estt, q_targett), (q_est, q_target))
+        six_vect, q_estt, q_targett = evaluate_6D_model(train_loader, model, device, tensor_type)
+        six_vec, q_est, q_target = evaluate_6D_model(valid_loader, model, device, tensor_type)
+        return ((six_vect, q_estt, q_targett), (six_vec, q_est, q_target))
 
 def create_kitti_data():
 
@@ -218,7 +260,7 @@ def create_kitti_data():
 
     print('Done')
 
-    saved_data_file_name = 'kitti_comparison_data_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    saved_data_file_name = 'kitti_comparison_data_6Dvec_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
 
     torch.save({
@@ -357,7 +399,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
 
         for q_i, quantile in enumerate(quantiles):
             thresh = compute_threshold(A_train, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-            mask = compute_mask(A_test, uncertainty_metric_fn, thresh)
+            mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
 
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
             
@@ -378,7 +420,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
 
         for q_i, quantile in enumerate(quantiles):
             thresh = compute_threshold(A_train, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-            mask = compute_mask(A_test, uncertainty_metric_fn, thresh)
+            mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
             precision, recall = compute_prec_recall(A_train, A_test, quantile)
 
@@ -561,10 +603,11 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 
 if __name__=='__main__':
-    #create_kitti_data()
-    create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=trace_inertia_mat, quantile=0.75)
-    create_box_plots(cache_data=False, uncertainty_metric_fn=trace_inertia_mat, logscale=True)
+    create_kitti_data()
+    #uncertainty_metric_fn = det_inertia_mat
+    #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
+    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
      
     #create_precision_recall_plot()
-    #create_table_stats()
+    #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
     #create_box_plots(cache_data=False)

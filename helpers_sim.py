@@ -272,9 +272,11 @@ def gen_sim_data_fast(N_rotations, N_matches_per_rotation, sigma, max_rotation_a
     angle = max_angle*torch.rand(N_rotations, 1)
 
     C = SO3_torch.exp(angle*axis).as_matrix()
+    if N_rotations == 1:
+        C = C.unsqueeze(dim=0)
     #Create two sets of vectors (normalized to unit l2 norm)
     x_1 = torch.randn(N_rotations, 3, N_matches_per_rotation, dtype=dtype)
-    x_1 = x_1/x_1.norm(dim=1,keepdim=True)    
+    x_1 = x_1/x_1.norm(dim=1,keepdim=True)   
     #Rotate and add noise
     noise = sigma*torch.randn_like(x_1)
     x_2 = C.bmm(x_1) + noise
@@ -320,13 +322,18 @@ def create_experimental_data_fast(N_train=2000, N_test=50, N_matches_per_sample=
     x_train[:,1,:,:] = x_2_train.transpose(1,2)
     
     q_train = rotmat_to_quat(C_train, ordering='xyzw').to(dtype=dtype, device=device)
+    if q_train.dim() < 2:
+        q_train = q_train.unsqueeze(dim=0)
+
 
     x_test = torch.empty(N_test, 2, N_matches_per_sample, 3, dtype=dtype, device=device)
     x_test[:,0,:,:] = x_1_test.transpose(1,2)
     x_test[:,1,:,:] = x_2_test.transpose(1,2)
     
     q_test = rotmat_to_quat(C_test, ordering='xyzw').to(dtype=dtype, device=device)
-
+    if q_test.dim() < 2:
+        q_test = q_test.unsqueeze(dim=0)
+    
     train_data = SyntheticData(x_train, q_train, None)
     test_data = SyntheticData(x_test, q_test, None)
     

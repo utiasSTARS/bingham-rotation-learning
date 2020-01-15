@@ -109,10 +109,9 @@ class QuadQuatFastSolver(torch.autograd.Function):
     @staticmethod
     def forward(ctx, A_vec):
 
-        if A_vec.dim() < 2:
-            A_vec = A_vec.unsqueeze()
-
         A = convert_Avec_to_A(A_vec)
+        if A.dim() < 3:
+            A = A.unsqueeze(dim=0)
         q, nu  = solve_wahba_fast(A)
         ctx.save_for_backward(A, q, nu)
         return q
