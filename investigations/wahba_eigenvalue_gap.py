@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-
+from utils import normalized
 from helpers_sim import build_A, gen_sim_data
 # from gen_plots import _plot_curve_with_bounds # Required cv2
 
@@ -12,7 +12,7 @@ def _plot_curve_with_bounds(ax, x, y, lower, upper, label, color):
     return
 
 
-def _gen_eigenvalue_gap_plot(sigma, gap_data):
+def _gen_eigenvalue_gap_plot(sigma, gap_data, save_file, xlabel_str, ylabel_str):
     plt.rc('text', usetex=True)
     fig = plt.figure()
     ax = plt.gca()
@@ -24,13 +24,13 @@ def _gen_eigenvalue_gap_plot(sigma, gap_data):
                                 np.quantile(gap_data[idx, :, :], 0.9, axis=1),
                                 '$\lambda_' + str(idx+2) + '- \lambda_1$',
                                 colours[idx])
-    output_file = 'plots/eigenvalue_gap_vs_noise_non_normalized.pdf'
+
     ax.legend()
-    ax.set_yscale('log')
-    ax.set_ylabel('eigenvalue gap')
-    ax.set_xlabel('std. deviation $\sigma$ (m)')
+    # ax.set_yscale('log')
+    ax.set_ylabel(ylabel_str)
+    ax.set_xlabel(xlabel_str)
     fig.tight_layout()
-    fig.savefig(output_file, bbox_inches='tight')
+    fig.savefig(save_file, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -53,5 +53,29 @@ if __name__=='__main__':
             gap_data[1, idx, jdx] = eigvalues[2] - eigvalues[0]
             gap_data[2, idx, jdx] = eigvalues[3] - eigvalues[0]
 
-    _gen_eigenvalue_gap_plot(sigma_vec, gap_data)
+    _gen_eigenvalue_gap_plot(sigma_vec, gap_data, '../plots/eigenvalue_gap_vs_noise.pdf',
+                             'std. deviation $\sigma$ (m)',
+                             'eigenvalue gap')
 
+
+    outlier_rate_vec = np.linspace(0.0, 0.7, 8)
+    gap_data_outlier = np.zeros((3, len(sigma_vec), N_runs))
+    for idx in range(len(outlier_rate_vec)):
+        sigma = 0.01*np.ones(N)
+        n_outliers = int(N*outlier_rate_vec[idx])
+        for jdx in range(N_runs):
+            _, x_1, x_2 = gen_sim_data(N, sigma)
+            perm = np.random.permutation(N)
+            outlier_inds = perm[0:n_outliers]
+            x_2[outlier_inds, :] = np.random.rand(n_outliers, 3)
+            x_2[outlier_inds, :] = normalized(x_2[outlier_inds, :], axis=1)
+            A = build_A(x_1, x_2, sigma**2)
+            # A = A/np.linalg.norm(A, ord='fro')
+            eigvalues = np.linalg.eigvalsh(A)
+            gap_data_outlier[0, idx, jdx] = eigvalues[1] - eigvalues[0]
+            gap_data_outlier[1, idx, jdx] = eigvalues[2] - eigvalues[0]
+            gap_data_outlier[2, idx, jdx] = eigvalues[3] - eigvalues[0]
+
+    _gen_eigenvalue_gap_plot(outlier_rate_vec*100, gap_data_outlier, '../plots/eigenvalue_gap_vs_outlier_rate.pdf',
+                             'outlier rate (\%)',
+                             'eigenvalue gap')
