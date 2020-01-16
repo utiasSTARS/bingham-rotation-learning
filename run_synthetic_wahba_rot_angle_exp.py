@@ -24,6 +24,7 @@ def main():
     parser.add_argument('--dataset', choices=['static', 'dynamic', 'dynamic_beachball'], default='dynamic')
     parser.add_argument('--max_rotation_angle', type=float, default=180., help='In degrees. Maximum axis-angle rotation of simulated rotation.')
     parser.add_argument('--beachball_sigma_factors', type=lambda s: [float(item) for item in s.split(',')], default=[0.1, 0.5, 2, 10])
+    parser.add_argument('--unit_frob', action='store_true', default=False)
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
@@ -70,7 +71,7 @@ def main():
         
 
         print('===================TRAINING A sym (Quat) MODEL=======================')
-        model = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model = QuatNet(enforce_psd=False, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
         models_A_sym.append(model.state_dict())
