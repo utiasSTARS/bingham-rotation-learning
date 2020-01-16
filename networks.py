@@ -43,6 +43,7 @@ class QuatNet(torch.nn.Module):
         self.A_net = PointNet(dim_out=10, normalize_output=False, batchnorm=batchnorm)
         self.enforce_psd = enforce_psd
         self.unit_frob_norm = unit_frob_norm
+        print('USING MIN EIG VEC')
         self.qcqp_solver = min_eig_vec#QuadQuatFastSolver.apply
     
     def output_A(self, x):
