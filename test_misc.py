@@ -5,6 +5,7 @@ import numpy as np
 from liegroups.torch import SO3
 from sdp_layers import x_from_xxT
 import math
+from losses import quat_chordal_squared_loss, rotmat_frob_squared_norm_loss
 
 def test_rotmat_quat_conversions():
     print('Rotation matrix to quaternion conversions...')
@@ -14,8 +15,19 @@ def test_rotmat_quat_conversions():
     print('All passed.')
 
 
+def test_chordal_squared_loss_equality():
+    print('Equality of quaternion and rotation matrix chordal loss...')
+    C1 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
+    C2 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
+
+    q1 = rotmat_to_quat(C1)
+    q2 = rotmat_to_quat(C2)
+
+    assert(allclose(rotmat_frob_squared_norm_loss(C1, C2), quat_chordal_squared_loss(q1, q2)))
+    print('All passed.')
+
 def test_rotmat_quat_large_conversions():
-    print('Rotation matrix to quaternion conversions...')
+    print('Large (angle=pi) rotation matrix to quaternion conversions...')
     axis = torch.randn(100, 3, dtype=torch.double)
     axis = axis / axis.norm(dim=1, keepdim=True)
     angle = np.pi
@@ -50,3 +62,4 @@ if __name__=='__main__':
     test_rot_angles()
     test_xxT()
     test_rotmat_quat_large_conversions()
+    test_chordal_squared_loss_equality()
