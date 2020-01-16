@@ -28,6 +28,8 @@ def main():
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
+    parser.add_argument('--unit_frob', action='store_true', default=False)
+
     parser.add_argument('--save_model', action='store_true', default=False)
     parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
 
@@ -63,7 +65,7 @@ def main():
     #Train and test with new representation
     elif args.model == 'A_sym':
         print('===================TRAINING A sym (Quat) MODEL=======================')
-        model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
 
@@ -71,14 +73,14 @@ def main():
     #Train and test with new representation
     elif args.model == 'A_sym_rot':
         print('===================TRAINING A sym (55 param RotMat) MODEL=======================')
-        model = RotMatSDPNet(enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model = RotMatSDPNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
 
     #Train and test with new representation
     elif args.model == 'A_sym_rot_16':
         print('===================TRAINING A sym (16 param RotMat) MODEL=======================')
-        model = RotMatSDPNet(dim_rep=16, enforce_psd=args.enforce_psd, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model = RotMatSDPNet(dim_rep=16, enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = rotmat_frob_squared_norm_loss
         (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=True, tensorboard_output=True)
 

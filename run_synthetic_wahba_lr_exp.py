@@ -25,6 +25,7 @@ def main():
     
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--double', action='store_true', default=False)
+    parser.add_argument('--unit_frob', action='store_true', default=False)
 
     #Randomly select within this range
     parser.add_argument('--lr_min', type=float, default=1e-4)
@@ -83,7 +84,7 @@ def main():
 
         #Train and test with new representation
         print('==============TRAINING A (16 sym quat) MODEL====================')
-        model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         train_data, test_data = None, None
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model_A_sym, loss_fn,  rotmat_targets=False, tensorboard_output=False)
@@ -91,7 +92,7 @@ def main():
 
         #Train and test with new representation
         print('==============TRAINING A (16 psd quat) MODEL====================')
-        model_A_psd = QuatNet(enforce_psd=True, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+        model_A_psd = QuatNet(enforce_psd=True, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         loss_fn = quat_squared_loss
         train_data, test_data = None, None
         (train_stats_A_psd, test_stats_A_psd) = train_test_model(args, train_data, test_data, model_A_psd, loss_fn,  rotmat_targets=False, tensorboard_output=False)
