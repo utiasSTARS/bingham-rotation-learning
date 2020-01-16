@@ -4,12 +4,25 @@ from utils import *
 import numpy as np
 from liegroups.torch import SO3
 from sdp_layers import x_from_xxT
+import math
 
 def test_rotmat_quat_conversions():
     print('Rotation matrix to quaternion conversions...')
     C1 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
     C2 = quat_to_rotmat(rotmat_to_quat(C1))
     assert(allclose(C1, C2))
+    print('All passed.')
+
+
+def test_rotmat_quat_large_conversions():
+    print('Rotation matrix to quaternion conversions...')
+    axis = torch.randn(100, 3, dtype=torch.double)
+    axis = axis / axis.norm(dim=1, keepdim=True)
+    angle = np.pi
+
+    C1 = SO3.exp(angle*axis).as_matrix()
+    C2_new = quat_to_rotmat(rotmat_to_quat(C1))
+    assert(allclose(C1, C2_new))
     print('All passed.')
      
 def test_rot_angles():
@@ -36,3 +49,4 @@ if __name__=='__main__':
     test_rotmat_quat_conversions()
     test_rot_angles()
     test_xxT()
+    test_rotmat_quat_large_conversions()

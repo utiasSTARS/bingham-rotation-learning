@@ -107,9 +107,6 @@ def det_inertia_mat(A):
     
     els = np.linalg.eigvalsh(A)
 
-    for i in range(4):
-        print('Eig {}: {:.3F} / {:.3F} / {:.3F} '.format(i, els[:,i].min(), els[:,i].mean(), els[:,i].max()))
-
     els = els[:, 1:] + els[:, 0, None] 
     # min_el = els[:,0]
     # I = np.repeat(np.eye(4).reshape(1,4,4), A_inertia.shape[0], axis=0)
@@ -126,13 +123,14 @@ def sum_bingham_dispersion_coeff(A):
     return np.trace(-A + I*min_el[:,None,None], axis1=1, axis2=2)
 
    
-
+def l2_norm(vecs):
+    return np.linalg.norm(vecs, axis=1)
 
 def decode_metric_name(uncertainty_metric_fn):
     if uncertainty_metric_fn == first_eig_gap:
         return 'First Eigenvalue Gap'
-    elif uncertainty_metric_fn == det_inertia_mat:
-        return 'Determinant of Inertia Matrix'
+    elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
+        return 'Sum of Dispersion Coefficients'
     elif uncertainty_metric_fn == trace_inertia_mat:
         return 'Trace of Inertia Matrix (min eigvalue added)'
     else:
@@ -140,16 +138,16 @@ def decode_metric_name(uncertainty_metric_fn):
 
 def compute_threshold(A, uncertainty_metric_fn=first_eig_gap, quantile=0.75):
     #stats = wigner_log_likelihood(A)
-    stats = uncertainty_metric_fn(A.numpy())
+    stats = uncertainty_metric_fn(A)
     return np.quantile(stats, quantile)
 
 def compute_mask(A, uncertainty_metric_fn, thresh):
     if uncertainty_metric_fn == first_eig_gap:
         return uncertainty_metric_fn(A) > thresh
-    elif uncertainty_metric_fn == det_inertia_mat:
+    elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
         return uncertainty_metric_fn(A) < thresh
-    elif uncertainty_metric_fn == trace_inertia_mat:
-        return uncertainty_metric_fn(A) < thresh  
+    elif uncertainty_metric_fn == l2_norm:
+        return uncertainty_metric_fn(A) > thresh
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -330,7 +328,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
     ax.set_ylim(ylim)
     return fig
 
-def compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn=first_eig_gap):
+def compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn):
     thresh = compute_threshold(A_train, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
     mask = compute_mask(A_test, uncertainty_metric_fn, thresh)
 
@@ -342,7 +340,7 @@ def compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn=first_e
     recall = num_correct/true_mask.sum()
     return precision, recall
 
-def create_precision_recall_plot():
+def create_precision_recall_plot(uncertainty_metric_fn):
     saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
@@ -359,10 +357,10 @@ def create_precision_recall_plot():
         
         for q_i, quantile in enumerate(quantiles):
             (A_train, _, _), (A_test, _, _) = data['data_A_transformed'][s_i]
-            precision[q_i], recall[q_i] = compute_prec_recall(A_train, A_test, quantile)
+            precision[q_i], recall[q_i] = compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn)
 
         _plot_curve(ax, recall, precision, 'Seq '+seq, colors[s_i])
-        p, r = compute_prec_recall(A_train, A_test, selected_quantile)
+        p, r = compute_prec_recall(A_train, A_test, selected_quantile, uncertainty_metric_fn)
         label = '{:.2F} quantile'.format(selected_quantile) if s_i == 0 else ''
         ax.scatter(r, p, label=label, marker='D', color='black', s=10, zorder=s_i)
 
@@ -398,7 +396,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
         print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
 
         for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(A_train, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+            thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
             mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
 
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
@@ -419,12 +417,50 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
         print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
 
         for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(A_train, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+            thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
             mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
-            precision, recall = compute_prec_recall(A_train, A_test, quantile)
+            precision, recall = compute_prec_recall(A_train.numpy(), A_test.numpy(), quantile, uncertainty_metric_fn)
 
             print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
+
+def create_table_stats_6D():
+    saved_data_file = 'saved_data/kitti/kitti_comparison_data_6Dvec_01-15-2020-16-19-36.pt'
+    data = torch.load(saved_data_file)
+    seqs = ['00', '02', '05']
+    quantiles = [0.25, 0.5, 0.75]
+    for s_i, seq in enumerate(seqs):
+
+        (six_vec_train, _, _), (six_vec_test, q_est, q_target) = data['data_6D'][s_i]
+        mean_err_6D = quat_angle_diff(q_est, q_target)
+
+        print('Seq: {}. Total Pairs: {}.'.format(seq, q_est.shape[0]))
+        
+        print('Mean Error (deg): 6D: {:.2F}'.format(mean_err_6D))
+
+        for q_i, quantile in enumerate(quantiles):
+            thresh = compute_threshold(six_vec_train, uncertainty_metric_fn=l2_norm, quantile=quantile)
+            mask = compute_mask(six_vec_test, l2_norm, thresh)
+            mean_err_6D_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            
+            print('Quantile: {}. 6D + Norm Filter: {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_6D_filter, 100.*mask.sum()/mask.shape[0]))
+
+
+        (six_vec_train, _, _), (six_vec_test, q_est, q_target) = data['data_6D_transformed'][s_i]
+        mean_err_6D = quat_angle_diff(q_est, q_target)
+
+
+        print('-- CORRUPTED --')
+        print('Mean Error (deg): 6D: {:.2F}'.format(mean_err_6D))
+
+        for q_i, quantile in enumerate(quantiles):
+            thresh = compute_threshold(six_vec_train, uncertainty_metric_fn=l2_norm, quantile=quantile)
+            mask = compute_mask(six_vec_test, l2_norm, thresh)
+            mean_err_6D_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            precision, recall = compute_prec_recall(six_vec_train, six_vec_test, quantile, l2_norm)
+
+            print('Quantile: {}. 6D + Norm Filter: {:.2F} | Kept: {:.1F}% | Precision: {:.2F}%'.format(quantile, mean_err_6D_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
+
 
 def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logscale=False):
     if cache_data:
@@ -603,7 +639,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 
 if __name__=='__main__':
-    create_kitti_data()
+    #create_kitti_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -611,3 +647,7 @@ if __name__=='__main__':
     #create_precision_recall_plot()
     #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
     #create_box_plots(cache_data=False)
+
+    create_table_stats_6D()
+    print("=================")
+    create_table_stats(sum_bingham_dispersion_coeff)
