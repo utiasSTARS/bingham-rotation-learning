@@ -59,14 +59,16 @@ def main():
     elif args.model == 'quat':
         print('===================TRAINING DIRECT QUAT MODEL=======================')
         model = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
-        loss_fn = quat_squared_loss
+        #loss_fn = quat_squared_loss
+        loss_fn = quat_chordal_squared_loss
         (_, _) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
 
     #Train and test with new representation
     elif args.model == 'A_sym':
         print('===================TRAINING A sym (Quat) MODEL=======================')
         model = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
-        loss_fn = quat_squared_loss
+        #loss_fn = quat_squared_loss
+        loss_fn = quat_chordal_squared_loss
         (train_stats, test_stats) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
 
 
