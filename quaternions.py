@@ -143,6 +143,7 @@ def quat_to_rotmat(quat, ordering='xyzw'):
     return mat.squeeze_()
 
 
+#Based on https://d3cw3dd2w32x2b.cloudfront.net/wp-content/uploads/2015/01/matrix-to-quat.pdf
 def rotmat_to_quat(mat, ordering='xyzw'):
     """Convert a rotation matrix to a unit length quaternion.
 
@@ -155,79 +156,59 @@ def rotmat_to_quat(mat, ordering='xyzw'):
 
     assert(R.shape[1] == R.shape[2])
     assert(R.shape[1] == 3)
-    
-    qw = 0.5 * torch.sqrt(1. + R[:, 0, 0] + R[:, 1, 1] + R[:, 2, 2])
-    qx = qw.new_empty(qw.shape)
-    qy = qw.new_empty(qw.shape)
-    qz = qw.new_empty(qw.shape)
 
-    near_zero_mask = utils.isclose(qw, 0.)
+    #Row first operation
+    R = R.transpose(1,2)
+    q = R.new_empty((R.shape[0], 4))
 
-    if sum(near_zero_mask) > 0:
-        cond1_mask = near_zero_mask & \
-            (R[:, 0, 0] > R[:, 1, 1]).squeeze_() & \
-            (R[:, 0, 0] > R[:, 2, 2]).squeeze_()
-        cond1_inds = cond1_mask.nonzero().squeeze_(dim=1)
+    cond1_mask = R[:, 2, 2] < 0.
+    cond1a_mask = R[:, 0, 0] > R[:, 1, 1]
+    cond1b_mask = R[:, 0, 0] < -R[:, 1, 1]
 
-        if len(cond1_inds) > 0:
-            R_cond1 = R[cond1_inds]
-            d = 2. * torch.sqrt(1. + R_cond1[:, 0, 0] -
-                                R_cond1[:, 1, 1] - R_cond1[:, 2, 2])
-            qw[cond1_inds] = (R_cond1[:, 2, 1] - R_cond1[:, 1, 2]) / d
-            qx[cond1_inds] = 0.25 * d
-            qy[cond1_inds] = (R_cond1[:, 1, 0] + R_cond1[:, 0, 1]) / d
-            qz[cond1_inds] = (R_cond1[:, 0, 2] + R_cond1[:, 2, 0]) / d
-
-        cond2_mask = near_zero_mask & (R[:, 1, 1] > R[:, 2, 2]).squeeze_()
-        cond2_inds = cond2_mask.nonzero().squeeze_(dim=1)
-
-        if len(cond2_inds) > 0:
-            R_cond2 = R[cond2_inds]
-            d = 2. * torch.sqrt(1. + R_cond2[:, 1, 1] -
-                                R_cond2[:, 0, 0] - R_cond2[:, 2, 2])
-            qw[cond2_inds] = (R_cond2[:, 0, 2] - R_cond2[:, 2, 0]) / d
-            qx[cond2_inds] = (R_cond2[:, 1, 0] + R_cond2[:, 0, 1]) / d
-            qy[cond2_inds] = 0.25 * d
-            qz[cond2_inds] = (R_cond2[:, 2, 1] + R_cond2[:, 1, 2]) / d
-
-        cond3_mask = near_zero_mask & cond1_mask.logical_not() & cond2_mask.logical_not()
-        cond3_inds = cond3_mask.nonzero().squeeze_(dim=1)
-
-        if len(cond3_inds) > 0:
-            R_cond3 = R[cond3_inds]
-            d = 2. * \
-                torch.sqrt(1. + R_cond3[:, 2, 2] -
-                        R_cond3[:, 0, 0] - R_cond3[:, 1, 1])
-            qw[cond3_inds] = (R_cond3[:, 1, 0] - R_cond3[:, 0, 1]) / d
-            qx[cond3_inds] = (R_cond3[:, 0, 2] + R_cond3[:, 2, 0]) / d
-            qy[cond3_inds] = (R_cond3[:, 2, 1] + R_cond3[:, 1, 2]) / d
-            qz[cond3_inds] = 0.25 * d
-
-    far_zero_mask = near_zero_mask.logical_not()
-    far_zero_inds = far_zero_mask.nonzero().squeeze_(dim=1)
-    if len(far_zero_inds) > 0:
-        R_fz = R[far_zero_inds]
-        d = 4. * qw[far_zero_inds]
-        qx[far_zero_inds] = (R_fz[:, 2, 1] - R_fz[:, 1, 2]) / d
-        qy[far_zero_inds] = (R_fz[:, 0, 2] - R_fz[:, 2, 0]) / d
-        qz[far_zero_inds] = (R_fz[:, 1, 0] - R_fz[:, 0, 1]) / d
-
-    # Check ordering last
-    if ordering is 'xyzw':
-        quat = torch.cat([qx.unsqueeze_(dim=1),
-                            qy.unsqueeze_(dim=1),
-                            qz.unsqueeze_(dim=1),
-                            qw.unsqueeze_(dim=1)], dim=1).squeeze_()
-    elif ordering is 'wxyz':
-        quat = torch.cat([qw.unsqueeze_(dim=1),
-                            qx.unsqueeze_(dim=1),
-                            qy.unsqueeze_(dim=1),
-                            qz.unsqueeze_(dim=1)], dim=1).squeeze_()
+    if ordering=='xyzw':
+        v_ind = torch.arange(0,3)
+        w_ind = 3
     else:
-        raise ValueError(
-            "Valid orderings are 'xyzw' and 'wxyz'. Got '{}'.".format(ordering))
+        v_ind = torch.arange(1,4)
+        w_ind = 0    
 
-    return quat
+    mask = cond1_mask & cond1a_mask
+    if mask.any():
+        t = 1 + R[mask, 0, 0] - R[mask, 1, 1] - R[mask, 2, 2]
+        q[mask, w_ind] =  R[mask, 1, 2]- R[mask, 2, 1]
+        q[mask, v_ind[0]] = t
+        q[mask, v_ind[1]] = R[mask, 0, 1] + R[mask, 1, 0]
+        q[mask, v_ind[2]] = R[mask, 2, 0] + R[mask, 0, 2]
+        q[mask, :] *= 0.5 / torch.sqrt(t.unsqueeze(dim=1))
+
+    mask = cond1_mask & cond1a_mask.logical_not()
+    if mask.any():
+        t = 1 - R[mask,0, 0] + R[mask,1, 1] - R[mask,2, 2]
+        q[mask, w_ind] =  R[mask,2, 0]-R[mask,0, 2]
+        q[mask, v_ind[0]] = R[mask,0, 1]+R[mask,1, 0]
+        q[mask, v_ind[1]] = t
+        q[mask, v_ind[2]] = R[mask,1, 2]+R[mask,2, 1]
+        q[mask, :] *= 0.5 / torch.sqrt(t.unsqueeze(dim=1))
+
+    mask = cond1_mask.logical_not() & cond1b_mask
+    if mask.any():
+        t = 1 - R[mask,0, 0] - R[mask,1, 1] + R[mask,2, 2]
+        q[mask, w_ind] =  R[mask,0, 1]-R[mask,1, 0]
+        q[mask, v_ind[0]] = R[mask,2, 0]+R[mask,0, 2]
+        q[mask, v_ind[1]] = R[mask,1, 2]+R[mask,2, 1]
+        q[mask, v_ind[2]] = t
+        q[mask, :] *= 0.5 / torch.sqrt(t.unsqueeze(dim=1))
+
+    mask = cond1_mask.logical_not() & cond1b_mask.logical_not()
+    if mask.any():
+        t = 1 + R[mask, 0, 0] + R[mask,1, 1] + R[mask,2, 2]
+        q[mask, w_ind] = t
+        q[mask, v_ind[0]] = R[mask,1, 2]-R[mask,2, 1]
+        q[mask, v_ind[1]] = R[mask,2, 0]-R[mask,0, 2]
+        q[mask, v_ind[2]] = R[mask,0, 1]-R[mask,1, 0]
+        q[mask, :] *= 0.5 / torch.sqrt(t.unsqueeze(dim=1))
+    
+    return q.squeeze()
 
 
 def rotmat_angle_diff(C, C_target, units='deg', reduce=True):
