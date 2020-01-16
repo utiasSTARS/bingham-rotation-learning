@@ -98,6 +98,12 @@ class RotmatQCQPSolver(torch.nn.Module):
 #         outgrad = torch.einsum('bkq,bk->bq', grad_qcqp, grad_output)
 #         return outgrad
 
+def min_eig_vec(A_vec):
+    A = convert_Avec_to_A(A_vec)
+    if A.dim() < 3:
+        A = A.unsqueeze(dim=0)
+    _, evs = torch.symeig(A, eigenvectors=True)
+    return evs[:,:,0].squeeze()
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """
