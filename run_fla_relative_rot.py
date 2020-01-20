@@ -70,8 +70,8 @@ def main():
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
     valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[4000, 4300], transform=transform),
-                            batch_size=args.batch_size_train, pin_memory=False,
-                            shuffle=True, num_workers=args.num_workers, drop_last=False)
+                            batch_size=args.batch_size_test, pin_memory=False,
+                            shuffle=False, num_workers=args.num_workers, drop_last=False)
     #Train and test with new representation
     dim_in = 2 if args.optical_flow else 6
 
