@@ -5,10 +5,15 @@ sys.path.insert(0,'..')
 from convex_layers import QuadQuatFastSolver
 from losses import quat_squared_loss, rotmat_frob_squared_norm_loss
 from helpers_sim import create_experimental_data_fast
-from networks import QuatNet, PointNet
+from networks import QuatNet, PointNet, PointNetInspect
 from gen_uncertainty_plots import sum_bingham_dispersion_coeff, first_eig_gap
 from quaternions import *
 from utils import sixdim_to_rotmat
+
+
+def test_span():
+    x_1 = tr
+
 
 def test_single_grad():
     A = np.random.randn(4,4)
@@ -33,18 +38,19 @@ def test_single_grad():
 def test_quat_norms():
     device = torch.device('cpu')
     tensor_type = torch.float64
-    train_data, test_data = create_experimental_data_fast(50, 10, 100, sigma=0.05, device=device, dtype=tensor_type)
-    model = PointNet(dim_out=4, normalize_output=False, batchnorm=False).to(device=device, dtype=tensor_type)
-    #optimizer = torch.optim.SGD(model.parameters(), lr=1e-3, momentum=0.9)
+    train_data, test_data = create_experimental_data_fast(10, 10, 100, sigma=0.01, device=device, dtype=tensor_type)
+    model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(device=device, dtype=tensor_type)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.99)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     loss_fn = quat_squared_loss
     model.train()
-    for i in range(100):
+    for i in range(200):
         # Reset gradient
         optimizer.zero_grad()
 
         # Forward
+        model.train()
         out = model.forward(train_data.x)
         q = out/out.norm(dim=1, keepdim=True)
         loss = loss_fn(q, train_data.q)
@@ -52,7 +58,7 @@ def test_quat_norms():
         x_test = test_data.x
         out_test = model.forward(x_test)
 
-        x_rand = torch.rand_like(test_data.x)
+        x_rand = torch.randn_like(test_data.x)
         out_rand = model.forward(x_rand)
         
         # Backward
@@ -62,16 +68,37 @@ def test_quat_norms():
         optimizer.step()
         print('Iter: {}. Loss: {:.5F}. 4-Norm: {:.5F}. 4-Norm (Test): {:.5F}. 4-Norm (Random): {:.5F}'.format(i, loss.item(), out.norm(dim=1).mean(), out_test.norm(dim=1).mean(), out_rand.norm(dim=1).mean()))
 
-def test_rotmat_to_quat():
+        model.eval()
+        # vecs = model.final_layer.weight*model.pre_forward(train_data.x)[0].view(1,-1) + model.final_layer.bias.view(4,1).repeat([1, 128])
+        # print(vecs.norm(dim=0))
+        
+        # vecs = model.final_layer.weight*model.pre_forward(x_rand)[0].view(1,-1) + model.final_layer.bias.view(4,1).repeat([1, 128])
+        # print(vecs.norm(dim=0))
+        print(model.pre_forward(train_data.x)[0:])
+        # print(train_data.x.abs().mean())
+        # print(model.pre_forward(train_data.x).norm(dim=1).mean())
 
+        # # print(model.final_layer.weight)
+        # # print(model.final_layer.bias)
+        
+        # # print(model.pre_forward(x_test)[0:3])
+        # print(x_test.abs().mean())
+        # print(model.pre_forward(x_test).norm(dim=1).mean())
+        
+        # # print(model.pre_forward(x_rand)[0:3])
+        # print(x_rand.abs().mean())
+        print(model.pre_forward(x_rand))
+        # print(model.pre_forward(x_rand).norm(dim=1).mean())
     
+    
+
 def test_6D_norms():
     device = torch.device('cpu')
     tensor_type = torch.float64
-    train_data, test_data = create_experimental_data_fast(1, 1, 100, sigma=0.01, device=device, dtype=tensor_type)
-    model = PointNet(dim_out=6, normalize_output=False, batchnorm=False).to(device=device, dtype=tensor_type)
-    #optimizer = torch.optim.SGD(model.parameters(), lr=1e-4, momentum=0.)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
+    train_data, test_data = create_experimental_data_fast(100, 10, 100, sigma=0.01, device=device, dtype=tensor_type)
+    model = PointNetInspect(dim_out=6, normalize_output=False, batchnorm=False).to(device=device, dtype=tensor_type)
+    #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.95)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     loss_fn = rotmat_frob_squared_norm_loss
     model.train()
@@ -86,16 +113,25 @@ def test_6D_norms():
         #x_test = torch.rand_like(test_data.x)
         
         x_test = test_data.x
-        
         out_test = model.forward(x_test)
+
+        x_rand = torch.rand_like(test_data.x)
+        out_rand = model.forward(x_rand)
 
         # Backward
         loss.backward()
 
         # Update parameters
         optimizer.step()
-        print('Iter: {}. Loss: {:.5F}. 6D Norm: {:.5F}. 6D Norm (Test): {:.5F}.'.format(i, loss.item(), out.norm(), out_test.norm()))
-
+        print('Iter: {}. Loss: {:.5F}. 6-Norm: {:.5F}. 6-Norm (Test): {:.5F}. 6-Norm (Random): {:.5F}'.format(i, loss.item(), out.norm(dim=1).mean(), out_test.norm(dim=1).mean(), out_rand.norm(dim=1).mean()))
+    
+    # print(model.pre_forward(train_data.x)[0:3])
+    # print(model.pre_forward(train_data.x)[0].norm())
+    
+    # print(model.pre_forward(x_test)[0:3])
+    # print(model.pre_forward(x_test)[0].norm())
+    
+    # print(model.pre_forward(x_rand)[0:3])
 
 def test_gaps_network():
     loss_fn = quat_squared_loss
