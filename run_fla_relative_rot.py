@@ -31,8 +31,7 @@ def main():
     parser.add_argument('--save_model', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
 
-    parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
-    parser.add_argument('--model', choices=['A_sym', 'A_sym_rot', 'A_sym_rot_16', '6D', 'quat'], default='A_sym')
+    parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
 
     #Randomly select within this range
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -66,11 +65,11 @@ def main():
     pose_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
     #Indoor is 6000-7600 absolute
     #approximately 1730-4330 relative
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[50, 4000], transform=transform),
+    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[1800, 4000], transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[4000, 4500], transform=transform),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[4000, 4300], transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
     #Train and test with new representation
