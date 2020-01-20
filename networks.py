@@ -112,6 +112,46 @@ class PointFeatMLP(torch.nn.Module):
         x = self.net(x)
         return x
 
+class PointNetInspect(torch.nn.Module):
+    def __init__(self, dim_out=10, normalize_output=False, batchnorm=False):
+        super(PointNetInspect, self).__init__()
+        self.feat_net = PointFeatCNN(batchnorm=batchnorm)
+        self.normalize_output = normalize_output
+        self.head = torch.nn.Sequential(
+          torch.nn.Linear(1024, 256),
+          torch.nn.PReLU(),
+          torch.nn.Linear(256, 12),
+          torch.nn.ReLU()
+        )
+        self.final_layer = torch.nn.Linear(12, dim_out, bias=False)
+
+    def pre_forward(self, x):
+        #Decompose input into two point clouds
+        if x.dim() < 4:
+            x = x.unsqueeze(dim=0)
+
+        x_1 = x[:, 0, :, :].transpose(1,2)
+        x_2 = x[:, 1, :, :].transpose(1,2)
+
+
+        feats_12 = self.feat_net(torch.cat([x_1, x_2], dim=1))
+
+        if feats_12.dim() < 2:
+            feats_12 = feats_12.unsqueeze(dim=0)
+        
+        out = self.head(feats_12)
+        out = out / out.sum(dim=1, keepdim=True)
+        return out
+
+    def forward(self, x):
+        weights = self.pre_forward(x)
+        inv_norms = 1./self.final_layer.weight.norm(dim=0, keepdim=True)
+        out = self.final_layer(weights*inv_norms)
+        
+        if self.normalize_output:
+            out = out / out.norm(dim=1, keepdim=True)
+        
+        return out
         
 class PointNet(torch.nn.Module):
     def __init__(self, dim_out=10, normalize_output=False, batchnorm=False):

@@ -6,10 +6,11 @@ import torchvision
 import os.path as osp
 from PIL import Image
 import os
-from quaternions import rotmat_to_quat
+from quaternions import rotmat_to_quat, quat_to_rotmat
 from liegroups.torch import SO3
 import pickle
 import cv2
+import torch.utils.data as tud
 
 
 class KITTIVODatasetPreTransformed(Dataset):
@@ -319,3 +320,103 @@ class SevenScenesData(Dataset):
             print('Could not load image {:s}, unexpected error'.format(filename))
             return None
         return img
+
+
+class FLADataset(tud.Dataset):
+    """Loads FLA data from ASL format into a torch dataset.
+    """
+
+    def __init__(self, image_dir, pose_dir, select_idx=None, transform=None, rotmat_targets=False):
+        """Constructor for FLADataset.
+
+        :param image_dir: Root directory of images.
+        :param pose_dir: Root directory of poses.
+        :param transform: Transform to apply when reading data.
+        """
+        self.image_dir = image_dir
+        self.pose_dir = pose_dir
+        self.transform = transform
+        self.rotmat_targets = rotmat_targets
+        # Read in images.
+        self.image_timestamps = [] # nanoseconds.
+        self.image_filenames = []
+        with open(os.path.join(self.image_dir, "data.csv"), "r") as ff:
+            lines = ff.readlines()
+            lines = [line.rstrip() for line in lines] # Strip newlines.
+            lines = [line for line in lines if line[0] is not "#"] # Strip comments.
+
+            for line in lines:
+                tokens = line.split(",")
+                self.image_timestamps.append(np.uint64(tokens[0]))
+                self.image_filenames.append(tokens[1])
+
+        self.image_timestamps = np.array(self.image_timestamps)
+
+        # Read poses.
+        self.pose_timestamps = [] # nanoseconds.
+        self.pose_qxyzw = []
+        with open(os.path.join(self.pose_dir, "data.csv"), "r") as ff:
+            lines = ff.readlines()
+            lines = [line.rstrip() for line in lines] # Strip newlines.
+            lines = [line for line in lines if line[0] is not "#"] # Strip comments.
+
+            for line in lines:
+                tokens = line.split(",")
+                self.pose_timestamps.append(np.uint64(tokens[0]))
+
+                qw = np.float(tokens[-4])
+                qx = np.float(tokens[-3])
+                qy = np.float(tokens[-2])
+                qz = np.float(tokens[-1])
+
+                self.pose_qxyzw.append(np.array([qx, qy, qz, qw]))
+
+        self.pose_timestamps = np.array(self.pose_timestamps)
+        self.pose_qxyzw = torch.from_numpy(np.array(self.pose_qxyzw))
+
+        #Filter
+        if select_idx is not None:
+            self.image_filenames = self.image_filenames[select_idx[0]:select_idx[1]]
+            self.image_timestamps = self.image_timestamps[select_idx[0]:select_idx[1]]
+            # self.pose_timestamps = self.pose_timestamps[select_idx[0]:select_idx[1]]
+            # self.pose_qxyzw = self.pose_qxyzw[select_idx[0]:select_idx[1]]
+
+        return
+
+    def __len__(self):
+        return len(self.image_filenames) - 1
+
+    def find_pose(self, timestamp):
+         # Find closest pose given timestamp.
+        pose_idx = np.argmin(np.abs(self.pose_timestamps - timestamp))
+        
+        tol_ms = 30
+        assert(np.abs(np.float(self.pose_timestamps[pose_idx]) - timestamp) * 1e-6 < tol_ms)
+        return pose_idx
+
+    def __getitem__(self, idx):
+
+        id1 = idx
+        id2 = idx + 1
+
+        image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
+        image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
+        
+        pose_idx1 = self.find_pose(self.image_timestamps[id1])
+        pose_idx2 = self.find_pose(self.image_timestamps[id2])
+
+        R_1 = quat_to_rotmat(self.pose_qxyzw[pose_idx1, :], ordering='xyzw')
+        R_2 = quat_to_rotmat(self.pose_qxyzw[pose_idx2, :], ordering='xyzw')
+        R = R_1.mm(R_2.transpose(0,1))
+   
+        if self.transform:
+            image1 = self.transform(image1)
+            image2 = self.transform(image2)
+
+        if self.rotmat_targets:
+            target = R
+        else:
+            target = rotmat_to_quat(R, ordering='xyzw')
+
+
+        return torch.cat([image1, image2], dim=0), target
