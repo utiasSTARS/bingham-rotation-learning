@@ -61,19 +61,24 @@ def main():
     #     seqs_base_path = '/media/datasets/KITTI/single_files'
 
     #Monolith
-    image_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/xtion'
+    image_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
     pose_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+    
+    #Xtion
     #Indoor is 6000-7600 absolute
     #approximately 1730-4330 relative
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[1800, 4000], transform=transform),
+
+    #Flea3
+    #5620 - 8800
+    #Relative: 3525 - 6705
+    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[3530, 6000], transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[4000, 4300], transform=transform),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6500], transform=transform),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
-    #Train and test with new representation
-    dim_in = 2 if args.optical_flow else 6
+    dim_in = 2
 
     
     if args.model == 'A_sym':
