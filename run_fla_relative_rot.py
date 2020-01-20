@@ -47,22 +47,25 @@ def main():
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
 
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
 
-    transform = transforms.Compose([
-            torchvision.transforms.Resize(224),
-            torchvision.transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-    ])
-    # seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
-    # if args.megalith:
-    #     seqs_base_path = '/media/datasets/KITTI/single_files'
 
     #Monolith
     image_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
     pose_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+
+    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+    #                                  std=[0.229, 0.224, 0.225])
+
+    transform = transforms.Compose([
+            torchvision.transforms.Resize(224),
+            torchvision.transforms.CenterCrop(224),
+            transforms.ToTensor()
+    ])
+    dim_in = 2
+
+    # seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+    # if args.megalith:
+    #     seqs_base_path = '/media/datasets/KITTI/single_files'
     
     #Xtion
     #Indoor is 6000-7600 absolute
@@ -78,7 +81,6 @@ def main():
     valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6500], transform=transform),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
-    dim_in = 2
 
     
     if args.model == 'A_sym':
