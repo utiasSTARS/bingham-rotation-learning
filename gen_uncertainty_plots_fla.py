@@ -166,10 +166,15 @@ def collect_errors(saved_file):
 
     image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
     pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+    
+    normalize = transforms.Normalize(mean=[0.45],
+                                    std=[0.25])
+
     transform = transforms.Compose([
             torchvision.transforms.Resize(256),
             torchvision.transforms.CenterCrop(224),
             transforms.ToTensor(),
+            normalize,
     ])
     dim_in = 2
 
@@ -205,8 +210,8 @@ def create_fla_data():
 
     print('Collecting data....')
     base_dir = 'saved_data/fla/'
-    #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-14-41-23.pt'
-    file_fla = 'fla_model_indoor_A_sym_01-21-2020-14-34-29.pt'
+    file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-10-40.pt'
+    #file_fla = 'fla_model_indoor_A_sym_01-21-2020-14-34-29.pt'
 
     data_fla = collect_errors(base_dir+file_fla)
 
