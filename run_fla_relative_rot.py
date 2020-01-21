@@ -55,8 +55,9 @@ def main():
     #                                  std=[0.229, 0.224, 0.225])
 
     transform = transforms.Compose([
-            torchvision.transforms.Resize(224),
-            transforms.ToTensor()
+            torchvision.transforms.Resize(256),
+            torchvision.transforms.CenterCrop(224),
+            transforms.ToTensor(),
     ])
     dim_in = 2
 
