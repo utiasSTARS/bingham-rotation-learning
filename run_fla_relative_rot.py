@@ -48,14 +48,19 @@ def main():
 
 
     #Monolith
-    image_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
-    pose_dir = '/media/m2-drive/datasets/fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+    if args.megalith:
+        dataset_dir = '/media/datasets/'
+    else:
+        dataset_dir = '/media/m2-drive/datasets/'
+
+    image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
+    pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
 
     # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
     #                                  std=[0.229, 0.224, 0.225])
 
     transform = transforms.Compose([
-            torchvision.transforms.Resize(224),
+            torchvision.transforms.Resize(256),
             torchvision.transforms.CenterCrop(224),
             transforms.ToTensor(),
     ])
@@ -78,7 +83,7 @@ def main():
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform, eval_mode=True),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
@@ -89,7 +94,7 @@ def main():
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False, scheduler=False)
 
     elif args.model == '6D':
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')

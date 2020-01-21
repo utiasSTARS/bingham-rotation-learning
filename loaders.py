@@ -326,7 +326,7 @@ class FLADataset(tud.Dataset):
     """Loads FLA data from ASL format into a torch dataset.
     """
 
-    def __init__(self, image_dir, pose_dir, select_idx=None, transform=None, rotmat_targets=False):
+    def __init__(self, image_dir, pose_dir, select_idx=None, transform=None, rotmat_targets=False, eval_mode=False):
         """Constructor for FLADataset.
 
         :param image_dir: Root directory of images.
@@ -337,6 +337,8 @@ class FLADataset(tud.Dataset):
         self.pose_dir = pose_dir
         self.transform = transform
         self.rotmat_targets = rotmat_targets
+        self.eval_mode = eval_mode
+
         # Read in images.
         self.image_timestamps = [] # nanoseconds.
         self.image_filenames = []
@@ -385,8 +387,12 @@ class FLADataset(tud.Dataset):
         return
 
     def __len__(self):
-        return len(self.image_filenames) - 1
-
+        if self.eval_mode:
+            return len(self.image_filenames) - 1
+        else:
+            return 2*(len(self.image_filenames) - 1)
+            
+    
     def compute_flow(self, img1, img2):
         #Convert back to W x H x C
         np_img1 = img1.permute(1,2,0).numpy()
@@ -406,9 +412,18 @@ class FLADataset(tud.Dataset):
         return pose_idx
 
     def __getitem__(self, idx):
-
-        id1 = idx
-        id2 = idx + 1
+        
+        if self.eval_mode:
+            id1 = idx
+            id2 = id1 + 1
+        else:
+            if idx < len(self.image_filenames) - 1:
+                id1 = idx
+                id2 = id1 + 1
+            else:
+                #Reverse order
+                id2 = idx - len(self.image_filenames) + 1
+                id1 = id2 + 1
 
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
