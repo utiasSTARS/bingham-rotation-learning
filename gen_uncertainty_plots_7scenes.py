@@ -281,7 +281,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
     fig = _create_scatter_plot(thresh, 
     [uncertainty_metric_fn(A_pred.numpy()), uncertainty_metric_fn(A_predt.numpy())],
-    [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
+    [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'])
     output_file = 'plots/7scenes_scatter_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -290,7 +290,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    full_saved_path = create_7scenes_data()
+    #full_saved_path = create_7scenes_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -301,5 +301,6 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
+    full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-01-35-13.pt'
     create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
