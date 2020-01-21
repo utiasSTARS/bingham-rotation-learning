@@ -149,9 +149,6 @@ def compute_mask(A, uncertainty_metric_fn, thresh):
         return uncertainty_metric_fn(A) < thresh
     elif uncertainty_metric_fn == l2_norm:
         return uncertainty_metric_fn(A) > thresh
-    elif uncertainty_metric_fn == det_inertia_mat:
-        return uncertainty_metric_fn(A) < thresh
-        
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -385,4 +382,4 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(det_inertia_mat)
+    create_table_stats(sum_bingham_dispersion_coeff)
