@@ -282,8 +282,11 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A']
 
+    theta = 2.*torch.atan2(q_targett[:,:3].norm(dim=1), q_targett[:,3])*(180./np.pi)
+    print('Axis-angle mag. Min: {:.3F} | Median: {:.3F} | Max: {:.3F}'.format(theta.min(), theta.median(), theta.max()))
+
     thresh = compute_threshold(A_predt.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-    mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
+    #mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
 
     fig = _create_scatter_plot(thresh, 
     [uncertainty_metric_fn(A_pred.numpy()), uncertainty_metric_fn(A_predt.numpy())],
@@ -296,7 +299,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    full_saved_path = create_7scenes_data()
+    #full_saved_path = create_7scenes_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -307,6 +310,6 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    #full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-02-05-45.pt'
+    full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-03-06-24.pt'
     create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
