@@ -398,7 +398,7 @@ class FLADataset(tud.Dataset):
     def __getitem__(self, idx):
 
         id1 = idx
-        id2 = idx + 3
+        id2 = idx + 1
 
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
@@ -408,8 +408,9 @@ class FLADataset(tud.Dataset):
 
         R_1 = quat_to_rotmat(self.pose_qxyzw[pose_idx1, :], ordering='xyzw')
         R_2 = quat_to_rotmat(self.pose_qxyzw[pose_idx2, :], ordering='xyzw')
+
+        print(rotmat_angle_diff(R_1, R_2))
         R = R_1.mm(R_2.transpose(0,1))
-   
         if self.transform:
             image1 = self.transform(image1)
             image2 = self.transform(image2)
