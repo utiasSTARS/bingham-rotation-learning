@@ -209,7 +209,7 @@ def create_fla_data():
     data_fla = collect_errors(base_dir+file_fla)
 
     saved_data_file_name = 'processed_{}'.format(file_fla)
-    full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
+    full_saved_path = 'saved_data/fla/{}'.format(saved_data_file_name)
 
     torch.save({
                 'file_fla': file_fla,
@@ -295,7 +295,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
     #saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(data_file)
-
+    
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
 
     thresh = compute_threshold(A_predt.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
@@ -304,7 +304,9 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     fig = _create_scatter_plot(thresh, 
     [uncertainty_metric_fn(A_pred.numpy()), uncertainty_metric_fn(A_predt.numpy())],
     [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
-    output_file = 'plots/fla_scatter_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    
+    desc = data_file.split('/')[2].split('.pt')[0]
+    output_file = 'plots/fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
