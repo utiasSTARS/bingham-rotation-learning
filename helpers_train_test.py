@@ -41,7 +41,7 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
     if scheduler:
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5], gamma=0.1)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5,10,20], gamma=0.2)
 
     #Save stats
     train_stats = torch.zeros(args.epochs, 2)
