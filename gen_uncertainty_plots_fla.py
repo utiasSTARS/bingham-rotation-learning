@@ -295,7 +295,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
 
     fig = _create_scatter_plot(thresh, 
-    [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
+    [uncertainty_metric_fn(A_pred.numpy()), uncertainty_metric_fn(A_predt.numpy())],
     [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
     output_file = 'plots/fla_scatter_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
