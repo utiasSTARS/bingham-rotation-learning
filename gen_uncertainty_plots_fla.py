@@ -283,90 +283,24 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
         
 
 
-def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=first_eig_gap, quantile=0.25):
+def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25):
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    saved_data_file = 'saved_data/fla/fla_comparison_01-20-2020-23-42-08.pt'
     data = torch.load(saved_data_file)
-    seqs = ['00', '02', '05']
 
-    mean_err = []
-    mean_err_filter = []
-    mean_err_6D = []
-    mean_err_vo= []
-    mean_err_quat = []
-    
-    mean_err_corrupted = []
-    mean_err_corrupted_filter = []
-    mean_err_corrupted_6D = []
-    mean_err_corrupted_quat = []
+    (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
 
-    for s_i, seq in enumerate(seqs):
-        (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A'][s_i]
-        mean_err.append(quat_angle_diff(q_est, q_target, reduce=True))
-        thresh = compute_threshold(A_predt, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-        mask = compute_mask(A_pred, uncertainty_metric_fn, thresh)
+    thresh = compute_threshold(A_predt, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+    mask = compute_mask(A_pred, uncertainty_metric_fn, thresh)
 
-        mean_err_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
-        mean_err_vo.append(quat_angle_diff(data['data_VO'][s_i], q_target))
-        
-        if output_scatter:
-            #Create scatter plot
-            fig = _create_scatter_plot(thresh, 
-            [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
-            output_file = 'plots/kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
-            fig.savefig(output_file, bbox_inches='tight')
-            plt.close(fig)
-
-
-        (q_estt, q_targett), (q_est, q_target) = data['data_6D'][s_i]
-        mean_err_6D.append(quat_angle_diff(q_est, q_target, reduce=True))
-
-        (q_estt, q_targett), (q_est, q_target) = data['data_quat'][s_i]
-        mean_err_quat.append(quat_angle_diff(q_est, q_target, reduce=True))
-
-        (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A_transformed'][s_i]
-        mean_err_corrupted.append(quat_angle_diff(q_est, q_target, reduce=True))
-        thresh = compute_threshold(A_predt, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-        mask = compute_mask(A_pred, uncertainty_metric_fn, thresh)
-
-        mean_err_corrupted_filter.append(quat_angle_diff(q_est[mask], q_target[mask]))
-        
-        true_mask = np.zeros(mask.shape)
-        true_mask[:int(true_mask.shape[0]/2)] = 1.
-        num_correct = int((true_mask*mask).sum())
-        num_picked_out = mask.sum()
-        print('{}/{} correct ({:.2F} precision, {:.2F} recall)'.format(num_correct,num_picked_out, num_correct/num_picked_out, num_correct/true_mask.sum()))
-        
-        if output_scatter:
-            #Create scatter plot
-            fig = _create_scatter_plot(thresh, 
-            [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Validation', 'Training'], ylim=[1e-4, 5])
-            output_file = 'plots/kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
-            fig.savefig(output_file, bbox_inches='tight')
-            plt.close(fig)
-
-        (q_estt, q_targett), (q_est, q_target) = data['data_6D_transformed'][s_i]
-        mean_err_corrupted_6D.append(quat_angle_diff(q_est, q_target, reduce=True))    
-
-        (q_estt, q_targett), (q_est, q_target) = data['data_quat_transformed'][s_i]
-        mean_err_corrupted_quat.append(quat_angle_diff(q_est, q_target, reduce=True))    
-
-
-
-    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) \n Thresh (q: {:.2F})'.format(quantile)]
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.8])
-    output_file = 'plots/kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    fig = _create_scatter_plot(thresh, 
+    [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
+    [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
+    output_file = 'plots/fla_scatter_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
-    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) \n Thresh (q: {:.2F})'.format(quantile)]
-    fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.8], legend=False)
-    output_file = 'plots/kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
-    fig.savefig(output_file, bbox_inches='tight')
-    plt.close(fig)
 
 
 
@@ -382,4 +316,5 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(sum_bingham_dispersion_coeff)
+    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.01)
