@@ -264,7 +264,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
 def create_table_stats(uncertainty_metric_fn=first_eig_gap):
     saved_data_file = 'saved_data/fla/fla_comparison_01-20-2020-23-42-08.pt'
     data = torch.load(saved_data_file)
-    quantiles = [0.001, 0.5, 0.999]
+    quantiles = [0.001, 0.5, 0.9999]
 
     (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
     mean_err_A = quat_angle_diff(q_est, q_target)
