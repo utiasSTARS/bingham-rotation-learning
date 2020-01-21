@@ -246,7 +246,33 @@ class QuatFlowNet(torch.nn.Module):
         q = self.qcqp_solver(A_vec)
         return q
 
+class QuatFlowResNet(torch.nn.Module):
+    def __init__(self, enforce_psd=True, unit_frob_norm=True):
+        super(QuatFlowNet, self).__init__()
+        self.A_net = CustomResNet(dim_out=10)
+        self.enforce_psd = enforce_psd
+        self.unit_frob_norm = unit_frob_norm
+        self.qcqp_solver = QuadQuatFastSolver.apply
+    
+    def output_A(self, x):
+        A_vec = self.A_net(x)
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
+        return convert_Avec_to_A(A_vec)
 
+    def forward(self, x):
+        A_vec = self.A_net(x)
+
+        if self.enforce_psd:
+            A_vec = convert_Avec_to_Avec_psd(A_vec)
+        if self.unit_frob_norm:
+            A_vec = normalize_Avec(A_vec)
+        
+        q = self.qcqp_solver(A_vec)
+        return q
 
 def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1, batchnorm=True):
         if batchnorm:
