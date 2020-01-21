@@ -71,13 +71,13 @@ dim_in = 2 if args.optical_flow else 6
 
 
 print('=========TRAINING DIRECT QUAT MODEL==================')
-model = BasicAutoEncoder(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device,
+model = BasicAutoEncoder(dim_in=dim_in, dim_latent=10, dim_transition=20, normalize_output=True, batchnorm=args.batchnorm).to(device=device,
                                                                                                dtype=tensor_type)
-    # train_loader.dataset.rotmat_targets = False
-    # valid_loader.dataset.rotmat_targets = False
-    # loss_fn = quat_squared_loss
-    # (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader,
-    #                                              tensorboard_output=False)
+train_loader.dataset.rotmat_targets = False
+valid_loader.dataset.rotmat_targets = False
+loss_fn = torch.nn.functional.l1_loss
+(train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader,
+                                             tensorboard_output=False)
 
 # if __name__ == '__main__':
 #     main()
