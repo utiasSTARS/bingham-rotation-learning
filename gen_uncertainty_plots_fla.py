@@ -200,7 +200,7 @@ def create_fla_data():
     data_fla = collect_errors(file_fla)
 
     saved_data_file_name = 'fla_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    full_saved_path = 'saved_data/flat/{}.pt'.format(saved_data_file_name)
+    full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
 
     torch.save({
                 'file_fla': file_fla,
