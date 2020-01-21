@@ -368,7 +368,7 @@ def create_video(full_data_file=None):
         saved_data_file_name = 'processed_video_{}.pt'.format(desc)
         full_data_file = 'saved_data/fla/{}'.format(saved_data_file_name)
         torch.save({
-                    'file_fla': save_file,
+                    'file_fla': data_file,
                     'data_fla': data
         }, full_data_file)
 
