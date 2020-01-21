@@ -6,7 +6,7 @@ import torchvision
 import os.path as osp
 from PIL import Image
 import os
-from quaternions import rotmat_to_quat, quat_to_rotmat
+from quaternions import rotmat_to_quat, quat_to_rotmat, rotmat_angle_diff
 from liegroups.torch import SO3
 import pickle
 import cv2
