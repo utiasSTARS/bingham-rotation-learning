@@ -385,7 +385,7 @@ class FLADataset(tud.Dataset):
         return
 
     def __len__(self):
-        return len(self.image_filenames) - 3
+        return len(self.image_filenames) - 1
 
     def find_pose(self, timestamp):
          # Find closest pose given timestamp.
