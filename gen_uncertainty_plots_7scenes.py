@@ -184,7 +184,7 @@ def create_7scenes_data():
 
     print('Collecting data....')
     file_fla = 'saved_data/7scenes/7scenes_model_A_sym_chess_01-21-2020-01-23-02.pt'
-    data_fla = collect_errors(file_fla)
+    data_A = collect_errors(file_fla)
 
     saved_data_file_name = '7scenes_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = 'saved_data/7scenes/{}.pt'.format(saved_data_file_name)
