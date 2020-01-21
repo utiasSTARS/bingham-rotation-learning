@@ -161,7 +161,7 @@ def collect_errors(saved_file):
     tensor_type = torch.double if args.double else torch.float
 
     select_ids_train = checkpoint['select_ids_train']
-    select_ids_test = checkpoint['select_ids_test']
+    select_ids_test = [6500, 8000]#checkpoint['select_ids_test']
     if args.megalith:
         dataset_dir = '/media/datasets/'
     else:
@@ -209,7 +209,7 @@ def create_fla_data():
 
     print('Saved data to {}.'.format(full_saved_path))
 
-    return
+    return full_saved_path
 
 
 
@@ -261,9 +261,9 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
     return fig
 
 
-def create_table_stats(uncertainty_metric_fn=first_eig_gap):
-    saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
-    data = torch.load(saved_data_file)
+def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
+    #data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
+    data = torch.load(data_file)
     quantiles = [0.25, 0.5, 0.75]
 
     (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
@@ -283,11 +283,9 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
         
 
 
-def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25):
-    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
-    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
-    saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
-    data = torch.load(saved_data_file)
+def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
+    #saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
+    data = torch.load(data_file)
 
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
 
@@ -305,7 +303,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    #create_fla_data()
+    full_saved_path = create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -316,5 +314,5 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
+    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
