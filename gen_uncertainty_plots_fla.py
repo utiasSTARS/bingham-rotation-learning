@@ -262,90 +262,25 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
 
 
 def create_table_stats(uncertainty_metric_fn=first_eig_gap):
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    saved_data_file = 'saved_data/fla/fla_comparison_01-20-2020-23-42-08.pt'
     data = torch.load(saved_data_file)
-    seqs = ['00', '02', '05']
     quantiles = [0.25, 0.5, 0.75]
-    for s_i, seq in enumerate(seqs):
-        _, (q_est, q_target) = data['data_quat'][s_i]
-        mean_err_quat = quat_angle_diff(q_est, q_target)
 
-        _, (q_est, q_target) = data['data_6D'][s_i]
-        mean_err_6D = quat_angle_diff(q_est, q_target)
+    (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
+    mean_err_A = quat_angle_diff(q_est, q_target)
 
-        (A_train, _, _), (A_test, q_est, q_target) = data['data_A'][s_i]
-        mean_err_A = quat_angle_diff(q_est, q_target)
+    print('Total Pairs: {}.'.format(q_est.shape[0]))
+    print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
 
-        print('Seq: {}. Total Pairs: {}.'.format(seq, q_est.shape[0]))
+    for q_i, quantile in enumerate(quantiles):
+        thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+        mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
+
+        mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
         
-        print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
-
-        for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-            mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
-
-            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
-            
-            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
+        print('Quantile: {}. A (sym + thresh): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
 
         
-        _, (q_est, q_target) = data['data_quat_transformed'][s_i]
-        mean_err_quat = quat_angle_diff(q_est, q_target)
-
-        _, (q_est, q_target) = data['data_6D_transformed'][s_i]
-        mean_err_6D = quat_angle_diff(q_est, q_target)
-
-        (A_train, _, _), (A_test, q_est, q_target) = data['data_A_transformed'][s_i]
-        mean_err_A = quat_angle_diff(q_est, q_target)
-
-        print('-- CORRUPTED --')
-        print('Mean Error (deg): Quat: {:.2F} | 6D: {:.2F} | A (sym) {:.2F}'.format(mean_err_quat, mean_err_6D, mean_err_A))
-
-        for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-            mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
-            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
-            precision, recall = compute_prec_recall(A_train.numpy(), A_test.numpy(), quantile, uncertainty_metric_fn)
-
-            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
-
-def create_table_stats_6D():
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_6Dvec_01-15-2020-16-19-36.pt'
-    data = torch.load(saved_data_file)
-    seqs = ['00', '02', '05']
-    quantiles = [0.25, 0.5, 0.75]
-    for s_i, seq in enumerate(seqs):
-
-        (six_vec_train, _, _), (six_vec_test, q_est, q_target) = data['data_6D'][s_i]
-        mean_err_6D = quat_angle_diff(q_est, q_target)
-
-        print('Seq: {}. Total Pairs: {}.'.format(seq, q_est.shape[0]))
-        
-        print('Mean Error (deg): 6D: {:.2F}'.format(mean_err_6D))
-
-        for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(six_vec_train, uncertainty_metric_fn=l2_norm, quantile=quantile)
-            mask = compute_mask(six_vec_test, l2_norm, thresh)
-            mean_err_6D_filter = quat_angle_diff(q_est[mask], q_target[mask])
-            
-            print('Quantile: {}. 6D + Norm Filter: {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_6D_filter, 100.*mask.sum()/mask.shape[0]))
-
-
-        (six_vec_train, _, _), (six_vec_test, q_est, q_target) = data['data_6D_transformed'][s_i]
-        mean_err_6D = quat_angle_diff(q_est, q_target)
-
-
-        print('-- CORRUPTED --')
-        print('Mean Error (deg): 6D: {:.2F}'.format(mean_err_6D))
-
-        for q_i, quantile in enumerate(quantiles):
-            thresh = compute_threshold(six_vec_train, uncertainty_metric_fn=l2_norm, quantile=quantile)
-            mask = compute_mask(six_vec_test, l2_norm, thresh)
-            mean_err_6D_filter = quat_angle_diff(q_est[mask], q_target[mask])
-            precision, recall = compute_prec_recall(six_vec_train, six_vec_test, quantile, l2_norm)
-
-            print('Quantile: {}. 6D + Norm Filter: {:.2F} | Kept: {:.1F}% | Precision: {:.2F}%'.format(quantile, mean_err_6D_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
-
 
 
 def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=first_eig_gap, quantile=0.25):
@@ -436,7 +371,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 
 if __name__=='__main__':
-    create_fla_data()
+    #create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -447,4 +382,4 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    # create_table_stats(sum_bingham_dispersion_coeff)
+    create_table_stats(sum_bingham_dispersion_coeff)
