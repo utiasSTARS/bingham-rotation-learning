@@ -89,7 +89,7 @@ def main():
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False, scheduler=True)
 
     elif args.model == '6D':
         print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
