@@ -32,8 +32,6 @@ def main():
     parser.add_argument('--enforce_psd', action='store_true', default=False)
 
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
-
-    #Randomly select within this range
     parser.add_argument('--lr', type=float, default=5e-4)
 
 
