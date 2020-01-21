@@ -248,7 +248,7 @@ class QuatFlowNet(torch.nn.Module):
 
 class QuatFlowResNet(torch.nn.Module):
     def __init__(self, enforce_psd=True, unit_frob_norm=True):
-        super(QuatFlowNet, self).__init__()
+        super(QuatFlowResNet, self).__init__()
         self.A_net = CustomResNet(dim_out=10)
         self.enforce_psd = enforce_psd
         self.unit_frob_norm = unit_frob_norm
