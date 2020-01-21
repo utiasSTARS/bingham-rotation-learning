@@ -108,7 +108,7 @@ def det_inertia_mat(A):
     
     els = np.linalg.eigvalsh(A)
 
-    els = els[:, 1:] + els[:, 0, None] 
+    els = els[:, 1:] - els[:, 0, None] 
     # min_el = els[:,0]
     # I = np.repeat(np.eye(4).reshape(1,4,4), A_inertia.shape[0], axis=0)
     # A_inertia = A_inertia + I*min_el[:,None,None]
@@ -132,8 +132,8 @@ def decode_metric_name(uncertainty_metric_fn):
         return 'First Eigenvalue Gap'
     elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
         return 'Sum of Dispersion Coefficients'
-    elif uncertainty_metric_fn == trace_inertia_mat:
-        return 'Trace of Inertia Matrix (min eigvalue added)'
+    elif uncertainty_metric_fn == det_inertia_mat:
+        return 'Det of Inertia Matrix (min eigvalue added)'
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -149,6 +149,9 @@ def compute_mask(A, uncertainty_metric_fn, thresh):
         return uncertainty_metric_fn(A) < thresh
     elif uncertainty_metric_fn == l2_norm:
         return uncertainty_metric_fn(A) > thresh
+    elif uncertainty_metric_fn == det_inertia_mat:
+        return uncertainty_metric_fn(A) < thresh
+        
     else:
         raise ValueError('Unknown uncertainty metric')
 
