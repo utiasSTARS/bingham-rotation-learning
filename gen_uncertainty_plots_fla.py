@@ -322,6 +322,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 def create_video(data_file, full_data_file=None):
     
     if full_data_file is None:
+        data_file = 'saved_data/fla/fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
         checkpoint = torch.load(data_file)
         args = checkpoint['args']
         print(args)
@@ -404,8 +405,8 @@ if __name__=='__main__':
     # print("=================")
 
     #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
-    full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    #full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
-    create_video(full_saved_path)
+    create_video()
