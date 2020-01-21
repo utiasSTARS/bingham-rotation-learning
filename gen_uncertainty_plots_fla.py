@@ -305,7 +305,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    create_fla_data()
+    #create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -316,5 +316,5 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
-    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
+    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
