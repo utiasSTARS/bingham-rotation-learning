@@ -409,7 +409,6 @@ class FLADataset(tud.Dataset):
         R_1 = quat_to_rotmat(self.pose_qxyzw[pose_idx1, :], ordering='xyzw')
         R_2 = quat_to_rotmat(self.pose_qxyzw[pose_idx2, :], ordering='xyzw')
 
-        print(rotmat_angle_diff(R_1, R_2))
         R = R_1.mm(R_2.transpose(0,1))
         if self.transform:
             image1 = self.transform(image1)
