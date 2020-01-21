@@ -429,6 +429,6 @@ class FLADataset(tud.Dataset):
         else:
             target = rotmat_to_quat(R, ordering='xyzw')
 
-        flow_image = self.compute_flow(image1, image2)
-        img_input = flow_image #torch.cat([image1, image2], dim=0)
+        #flow_image = self.compute_flow(image1, image2)
+        img_input = torch.cat([image1, image2], dim=0)
         return img_input, target

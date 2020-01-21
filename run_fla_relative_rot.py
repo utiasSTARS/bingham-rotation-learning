@@ -74,11 +74,11 @@ def main():
     #Flea3
     #5620 - 8800
     #Relative: 3525 - 6705
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[3530, 6000], transform=transform),
+    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[3700, 6000], transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6500], transform=transform),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6300], transform=transform),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
