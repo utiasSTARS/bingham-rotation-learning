@@ -108,8 +108,8 @@ def main():
         full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
         torch.save({
                 'model_type': args.model,
-                'select_ids_train': select_ids_train,
-                'select_ids_test': select_ids_test,
+                'train_dataset': train_dataset,
+                'test_dataset': test_dataset,
                 'model': model.state_dict(),
                 'train_stats_rep': train_stats.detach().cpu(),
                 'test_stats_rep': test_stats.detach().cpu(),
