@@ -384,7 +384,7 @@ class BasicAutoEncoder(torch.nn.Module):
 
 
 class CustomResNet(torch.nn.Module):
-    def __init__(self, dim_out, normalize_output=True):
+    def __init__(self, dim_out, normalize_output=False):
         super(CustomResNet, self).__init__()
         self.cnn = torchvision.models.resnet34(pretrained=True)
         num_ftrs = self.cnn.fc.in_features

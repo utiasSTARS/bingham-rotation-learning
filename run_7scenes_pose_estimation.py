@@ -96,7 +96,7 @@ def main():
 
     elif args.model == 'quat':
         print('=========TRAINING DIRECT QUAT MODEL==================')
-        model = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model = CustomResNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
