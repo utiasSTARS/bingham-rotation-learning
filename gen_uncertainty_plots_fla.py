@@ -211,7 +211,7 @@ def create_fla_data():
     print('Collecting data....')
     base_dir = 'saved_data/fla/'
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-10-40.pt'
-    file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-17-36.pt'
+    file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-23-49.pt'
 
     data_fla = collect_errors(base_dir+file_fla)
 
