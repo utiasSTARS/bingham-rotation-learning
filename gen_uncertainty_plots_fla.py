@@ -291,8 +291,8 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
 
-    thresh = compute_threshold(A_predt, uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-    mask = compute_mask(A_pred, uncertainty_metric_fn, thresh)
+    thresh = compute_threshold(A_predt.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+    mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
 
     fig = _create_scatter_plot(thresh, 
     [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
