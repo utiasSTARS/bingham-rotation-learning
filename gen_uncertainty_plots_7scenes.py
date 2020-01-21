@@ -166,9 +166,15 @@ def collect_errors(saved_file):
     train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform, output_first_image=False, tensor_type=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True,
                         shuffle=True, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform, output_first_image=False, tensor_type=tensor_type),
+
+
+    valid_dataset1 = SevenScenesData('chess', data_folder, train=False, transform=transform, output_first_image=False, tensor_type=tensor_type)
+    valid_dataset2 = SevenScenesData('heads', data_folder, train=False, transform=transform, output_first_image=False, tensor_type=tensor_type)
+
+    valid_loader = DataLoader(torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2]),
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
+                        
 
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
