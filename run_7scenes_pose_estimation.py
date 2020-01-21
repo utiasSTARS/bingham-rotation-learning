@@ -40,7 +40,8 @@ def main():
     print(args)
 
     #Float or Double?
-    tensor_type = torch.float
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
 
 
     #Load datasets
@@ -60,12 +61,13 @@ def main():
                              std=[0.229, 0.224, 0.225])
     ])
 
-    if not args.cuda:
-        data_folder = '/Users/valentinp/Desktop/datasets/7scenes'
-        device = torch.device('cpu')
+        #Monolith
+    if args.megalith:
+        dataset_dir = '/media/datasets/'
     else:
-        data_folder = '/media/m2-drive/datasets/7scenes'
-        device = torch.device('cuda:0')
+        dataset_dir = '/media/m2-drive/datasets/'
+
+    data_folder = dataset_dir+'7scenes'
 
     train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform_train, output_first_image=False, tensor_type=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True,
@@ -78,7 +80,7 @@ def main():
 
     if args.model == 'A_sym':
         print('==============Using A (Sym) MODEL====================')
-        model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model = QuatFlowResNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device, dtype=tensor_type)
         train_loader.dataset.rotmat_targets = False
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
@@ -99,6 +101,20 @@ def main():
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
         (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
+
+
+    if args.save_model:
+        saved_data_file_name = '7scenes_model_{}_{}_{}'.format(args.model, args.scene, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/7scenes/{}.pt'.format(saved_data_file_name)
+        torch.save({
+                'model_type': args.model,
+                'model': model.state_dict(),
+                'train_stats_rep': train_stats.detach().cpu(),
+                'test_stats_rep': test_stats.detach().cpu(),
+                'args': args,
+            }, full_saved_path)
+
+        print('Saved data to {}.'.format(full_saved_path))
 
 
 if __name__=='__main__':
