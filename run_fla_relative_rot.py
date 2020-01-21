@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--unit_frob', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
+    parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='indoor')
 
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -66,24 +67,14 @@ def main():
     ])
     dim_in = 2
 
-    # seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
-    # if args.megalith:
-    #     seqs_base_path = '/media/datasets/KITTI/single_files'
-    
-    #Xtion
-    #Indoor is 6000-7600 absolute
-    #approximately 1730-4330 relative
+    test_dataset = 'FLA/{}_test.csv'.format(args.scene)
+    train_dataset = 'FLA/{}_train.csv'.format(args.scene)
 
-    #Flea3
-    #5620 - 8800
-    #Relative: 3525 - 6705
-    select_ids_train =[3500, 6500]
-    select_ids_test = [6500, 7000]
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_train, transform=transform),
+    train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_train, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform, eval_mode=True),
+    valid_loader = DataLoader(FLADataset(test_dataset, image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform, eval_mode=True),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
@@ -113,7 +104,7 @@ def main():
         (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
     if args.save_model:
-        saved_data_file_name = 'fla_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        saved_data_file_name = 'fla_model_{}_{}_{}'.format(args.scene, args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
         torch.save({
                 'model_type': args.model,

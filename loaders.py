@@ -326,7 +326,7 @@ class FLADataset(tud.Dataset):
     """Loads FLA data from ASL format into a torch dataset.
     """
 
-    def __init__(self, image_dir, pose_dir, select_idx=None, transform=None, rotmat_targets=False, eval_mode=False):
+    def __init__(self, dataset_file, image_dir, pose_dir, transform=None, rotmat_targets=False, eval_mode=False):
         """Constructor for FLADataset.
 
         :param image_dir: Root directory of images.
@@ -376,21 +376,19 @@ class FLADataset(tud.Dataset):
         self.pose_timestamps = np.array(self.pose_timestamps)
         self.pose_qxyzw = torch.from_numpy(np.array(self.pose_qxyzw))
 
-        #Filter
-        if select_idx is not None:
-
-            self.image_filenames = self.image_filenames[select_idx[0]:select_idx[1]]
-            self.image_timestamps = self.image_timestamps[select_idx[0]:select_idx[1]]
-            # self.pose_timestamps = self.pose_timestamps[select_idx[0]:select_idx[1]]
-            # self.pose_qxyzw = self.pose_qxyzw[select_idx[0]:select_idx[1]]
-
-        return
-
+        #Read in pairs of images
+        self.image_pair_ids = []
+        with open(dataset_file, "r") as ff:
+            lines = ff.readlines()
+            lines = [line.rstrip() for line in lines] # Strip newlines.
+            lines = [line for line in lines if line[0] is not "#"] # Strip comments.
+            for line in lines:
+                tokens = line.split(",")
+                self.image_pair_ids.append([np.uint64(tokens[0]), tokens[1]])
+        print('Loaded {} pairs of images from {}'.format(len(self.image_pair_ids), dataset_file))
+       
     def __len__(self):
-        if self.eval_mode:
-            return len(self.image_filenames) - 1
-        else:
-            return 2*(len(self.image_filenames) - 1)
+        return len(self.image_pair_ids)
             
     
     def compute_flow(self, img1, img2):
@@ -413,17 +411,7 @@ class FLADataset(tud.Dataset):
 
     def __getitem__(self, idx):
         
-        if self.eval_mode:
-            id1 = idx
-            id2 = id1 + 1
-        else:
-            if idx < len(self.image_filenames) - 1:
-                id1 = idx
-                id2 = id1 + 1
-            else:
-                #Reverse order
-                id2 = idx - len(self.image_filenames) + 1
-                id1 = id2 + 1
+        [id1, id2] = self.image_pair_ids[idx]
 
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
