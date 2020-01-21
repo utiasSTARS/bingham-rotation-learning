@@ -57,13 +57,14 @@ def main():
     image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
     pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
 
-    # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                                  std=[0.229, 0.224, 0.225])
+    normalize = transforms.Normalize(mean=[0.45],
+                                    std=[0.25])
 
     transform = transforms.Compose([
             torchvision.transforms.Resize(256),
             torchvision.transforms.CenterCrop(224),
             transforms.ToTensor(),
+            normalize,
     ])
     dim_in = 2
 
