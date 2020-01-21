@@ -1,14 +1,14 @@
 import torch
-import time, datetime, argparse
-import numpy as np
-from tensorboardX import SummaryWriter
+import time, argparse
 from datetime import datetime
+import numpy as np
 from loaders import SevenScenesData
+from networks import *
+from losses import *
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
-from quaternions import *
-from networks import *
 import tqdm
+from helpers_train_test import train_test_model
 
 
 def main():
@@ -16,15 +16,25 @@ def main():
 
     parser = argparse.ArgumentParser(description='7Scenes experiment')
     parser.add_argument('--scene', type=str, default='chess')
-    parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--batch_size_train', type=int, default=16)
-    parser.add_argument('--batch_size_test', type=int, default=32)
-    parser.add_argument('--comparison', action='store_true', default=False)
-    parser.add_argument('--dual_network', action='store_true', default=False)
-    parser.add_argument('--lr', type=float, default=5e-5)
-    parser.add_argument('--cuda', action='store_true', default=True)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--epochs', type=int, default=10)
+
+    parser.add_argument('--batch_size_test', type=int, default=64)
+    parser.add_argument('--batch_size_train', type=int, default=32)
+
+    parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--num_workers', type=int, default=4)
+    parser.add_argument('--megalith', action='store_true', default=False)
+
+    parser.add_argument('--double', action='store_true', default=False)
+    parser.add_argument('--optical_flow', action='store_true', default=False)
+    parser.add_argument('--batchnorm', action='store_true', default=False)
     
+    parser.add_argument('--unit_frob', action='store_true', default=False)
+    parser.add_argument('--save_model', action='store_true', default=False)
+    parser.add_argument('--enforce_psd', action='store_true', default=False)
+
+    parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
+    parser.add_argument('--lr', type=float, default=5e-4)
 
     args = parser.parse_args()
     print(args)
@@ -57,45 +67,39 @@ def main():
         data_folder = '/media/m2-drive/datasets/7scenes'
         device = torch.device('cuda:0')
 
-    train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform_train, output_first_image=args.dual_network, tensor_type=tensor_type),
+    train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform_train, output_first_image=False, tensor_type=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True,
                         shuffle=True, num_workers=args.num_workers, drop_last=False)
-    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform_test, output_first_image=args.dual_network, tensor_type=tensor_type),
+    valid_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=False, transform=transform_test, output_first_image=False, tensor_type=tensor_type),
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
     
+    dim_in = 3
 
-    #Train and test with new representation
-    print('===================TRAINING REP MODEL=======================')
-    model_rep = CustomResNetConvex(dual=args.dual_network)
-    model_rep.to(dtype=tensor_type, device=device)
-    loss_fn = quat_squared_loss
-    (train_stats_rep, test_stats_rep) = train_test_model(args, loss_fn, model_rep, train_loader, valid_loader)
+    if args.model == 'A_sym':
+        print('==============Using A (Sym) MODEL====================')
+        model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = False
+        valid_loader.dataset.rotmat_targets = False
+        loss_fn = quat_chordal_squared_loss
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
+    elif args.model == '6D':
+        print('==========TRAINING DIRECT 6D ROTMAT MODEL============')
+        model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = True
+        valid_loader.dataset.rotmat_targets = True
+        loss_fn = rotmat_frob_squared_norm_loss
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
-    if args.comparison:
-        #Train and test direct model
-        print('===================TRAINING DIRECT MODEL=======================')
+    elif args.model == 'quat':
+        print('=========TRAINING DIRECT QUAT MODEL==================')
+        model = BasicCNN(dim_in=dim_in, dim_out=4, normalize_output=True, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        train_loader.dataset.rotmat_targets = False
+        valid_loader.dataset.rotmat_targets = False
+        loss_fn = quat_chordal_squared_loss
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
-        model_direct = CustomResNetDirect(dual=args.dual_network)
-        model_direct.to(dtype=tensor_type, device=device)
-        loss_fn = quat_squared_loss
-        (train_stats_direct, test_stats_direct) = train_test_model(args, loss_fn, model_direct, train_loader, valid_loader)
-
-    if args.comparison: 
-        saved_data_file_name = '7scenes_experiment_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-        full_saved_path = 'saved_data/7scenes/{}.pt'.format(saved_data_file_name)
-        torch.save({
-                # 'model_rep': model_rep.state_dict(),
-                # 'model_direct': model_direct.state_dict(),
-                'train_stats_direct': train_stats_direct.detach().cpu(),
-                'test_stats_direct': test_stats_direct.detach().cpu(),
-                'train_stats_rep': train_stats_rep.detach().cpu(),
-                'test_stats_rep': test_stats_rep.detach().cpu(),
-                'args': args,
-            }, full_saved_path)
-
-        print('Saved data to {}.'.format(full_saved_path))
 
 if __name__=='__main__':
     main()
