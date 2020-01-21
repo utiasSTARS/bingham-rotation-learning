@@ -161,7 +161,7 @@ def collect_errors(saved_file):
     tensor_type = torch.double if args.double else torch.float
 
     select_ids_train = checkpoint['select_ids_train']
-    select_ids_test = [2000, 3500]#checkpoint['select_ids_test']
+    select_ids_test = [6500, 9000]#checkpoint['select_ids_test']
     if args.megalith:
         dataset_dir = '/media/datasets/'
     else:
