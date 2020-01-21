@@ -8,9 +8,7 @@ outdoor_indices = np.concatenate([np.arange(3800, 5450),
                                 np.arange(8890, 10730)]) - 2095
 
 delta = 1
-
 test_portion = 0.1
-
 scenes = ['indoor', 'outdoor']
 indices = [indoor_indices, outdoor_indices]
 
@@ -20,9 +18,11 @@ for s_i, scene in enumerate(scenes):
     num_test = int(idx.shape[0]*test_portion)
     num_train = idx.shape[0] - num_test
     
-    train_idx = np.empty((num_train, 2), dtype=np.int32)
-    train_idx[:, 0] = idx[:num_train]
-    train_idx[:, 1] = idx[:num_train] + delta
+    train_idx = np.empty((num_train*2, 2), dtype=np.int32)
+    train_idx[:num_train, 0] = idx[:num_train]
+    train_idx[:num_train, 1] = idx[:num_train] + delta
+    train_idx[num_train:, 0] = idx[:num_train] + delta
+    train_idx[num_train:, 1] = idx[:num_train] 
 
     test_idx = np.empty((num_test, 2), dtype=np.int32)
     test_idx[:, 0] = idx[num_train:]
