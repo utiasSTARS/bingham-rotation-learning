@@ -34,12 +34,14 @@ def test(model, loss_fn, x, q_gt):
     return (q_est, loss.item())
 
 
-def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboard_output=True, progress_bar=True):
+def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboard_output=True, progress_bar=True, scheduler=False):
 
     if tensorboard_output:
         writer = SummaryWriter()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
+    if scheduler:
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[5], gamma=0.1)
 
     #Save stats
     train_stats = torch.zeros(args.epochs, 2)
@@ -118,6 +120,8 @@ def train_test_model(args, loss_fn, model, train_loader, test_loader, tensorboar
         
         output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
         print(output_string)
+        if scheduler:
+            scheduler.step()
 
     if tensorboard_output:
         writer.close()
