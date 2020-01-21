@@ -40,13 +40,14 @@ def main():
     print(args)
 
     #Float or Double?
-    tensor_type = torch.float
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
 
 
     #Load datasets
     transform_train = transforms.Compose([
         transforms.Resize(256),
-        transforms.RandomCrop(224),
+        transforms.Rand(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
@@ -60,12 +61,13 @@ def main():
                              std=[0.229, 0.224, 0.225])
     ])
 
-    if not args.cuda:
-        data_folder = '/Users/valentinp/Desktop/datasets/7scenes'
-        device = torch.device('cpu')
+        #Monolith
+    if args.megalith:
+        dataset_dir = '/media/datasets/'
     else:
-        data_folder = '/media/m2-drive/datasets/7scenes'
-        device = torch.device('cuda:0')
+        dataset_dir = '/media/m2-drive/datasets/'
+
+    data_folder = dataset_dir+'7scenes'
 
     train_loader = DataLoader(SevenScenesData(args.scene, data_folder, train=True, transform=transform_train, output_first_image=False, tensor_type=tensor_type),
                         batch_size=args.batch_size_train, pin_memory=True,
