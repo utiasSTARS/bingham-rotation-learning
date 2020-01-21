@@ -337,7 +337,7 @@ class FLADataset(tud.Dataset):
         self.pose_dir = pose_dir
         self.transform = transform
         self.rotmat_targets = rotmat_targets
-        self.eval_mode = train_mode
+        self.eval_mode = eval_mode
 
         # Read in images.
         self.image_timestamps = [] # nanoseconds.
