@@ -388,9 +388,9 @@ class FLADataset(tud.Dataset):
 
     def __len__(self):
         if self.eval_mode:
-            return len(self.image_filenames) - 2
+            return len(self.image_filenames) - 1
         else:
-            return len(self.image_filenames) - 2 + len(self.image_filenames) - 3
+            return len(self.image_filenames) - 1 + len(self.image_filenames) - 2
             
     
     def compute_flow(self, img1, img2):
@@ -417,11 +417,11 @@ class FLADataset(tud.Dataset):
             id1 = idx
             id2 = id1 + 1
         else:
-            if idx < len(self.image_filenames):
+            if idx < len(self.image_filenames) - 1:
                 id1 = idx
                 id2 = id1 + 1
             else:
-                id1 = idx - len(self.image_filenames) 
+                id1 = idx - len(self.image_filenames) + 1
                 id2 = id1 + 2
 
         print('{} and {}'.format(id1, id2))
