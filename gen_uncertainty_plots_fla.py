@@ -317,4 +317,4 @@ if __name__=='__main__':
     #create_table_stats_6D()
     # print("=================")
     create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.01)
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
