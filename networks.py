@@ -287,6 +287,18 @@ def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1, batchnor
                 torch.nn.PReLU()
             )
 
+def deconv_unit(in_planes, out_planes, kernel_size=3, stride=2, padding=1, batchnorm=True):
+    if batchnorm:
+        return torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.BatchNorm2d(out_planes),
+            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
+        )
+    else:
+        return torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
+        )
 
 class BasicCNN(torch.nn.Module):
     def __init__(self, dim_in, dim_out, normalize_output=True, batchnorm=True):
@@ -316,6 +328,61 @@ class BasicCNN(torch.nn.Module):
         return out
 
 
+class BasicAutoEncoder(torch.nn.Module):
+    def __init__(self, dim_in, dim_latent, dim_transition, normalize_output=True, batchnorm=True):
+        super(BasicAutoEncoder, self).__init__()
+        self.normalize_output = normalize_output
+        self.cnn = torch.nn.Sequential(
+            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(64, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(128, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
+        )
+        self.fc_encoder = torch.nn.Sequential(
+            torch.nn.Linear(4096, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, dim_latent),
+        )
+        self.fc_decoder = torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_latent, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, 4096)
+        )
+        self.cnn_decode = torch.nn.Sequential(
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(1024, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(512, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(256, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(128, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(64, dim_in, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
+        )
+
+    def encode(self, x):
+        code = self.cnn(x)
+        code = code.view(code.shape[0], -1)
+        code = self.fc_encoder(code)
+        if self.normalize_output:
+            code = code/code.norm(dim=1).view(-1, 1)
+        return code
+
+    def decode(self, x):
+        out = self.fc_decoder(x)
+        out = self.cnn_decode(out)
+        return out
+
+    def forward(self, x):
+        code = self.encode(x)
+        out = self.decode(code)
+        # if self.normalize_output:
+        #     out = out / out.norm(dim=1).view(-1, 1)
+        return out, code
+
+
 class CustomResNet(torch.nn.Module):
     def __init__(self, dim_out, normalize_output=False):
         super(CustomResNet, self).__init__()
@@ -338,3 +405,4 @@ class CustomResNet(torch.nn.Module):
         # Keep the FC layer active..
         for param in self.cnn.fc.parameters():
             param.requires_grad = True
+
