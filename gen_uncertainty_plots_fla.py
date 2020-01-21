@@ -180,12 +180,12 @@ def collect_errors(saved_file):
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
 
-    #valid_dataset1 = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    #valid_dataset2 = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    transition_dataset = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    valid_dataset1 = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    valid_dataset2 = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    #transition_dataset = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
     #valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3])
-    test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    valid_dataset = torch.utils.data.ConcatDataset([transition_dataset, test_dataset])
+    #test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2])
     valid_loader = DataLoader(valid_dataset,
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
