@@ -70,11 +70,11 @@ def main():
     test_dataset = 'FLA/{}_test.csv'.format(args.scene)
     train_dataset = 'FLA/{}_train.csv'.format(args.scene)
 
-    train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_train, transform=transform),
+    train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(test_dataset, image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform, eval_mode=True),
+    valid_loader = DataLoader(FLADataset(test_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform, eval_mode=True),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
