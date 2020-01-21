@@ -56,15 +56,10 @@ def main():
     # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
     #                                  std=[0.229, 0.224, 0.225])
 
-    transform_train = transforms.Compose([
-            torchvision.transforms.Resize(224),
-            torchvision.transforms.RandomCrop(224),
-            transforms.ToTensor()
-    ])
-    transform_test = transforms.Compose([
+    transform = transforms.Compose([
             torchvision.transforms.Resize(224),
             torchvision.transforms.CenterCrop(224),
-            transforms.ToTensor()
+            transforms.ToTensor(),
     ])
     dim_in = 2
 
@@ -79,11 +74,11 @@ def main():
     #Flea3
     #5620 - 8800
     #Relative: 3525 - 6705
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[3530, 6000], transform=transform_train),
+    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[3530, 6000], transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6500], transform=transform_test),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[6000, 6500], transform=transform),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 

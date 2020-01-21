@@ -376,6 +376,7 @@ class FLADataset(tud.Dataset):
 
         #Filter
         if select_idx is not None:
+
             self.image_filenames = self.image_filenames[select_idx[0]:select_idx[1]]
             self.image_timestamps = self.image_timestamps[select_idx[0]:select_idx[1]]
             # self.pose_timestamps = self.pose_timestamps[select_idx[0]:select_idx[1]]
@@ -384,7 +385,7 @@ class FLADataset(tud.Dataset):
         return
 
     def __len__(self):
-        return len(self.image_filenames) - 1
+        return len(self.image_filenames) - 3
 
     def find_pose(self, timestamp):
          # Find closest pose given timestamp.
@@ -397,7 +398,7 @@ class FLADataset(tud.Dataset):
     def __getitem__(self, idx):
 
         id1 = idx
-        id2 = idx + 1
+        id2 = idx + 3
 
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
