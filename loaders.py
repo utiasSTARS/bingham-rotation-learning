@@ -389,8 +389,8 @@ class FLADataset(tud.Dataset):
 
     def compute_flow(self, img1, img2):
         #Convert back to W x H x C
-        np_img1 = np.asarray(img1)#img1.permute(1,2,0).numpy()
-        np_img2 = np.asarray(img2)#img2.permute(1,2,0).numpy()
+        np_img1 = img1.permute(1,2,0).numpy()
+        np_img2 = img2.permute(1,2,0).numpy()
 
         flow_cv2 = cv2.calcOpticalFlowFarneback(np_img1, np_img2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
         flow_img = torch.from_numpy(flow_cv2).permute(2,0,1)
@@ -412,7 +412,6 @@ class FLADataset(tud.Dataset):
 
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
-        flow_image = self.compute_flow(image1, image2)
 
         pose_idx1 = self.find_pose(self.image_timestamps[id1])
         pose_idx2 = self.find_pose(self.image_timestamps[id2])
@@ -430,5 +429,6 @@ class FLADataset(tud.Dataset):
         else:
             target = rotmat_to_quat(R, ordering='xyzw')
 
+        flow_image = self.compute_flow(image1, image2)
         img_input = flow_image #torch.cat([image1, image2], dim=0)
         return img_input, target
