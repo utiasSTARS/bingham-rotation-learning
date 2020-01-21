@@ -382,4 +382,4 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(sum_bingham_dispersion_coeff)
+    create_table_stats(first_eig_gap)
