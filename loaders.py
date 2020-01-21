@@ -384,7 +384,7 @@ class FLADataset(tud.Dataset):
             lines = [line for line in lines if line[0] is not "#"] # Strip comments.
             for line in lines:
                 tokens = line.split(",")
-                self.image_pair_ids.append([np.uint64(tokens[0]), tokens[1]])
+                self.image_pair_ids.append([np.uint64(tokens[0]), np.uint64(tokens[1])])
         print('Loaded {} pairs of images from {}'.format(len(self.image_pair_ids), dataset_file))
        
     def __len__(self):
