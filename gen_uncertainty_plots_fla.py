@@ -262,7 +262,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
 
 
 def create_table_stats(uncertainty_metric_fn=first_eig_gap):
-    saved_data_file = 'saved_data/fla/fla_comparison_01-20-2020-23-42-08.pt'
+    saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(saved_data_file)
     quantiles = [0.01, 0.5, 0.75]
 
@@ -286,7 +286,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
 def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25):
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
     #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
-    saved_data_file = 'saved_data/fla/fla_comparison_01-20-2020-23-42-08.pt'
+    saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(saved_data_file)
 
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
