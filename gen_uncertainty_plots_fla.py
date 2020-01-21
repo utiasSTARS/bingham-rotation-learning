@@ -196,7 +196,7 @@ def collect_errors(saved_file):
 def create_fla_data():
 
     print('Collecting data....')
-    file_fla = 'saved_data/fla/fla_model_A_sym_01-20-2020-23-30-27.pt'
+    file_fla = 'saved_data/fla/fla_model_A_sym_01-21-2020-00-23-00.pt'
     data_fla = collect_errors(file_fla)
 
     saved_data_file_name = 'fla_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
@@ -305,7 +305,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    #create_fla_data()
+    create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -316,5 +316,5 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
+    #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff)
+    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25)
