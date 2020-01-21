@@ -72,11 +72,13 @@ def main():
     #Flea3
     #5620 - 8800
     #Relative: 3525 - 6705
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[2300, 8000], transform=transform),
+    select_ids_train =[3500, 6500]
+    select_ids_test = [6500, 7000]
+    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_train, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=[2000, 2300], transform=transform),
+    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
@@ -106,10 +108,12 @@ def main():
         (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
 
     if args.save_model:
-        saved_data_file_name = 'fla_model_{}_seq_{}_{}'.format(args.model, args.seq, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        saved_data_file_name = 'fla_model_{}_{}'.format(args.model, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
         full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
         torch.save({
                 'model_type': args.model,
+                'select_ids_train': select_ids_train,
+                'select_ids_test': select_ids_test,
                 'model': model.state_dict(),
                 'train_stats_rep': train_stats.detach().cpu(),
                 'test_stats_rep': test_stats.detach().cpu(),
