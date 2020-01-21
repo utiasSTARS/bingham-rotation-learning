@@ -389,8 +389,8 @@ class FLADataset(tud.Dataset):
 
     def compute_flow(self, img1, img2):
         #Convert back to W x H x C
-        np_img1 = img1.permute(1,2,0).numpy()
-        np_img2 = img2.permute(1,2,0).numpy()
+        np_img1 = np.asarray(img1)#img1.permute(1,2,0).numpy()
+        np_img2 = np.asarray(img2)#img2.permute(1,2,0).numpy()
 
         flow_cv2 = cv2.calcOpticalFlowFarneback(np_img1, np_img2, None, 0.5, 3, 15, 3, 5, 1.2, 0)
         flow_img = torch.from_numpy(flow_cv2).permute(2,0,1)
