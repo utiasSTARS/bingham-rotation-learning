@@ -46,7 +46,7 @@ def main():
     #Load datasets
     transform_train = transforms.Compose([
         transforms.Resize(256),
-        transforms.RandomCrop(224),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
@@ -99,6 +99,20 @@ def main():
         valid_loader.dataset.rotmat_targets = False
         loss_fn = quat_chordal_squared_loss
         (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
+
+
+    if args.save_model:
+        saved_data_file_name = '7scenes_model_{}_{}_{}'.format(args.model, args.scene, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/7scenes/{}.pt'.format(saved_data_file_name)
+        torch.save({
+                'model_type': args.model,
+                'model': model.state_dict(),
+                'train_stats_rep': train_stats.detach().cpu(),
+                'test_stats_rep': test_stats.detach().cpu(),
+                'args': args,
+            }, full_saved_path)
+
+        print('Saved data to {}.'.format(full_saved_path))
 
 
 if __name__=='__main__':
