@@ -250,7 +250,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
         _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper left')
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('rotation error (deg)')
     ax.set_xlabel(xlabel)
