@@ -146,7 +146,7 @@ def compute_mask(A, uncertainty_metric_fn, thresh):
     if uncertainty_metric_fn == first_eig_gap:
         return uncertainty_metric_fn(A) > thresh
     elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
-        return uncertainty_metric_fn(A) < thresh
+        return uncertainty_metric_fn(A) > thresh
     elif uncertainty_metric_fn == l2_norm:
         return uncertainty_metric_fn(A) > thresh
     else:
