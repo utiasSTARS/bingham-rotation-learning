@@ -183,7 +183,7 @@ def collect_errors(saved_file):
 def create_7scenes_data():
 
     print('Collecting data....')
-    file_fla = 'saved_data/7scenes/7scenes_model_A_sym_chess_01-21-2020-01-23-02.pt'
+    file_fla = 'saved_data/7scenes/7scenes_model_A_sym_chess_01-21-2020-02-04-41.pt'
     data_A = collect_errors(file_fla)
 
     saved_data_file_name = '7scenes_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
@@ -290,7 +290,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    #full_saved_path = create_7scenes_data()
+    full_saved_path = create_7scenes_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -301,6 +301,6 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-01-35-13.pt'
+    #full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-01-35-13.pt'
     create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
