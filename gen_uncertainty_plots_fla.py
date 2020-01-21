@@ -17,6 +17,7 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from matplotlib.colors import to_rgba
+from cv2 import VideoWriter, VideoWriter_fourcc
 
 def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
@@ -318,10 +319,79 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     plt.close(fig)
 
 
+def create_video(data_file, full_data_file=None):
+    
+    if full_data_file is None:
+        checkpoint = torch.load(data_file)
+        args = checkpoint['args']
+        print(args)
+        device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+        tensor_type = torch.double if args.double else torch.float
+        if args.megalith:
+            dataset_dir = '/media/datasets/'
+        else:
+            dataset_dir = '/media/m2-drive/datasets/'
 
+        image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
+        pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+        
+        normalize = transforms.Normalize(mean=[0.45],
+                                        std=[0.25])
+
+        transform = transforms.Compose([
+                torchvision.transforms.Resize(256),
+                torchvision.transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize,
+        ])
+        dim_in = 2
+        train_dataset = 'FLA/{}_train.csv'.format(args.scene)
+        train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
+                                batch_size=args.batch_size_train, pin_memory=False,
+                                shuffle=True, num_workers=args.num_workers, drop_last=False)
+
+
+        valid_dataset = FLADataset('FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+        #valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3])
+        #test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+        valid_loader = DataLoader(valid_dataset,
+                            batch_size=args.batch_size_test, pin_memory=True,
+                            shuffle=False, num_workers=args.num_workers, drop_last=False)
+        model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model.load_state_dict(checkpoint['model'], strict=False)
+        A_predt, q_estt, q_targett = evaluate_A_model(train_loader, model, device, tensor_type)
+        A_pred, q_est, q_target = evaluate_A_model(valid_loader, model, device, tensor_type)
+        data = ((A_predt, q_estt, q_targett), (A_pred, q_est, q_target))
+
+        desc = data_file.split('/')[2].split('.pt')[0]
+        saved_data_file_name = 'processed_video_{}.pt'.format(desc)
+        full_data_file = 'saved_data/fla/{}'.format(saved_data_file_name)
+        torch.save({
+                    'file_fla': save_file,
+                    'data_fla': data
+        }, full_data_file)
+
+        print('Saved data to {}.'.format(full_data_file))
+
+    if False:
+        data = torch.load(full_data_file) 
+        quantile = 0.5
+        uncertainty_metric_fn = sum_bingham_dispersion_coeff
+        (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
+        thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+        mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
+
+        transform = None
+        dataset_dir = '/Users/valentinp/Dropbox/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19'
+        image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
+        pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+        
+        all_dataset = FLADataset('FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+        for imgs, _ in all_dataset:
+            pass
 
 if __name__=='__main__':
-    full_saved_path = create_fla_data()
+    #full_saved_path = create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -332,5 +402,10 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
+
+    #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
+    full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    
+    #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
+    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
+    create_video(full_saved_path)

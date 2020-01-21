@@ -39,3 +39,10 @@ idx = np.empty((transition_indices.shape[0], 2), dtype=np.int32)
 idx[:, 0] = transition_indices
 idx[:, 1] = transition_indices + delta
 np.savetxt("transition.csv", idx, fmt='%i', delimiter=",")
+
+
+all_moving = np.arange(3800, 10730) - 2095
+idx = np.empty((all_moving.shape[0], 2), dtype=np.int32)
+idx[:, 0] = all_moving
+idx[:, 1] = all_moving + delta
+np.savetxt("all_moving_unshuffled.csv", idx, fmt='%i', delimiter=",")
