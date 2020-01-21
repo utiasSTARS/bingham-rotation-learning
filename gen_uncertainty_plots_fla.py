@@ -159,9 +159,6 @@ def collect_errors(saved_file):
     print(args)
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
-
-    select_ids_train = checkpoint['select_ids_train']
-    select_ids_test = [6500, 7500]#checkpoint['select_ids_test']
     if args.megalith:
         dataset_dir = '/media/datasets/'
     else:
