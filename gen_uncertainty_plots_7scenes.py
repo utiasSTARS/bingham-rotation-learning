@@ -251,7 +251,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
 def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
     #data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(data_file)
-    quantiles = [0.25, 0.5, 0.75]
+    quantiles = [0.01, 0.1, 0.15, 0.25, 0.5, 0.75]
 
     (A_train, _, _), (A_test, q_est, q_target) = data['data_A']
     mean_err_A = quat_angle_diff(q_est, q_target)
@@ -290,7 +290,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 
 
 if __name__=='__main__':
-    full_saved_path = create_7scenes_data()
+    #full_saved_path = create_7scenes_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -301,6 +301,6 @@ if __name__=='__main__':
 
     #create_table_stats_6D()
     # print("=================")
-    #full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-01-35-13.pt'
+    full_saved_path = 'saved_data/7scenes/7scenes_comparison_01-21-2020-02-05-45.pt'
     create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
