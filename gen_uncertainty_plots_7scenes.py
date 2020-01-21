@@ -189,7 +189,7 @@ def collect_errors(saved_file):
 def create_7scenes_data():
 
     print('Collecting data....')
-    file_fla = 'saved_data/7scenes/7scenes_model_A_sym_heads_01-21-2020-02-17-55.pt'
+    file_fla = 'saved_data/7scenes/7scenes_model_A_sym_chess_01-21-2020-02-04-41.pt'
     data_A = collect_errors(file_fla)
 
     saved_data_file_name = '7scenes_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
@@ -257,7 +257,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
 def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
     #data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(data_file)
-    quantiles = [0.01, 0.1, 0.15, 0.25, 0.5, 0.75]
+    quantiles = [0.1, 0.25, 0.5, 0.75]
 
     (A_train, _, _), (A_test, q_est, q_target) = data['data_A']
     mean_err_A = quat_angle_diff(q_est, q_target)
