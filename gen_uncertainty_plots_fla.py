@@ -319,7 +319,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     plt.close(fig)
 
 
-def create_video(data_file, full_data_file=None):
+def create_video(full_data_file=None):
     
     if full_data_file is None:
         data_file = 'saved_data/fla/fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
