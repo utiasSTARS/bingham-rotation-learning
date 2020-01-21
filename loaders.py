@@ -385,7 +385,7 @@ class FLADataset(tud.Dataset):
         return
 
     def __len__(self):
-        return len(self.image_filenames) - 1
+        return len(self.image_filenames) - 1 + len(self.image_filenames) - 2
 
     def compute_flow(self, img1, img2):
         #Convert back to W x H x C
@@ -406,10 +406,14 @@ class FLADataset(tud.Dataset):
         return pose_idx
 
     def __getitem__(self, idx):
-
-        id1 = idx
-        id2 = idx + 1
-
+        
+        if idx < len(self.image_filenames):
+            id1 = idx
+            id2 = id1 + 1
+        else:
+            id1 = idx - len(self.image_filenames)
+            id2 = id1 + 2 
+            
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
 
