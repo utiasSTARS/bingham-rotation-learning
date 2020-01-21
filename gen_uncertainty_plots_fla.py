@@ -176,15 +176,24 @@ def collect_errors(saved_file):
     ])
     dim_in = 2
 
-    train_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_train, transform=transform),
+    train_dataset = 'FLA/{}_train.csv'.format(args.scene)
+
+    train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
-    valid_loader = DataLoader(FLADataset(image_dir=image_dir, pose_dir=pose_dir, select_idx=select_ids_test, transform=transform, eval_mode=True),
-                            batch_size=args.batch_size_test, pin_memory=False,
-                            shuffle=False, num_workers=args.num_workers, drop_last=False)
 
+    valid_dataset1 = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    valid_dataset2 = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    valid_dataset3 = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
     
+    valid_loader = DataLoader(torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3]),
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+
+
+
+        
 
     if args.model == 'A_sym':
         model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
@@ -196,10 +205,13 @@ def collect_errors(saved_file):
 def create_fla_data():
 
     print('Collecting data....')
-    file_fla = 'saved_data/fla/fla_model_A_sym_01-21-2020-00-23-00.pt'
-    data_fla = collect_errors(file_fla)
+    base_dir = 'saved_data/fla/'
+    file_fla = 'fla_model_outdoor_A_sym_01-21-2020-14-41-23.pt'
+    #file_fla = 'fla_model_indoor_A_sym_01-21-2020-14-34-29.pt'
 
-    saved_data_file_name = 'fla_comparison_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    data_fla = collect_errors(base_dir+file_fla)
+
+    saved_data_file_name = 'processed_{}'.format(file_fla)
     full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
 
     torch.save({

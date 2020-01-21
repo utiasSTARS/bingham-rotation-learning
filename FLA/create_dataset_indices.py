@@ -30,3 +30,12 @@ for s_i, scene in enumerate(scenes):
     
     np.savetxt(scene+"_train.csv", train_idx, fmt='%i', delimiter=",")
     np.savetxt(scene+"_test.csv", test_idx, fmt='%i',delimiter=",")
+
+
+transition_indices = np.concatenate([np.arange(5450, 5699),
+                                np.arange(8570, 8900)]) - 2095
+np.random.shuffle(transition_indices)
+idx = np.empty((transition_indices.shape[0], 2), dtype=np.int32)
+idx[:, 0] = transition_indices
+idx[:, 1] = transition_indices + delta
+np.savetxt("transition.csv", idx, fmt='%i', delimiter=",")
