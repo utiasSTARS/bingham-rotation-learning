@@ -411,7 +411,7 @@ class FLADataset(tud.Dataset):
             id1 = idx
             id2 = id1 + 1
         else:
-            id1 = idx - len(self.image_filenames)
+            id1 = idx - len(self.image_filenames) - 1
             id2 = id1 + 2 
             
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
