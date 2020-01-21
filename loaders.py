@@ -423,7 +423,8 @@ class FLADataset(tud.Dataset):
             else:
                 id1 = idx - len(self.image_filenames) 
                 id2 = id1 + 2
-            
+
+        print('{} and {}'.format(id1, id2))
         image1 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id1]))
         image2 = Image.open(os.path.join(self.image_dir, "data", self.image_filenames[id2]))
 
