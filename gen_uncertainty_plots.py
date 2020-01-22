@@ -130,9 +130,7 @@ def decode_metric_name(uncertainty_metric_fn):
     if uncertainty_metric_fn == first_eig_gap:
         return 'First Eigenvalue Gap'
     elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
-        return 'Sum of Dispersion Coefficients'
-    elif uncertainty_metric_fn == trace_inertia_mat:
-        return 'Trace of Inertia Matrix (min eigvalue added)'
+        return 'tr($\mathbf{\Lambda}$)'
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -318,7 +316,7 @@ def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
         _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper left')
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('rotation error (deg)')
     ax.set_xlabel(xlabel)
@@ -340,14 +338,13 @@ def compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn):
     recall = num_correct/true_mask.sum()
     return precision, recall
 
-def create_precision_recall_plot(uncertainty_metric_fn):
+def create_precision_recall_plot(uncertainty_metric_fn, selected_quantile):
     saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     colors = ['--k', '-.k', '-k']
 
-    quantiles = np.arange(0.01, 0.98, 0.02)
-    selected_quantile = 0.25
+    quantiles = np.arange(0.05, 0.98, 0.02)
     fig, ax = plt.subplots()
     fig.set_size_inches(4,1.5)
 
@@ -640,14 +637,12 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 if __name__=='__main__':
     #create_kitti_data()
-    #uncertainty_metric_fn = det_inertia_mat
+    uncertainty_metric_fn = sum_bingham_dispersion_coeff
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
-     
-    #create_precision_recall_plot()
+    create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    #create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
-    #create_box_plots(cache_data=False)
 
-    create_table_stats_6D()
+    #create_table_stats_6D()
     print("=================")
     create_table_stats(sum_bingham_dispersion_coeff)
