@@ -16,7 +16,7 @@ def main():
 
 
     parser = argparse.ArgumentParser(description='ShapeNet experiment')
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=150)
 
     parser.add_argument('--batch_size_test', type=int, default=1)
     parser.add_argument('--batch_size_train', type=int, default=1)
