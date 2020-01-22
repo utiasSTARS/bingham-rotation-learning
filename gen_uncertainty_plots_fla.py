@@ -374,22 +374,49 @@ def create_video(full_data_file=None):
 
         print('Saved data to {}.'.format(full_data_file))
 
-    if False:
+    else:
         data = torch.load(full_data_file) 
-        quantile = 0.5
+        quantile = 0.75
         uncertainty_metric_fn = sum_bingham_dispersion_coeff
         (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
         thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
         mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
 
-        transform = None
-        dataset_dir = '/Users/valentinp/Dropbox/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19'
-        image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
-        pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+        transform = transforms.ToTensor()
+        dataset_dir = '/Users/valentinp/Dropbox/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/'
+        image_dir = dataset_dir+'flea3'
+        pose_dir = dataset_dir+'pose'
         
         all_dataset = FLADataset('FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-        for imgs, _ in all_dataset:
-            pass
+        
+        fourcc = VideoWriter_fourcc(*'MP4V')
+        FPS = 60
+        width = 640
+        height = 512
+
+        video_array = np.empty((len(all_dataset), height, width, 3))
+
+        for i in range(len(all_dataset)):
+            imgs, _ = all_dataset[i]
+            img = imgs[0].numpy().reshape(height, width, 1)*255
+            img = img.repeat(3, axis=2).astype(np.uint8)
+            
+            if mask[i] == 0:
+                img[:100,:100, 0] = 255
+                img[:100,:100, 1] = 0
+                img[:100,:100, 2] = 0
+                
+            else:
+                img[:100,:100, 0] = 0
+                img[:100,:100, 1] = 255
+                img[:100,:100, 2] = 0
+                
+            video_array[i] = img
+
+            if i%1000==0:
+                print(i)
+
+        torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
     #full_saved_path = create_fla_data()
@@ -409,4 +436,5 @@ if __name__=='__main__':
     
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
-    create_video()
+    full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    create_video(full_data_file)

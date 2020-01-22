@@ -133,7 +133,7 @@ def plot_learning_rate_wahba_experiment():
     train_stats_list = checkpoint['train_stats_list']
     test_stats_list = checkpoint['test_stats_list']
     names = checkpoint['named_approaches']
-
+    names[2] = 'A (ours)'
     trials = args.trials
     train_err = np.empty((len(names), trials, args.epochs))
     test_err = np.empty((len(names), trials, args.epochs))
@@ -158,28 +158,28 @@ def scatter_shapenet_example():
                         batch_size=1, pin_memory=True, collate_fn=pointnet_collate,
                         shuffle=True, num_workers=1, drop_last=False)
     
-    N = 4
+    N = 2
     fig = plt.figure()
-    fig.set_size_inches(4,4)
+    fig.set_size_inches(4,2)
     
     for i, (x, target) in enumerate(valid_loader):
         pc1 = x[:,0,:,:].transpose(1,2)
         pc2 = x[:,1,:,:].transpose(1,2)
 
-        ax = fig.add_subplot(2, 2, i+1, projection='3d')
+        ax = fig.add_subplot(1, 2, i+1, projection='3d')
         ax.scatter(pc1[0,0,:],pc1[0,1,:],pc1[0,2,:], c='tab:blue',s=0.1, marker=",")
         ax.scatter(pc2[0,0,:],pc2[0,1,:],pc2[0,2,:], c='tab:green',s=0.1, marker=",")
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_zticklabels([])
 
-        ax.axis('off')
+        #ax.axis('off')
         ax.autoscale_view('tight')
         
         if i == N - 1:
             break
 
-    output_file = 'plots/shapenet_plain.pdf'
+    output_file = 'plots/shapenet_vis_{}_clouds.pdf'.format(N)
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -260,5 +260,6 @@ def rotmat_angle_table_stats():
 if __name__=='__main__':
     #plot_wahba_training_comparisons()
     plot_learning_rate_wahba_experiment()
+    #scatter_shapenet_example()
     #scatter_shapenet_example()
     #rotmat_angle_table_stats()
