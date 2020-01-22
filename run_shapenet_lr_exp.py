@@ -47,7 +47,7 @@ def main():
     tensor_type = torch.double if args.double else torch.float
 
     if args.cuda:
-        pointnet_data = '/home/valentinp/research/RotationContinuity/shapenet/data/pc_plane'
+        pointnet_data = '../RotationContinuity/shapenet/data/pc_plane'
     else:
         pointnet_data = '/Users/valentinp/Dropbox/Postdoc/projects/misc/RotationContinuity/shapenet/data/pc_plane'
     
