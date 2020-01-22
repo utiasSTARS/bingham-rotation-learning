@@ -132,7 +132,7 @@ def decode_metric_name(uncertainty_metric_fn):
     if uncertainty_metric_fn == first_eig_gap:
         return 'First Eigenvalue Gap'
     elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
-        return 'Sum of Dispersion Coefficients'
+        return 'tr($\mathbf{\Lambda}$)'
     elif uncertainty_metric_fn == det_inertia_mat:
         return 'Det of Inertia Matrix (min eigvalue added)'
     else:
@@ -301,7 +301,6 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 
 
 def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
-    #saved_data_file = 'saved_data/fla/fla_comparison_01-21-2020-00-33-12.pt'
     data = torch.load(data_file)
     
     (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
@@ -431,10 +430,10 @@ if __name__=='__main__':
     #create_table_stats_6D()
     # print("=================")
 
-    #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
+    full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
     #full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
-    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.25, data_file=full_saved_path)
-    full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    create_video(full_data_file)
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
+    # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    # create_video(full_data_file)
