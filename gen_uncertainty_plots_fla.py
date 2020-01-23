@@ -186,16 +186,25 @@ def collect_errors(saved_file):
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
 
-    valid_dataset1 = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    valid_dataset2 = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    transition_dataset = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_outdoor = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_indoor = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_transition = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
     #valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3])
     #test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, transition_dataset])
-    valid_loader = DataLoader(valid_dataset,
+    
+    valid_dataset1 = torch.utils.data.ConcatDataset([test_outdoor])
+    valid_dataset2 = torch.utils.data.ConcatDataset([test_outdoor, test_indoor])
+    valid_dataset3 = torch.utils.data.ConcatDataset([test_outdoor, test_indoor, test_transition])
+
+    valid_loader1 = DataLoader(valid_dataset1,
                         batch_size=args.batch_size_test, pin_memory=True,
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-
+    valid_loader2 = DataLoader(valid_dataset2,
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+    valid_loader3 = DataLoader(valid_dataset3,
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
 
 
         
@@ -204,19 +213,21 @@ def collect_errors(saved_file):
         model = QuatFlowNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob, dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
         model.load_state_dict(checkpoint['model'], strict=False)
         A_predt, q_estt, q_targett = evaluate_A_model(train_loader, model, device, tensor_type)
-        A_pred, q_est, q_target = evaluate_A_model(valid_loader, model, device, tensor_type)
-        return ((A_predt, q_estt, q_targett), (A_pred, q_est, q_target))
+        A_pred1, q_est1, q_target1 = evaluate_A_model(valid_loader1, model, device, tensor_type)
+        A_pred2, q_est2, q_target2 = evaluate_A_model(valid_loader2, model, device, tensor_type)
+        A_pred3, q_est3, q_target3 = evaluate_A_model(valid_loader3, model, device, tensor_type)
+        return ((A_predt, q_estt, q_targett), (A_pred1, q_est1, q_target1), (A_pred2, q_est2, q_target2), (A_pred3, q_est3, q_target3))
 
 def create_fla_data():
 
     print('Collecting data....')
     base_dir = 'saved_data/fla/'
-    #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
+    file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    #file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
 
     data_fla = collect_errors(base_dir+file_fla)
 
-    saved_data_file_name = 'processed_{}'.format(file_fla)
+    saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
     full_saved_path = 'saved_data/fla/{}'.format(saved_data_file_name)
 
     torch.save({
@@ -418,7 +429,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    #full_saved_path = create_fla_data()
+    create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -430,10 +441,10 @@ if __name__=='__main__':
     #create_table_stats_6D()
     # print("=================")
 
-    full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
+    #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
     #full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
+    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
