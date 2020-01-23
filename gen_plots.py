@@ -215,7 +215,7 @@ def rotmat_angle_table_stats(cache_data=True):
         for m_i, max_angle in enumerate(data['max_angles']):
             if max_angle not in plot_angles:
                 continue
-            _, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample, max_rotation_angle=max_angle, sigma=args.sim_sigma, beachball=False, device=device, dtype=tensor_type)
+            _, test_data = create_experimental_data_fast(args.N_train, 500, args.matches_per_sample, max_rotation_angle=max_angle, sigma=args.sim_sigma, beachball=False, device=device, dtype=tensor_type)
 
             model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
             model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
@@ -253,21 +253,21 @@ def rotmat_angle_table_stats(cache_data=True):
         }, processed_data_file)
         print('Saved data to {}.'.format(processed_data_file))
     else:
-        processed_data_file = ''
+        processed_data_file = 'saved_data/synthetic/processed_rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
 
     processed_data = torch.load(processed_data_file)
     fig, axes = plt.subplots(ncols=3, sharey=True)
     fig.subplots_adjust(wspace=0)
-    fig.set_size_inches(4,1.)
+    fig.set_size_inches(4,1.5)
 
     for a_i in range(len(processed_data['maxrot_data'])):
         max_angle = processed_data['plot_angles'][a_i]
         error_quat, error_6D, error_A = processed_data['maxrot_data'][a_i]
         axes[a_i].boxplot([error_quat, error_6D, error_A])
-        axes[a_i].set(xticklabels=['Quat', '6D', 'A'], xlabel=str(max_angle)+' deg')
+        axes[a_i].set(xticklabels=['Quat', '6D', 'A'], xlabel=str(max_angle)+'°')
         axes[a_i].grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
         if a_i == 0:
-            axes[a_i].set_ylabel('error (deg)')
+            axes[a_i].set_ylabel('error (°)')
     
     desc = processed_data_file.split('/')[2].split('.pt')[0]
     output_file = 'plots/maxrotangle_{}.pdf'.format(desc)
@@ -282,4 +282,4 @@ if __name__=='__main__':
     #plot_learning_rate_shapenet_experiment()
     #scatter_shapenet_example()
     #scatter_shapenet_example()
-    rotmat_angle_table_stats()
+    rotmat_angle_table_stats(cache_data=True)
