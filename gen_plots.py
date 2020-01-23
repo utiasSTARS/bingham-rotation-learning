@@ -260,7 +260,7 @@ def rotmat_angle_table_stats(cache_data=True):
     fig.subplots_adjust(wspace=0)
     fig.set_size_inches(4,1.)
 
-    for a_i in range(len(data['maxrot_data'])):
+    for a_i in range(len(processed_data['maxrot_data'])):
         max_angle = processed_data['plot_angles'][a_i]
         error_quat, error_6D, error_A = processed_data['maxrot_data'][a_i]
         axes[a_i].boxplot([error_quat, error_6D, error_A])
