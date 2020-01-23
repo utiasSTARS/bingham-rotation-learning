@@ -204,7 +204,7 @@ def rotmat_angle_table_stats():
     path = 'saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
     data = torch.load(path)
     args = data['args']
-    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu') 
     tensor_type = torch.double if args.double else torch.float
     
     fig, axes = plt.subplots(ncols=3, sharey=True)
@@ -266,7 +266,7 @@ def rotmat_angle_table_stats():
 if __name__=='__main__':
     #plot_wahba_training_comparisons()
     #plot_learning_rate_wahba_experiment()
-    plot_learning_rate_shapenet_experiment()
+    #plot_learning_rate_shapenet_experiment()
     #scatter_shapenet_example()
     #scatter_shapenet_example()
-    #rotmat_angle_table_stats()
+    rotmat_angle_table_stats()
