@@ -294,19 +294,23 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
     data = torch.load(data_file)
     quantiles = [0.25, 0.5, 0.75]
 
-    (A_train, _, _), (A_test, q_est, q_target) = data['data_fla']
-    mean_err_A = quat_angle_diff(q_est, q_target)
+    (A_train, _, _)  = data['data_fla'][0]
+   
 
-    print('Total Pairs: {}.'.format(q_est.shape[0]))
-    print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
+    for i in range(3):
+        (A_test, q_est, q_target) = data['data_fla'][i+1]
+        mean_err_A = quat_angle_diff(q_est, q_target)
 
-    for q_i, quantile in enumerate(quantiles):
-        thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
-        mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
+        print('Total Pairs: {}.'.format(q_est.shape[0]))
+        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
 
-        mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
-        
-        print('Quantile: {}. A (sym + thresh): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
+        for q_i, quantile in enumerate(quantiles):
+            thresh = compute_threshold(A_train.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
+            mask = compute_mask(A_test.numpy(), uncertainty_metric_fn, thresh)
+
+            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            
+            print('Quantile: {}. A (sym + thresh): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
 
         
 
@@ -429,7 +433,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    create_fla_data()
+    #create_fla_data()
     #uncertainty_metric_fn = det_inertia_mat
     #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
     #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
@@ -443,8 +447,8 @@ if __name__=='__main__':
 
     #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
     #full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    
-    #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
+    full_saved_path = 'saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
