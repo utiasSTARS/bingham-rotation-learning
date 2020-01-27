@@ -109,7 +109,7 @@ def main():
 
     
     model = ConvAutoencoder().to(device=device, dtype=tensor_type)
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = torch.nn.L1Loss()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
