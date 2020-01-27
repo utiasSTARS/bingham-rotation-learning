@@ -89,15 +89,15 @@ class BasicAutoEncoder(torch.nn.Module):
         x = self.pool(x)
         # add second hidden layer
         x = F.relu(self.conv2(x))
-        x = self.pool(x)  # compressed representation
+        code = self.pool(x)  # compressed representation
         
         ## decode ##
         # add transpose conv layers, with relu activation function
-        x = F.relu(self.t_conv1(x))
+        x = F.relu(self.t_conv1(code))
         # output layer (with sigmoid for scaling from 0 to 1)
         x = torch.sigmoid(self.t_conv2(x))
                 
-        return x
+        return x, code
 
 
 def main():
@@ -197,7 +197,7 @@ def train_autoenc(model, loss_fn, optimizer, img):
     optimizer.zero_grad()
 
     # Forward
-    img_out = model.forward(img)
+    img_out, code = model.forward(img)
     
     loss = loss_fn(img_out, img)
     # Backward
@@ -212,7 +212,7 @@ def train_autoenc(model, loss_fn, optimizer, img):
 def test_autoenc(model, loss_fn, img):
     # Forward
     with torch.no_grad():
-        img_out = model.forward(img)
+        img_out, code = model.forward(img)
         loss = loss_fn(img_out, img)
             
     return (img_out, loss.item())
