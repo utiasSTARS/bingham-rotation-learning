@@ -4,13 +4,13 @@ import sys
 sys.path.insert(0,'..')
 from helpers_sim import SyntheticData
 from convex_layers import QuadQuatFastSolver
-from losses import quat_squared_loss, rotmat_frob_squared_norm_loss
+from losses import quat_squared_loss, rotmat_frob_squared_norm_loss, quat_chordal_squared_loss
 from networks import QuatNet, PointNet, PointNetInspect
 from quaternions import *
 from liegroups.torch import SO3 as SO3_torch
 
 
-def create_experiment(N_train=100, N_test=10, N_matches_per_sample=50, sigma=0.01, angle_limits=[0,180.], dtype=torch.double, device=torch.device('cpu')):
+def create_experiment(N_train=100, N_test=10, N_matches_per_sample=100, sigma=0.01, angle_limits=[0,180.], dtype=torch.double, device=torch.device('cpu')):
     C_train, x_1_train, x_2_train = gen_sim_data(N_train, N_matches_per_sample, sigma, angle_limits=angle_limits)
     C_test, x_1_test, x_2_test = gen_sim_data(N_test, N_matches_per_sample, sigma, angle_limits=angle_limits)
 
@@ -60,32 +60,39 @@ def gen_sim_data(N_rotations, N_matches_per_rotation, sigma, angle_limits=[0, 18
 
 
 def test_discontinuity_unit_quat():
-    tensor_type = torch.float64
-    angle_limits = [140.,160.]
-    train_data, test_data = create_experiment(N_train=10, N_test=10, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
-    model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
+    tensor_type = torch.float32
+    angle_limits = [175.,180.]
+    N_train = 500
+    mini_batch_size = 100
+    #model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
+    model = PointNet(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
+    
     #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.99)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
-    loss_fn = quat_squared_loss
-    model.train()
-    for i in range(200):
-        # Reset gradient
-        optimizer.zero_grad()
+    loss_fn = quat_chordal_squared_loss #quat_squared_loss
 
-        # Forward
-        model.train()
-        out = model.forward(train_data.x)
-        q = out/out.norm(dim=1, keepdim=True)
-        loss = loss_fn(q, train_data.q)
-        mean_err = quat_angle_diff(q, train_data.q)
+    num_train_batches = N_train // mini_batch_size
+
+    for e in range(100):
+        train_data, test_data = create_experiment(N_train=N_train, N_test=25, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
+        for k in range(num_train_batches):
+            start, end = k * mini_batch_size, (k + 1) * mini_batch_size
+            # Forward
+            model.train()
+            # Reset gradient
+            optimizer.zero_grad()
+            out = model.forward(train_data.x[start:end])
+            q = out/out.norm(dim=1, keepdim=True)
+            loss = loss_fn(q, train_data.q[start:end])
+            # mean_err = quat_angle_diff(q, train_data.q, reduce=False)
 
 
-        # Backward
-        loss.backward()
+            # Backward
+            loss.backward()
 
-        # Update parameters
-        optimizer.step()
+            # Update parameters
+            optimizer.step()
         
         #Print unnormalized quaternions
         #print(out)
@@ -95,15 +102,22 @@ def test_discontinuity_unit_quat():
         # model.final_layer.bias
 
         #Test data
-        # model.eval()
-        # x_test = test_data.x
-        # out_test = model.forward(x_test)
+        model.eval()
+        x_test = test_data.x
+        q_test = model.forward(x_test)
+        q_test = q_test/q_test.norm(dim=1, keepdim=True)
+        mean_err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
 
         #Penultimate outputs ('alpha_i's)
         #alpha = model.pre_forward(x_test)
+        #model.eval()
+        q_train = model.forward(train_data.x)
+        q_train = q_train/q_train.norm(dim=1, keepdim=True)
+        loss = loss_fn(q_train, train_data.q)
+        mean_err = quat_angle_diff(q_train, train_data.q, reduce=False)
+        print('Epoch {}. Loss: {:.3F}. Mean err (Train/Test): {:.3F} / {:.3F}'.format(e, loss.item(), mean_err.mean(),mean_err_test.mean()))
 
-        print('Epoch {}. Loss: {:.3F}. Mean angle err: {:.3F}'.format(i, loss.item(), mean_err))
-    
+    print(mean_err)
     
 
 if __name__ == "__main__":
