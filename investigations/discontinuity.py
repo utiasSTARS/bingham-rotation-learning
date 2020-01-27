@@ -64,6 +64,8 @@ def test_discontinuity_unit_quat():
     angle_limits = [175.,180.]
     N_train = 500
     mini_batch_size = 100
+    dynamic_data = False
+
     #model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     model = PointNet(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     
@@ -74,8 +76,12 @@ def test_discontinuity_unit_quat():
 
     num_train_batches = N_train // mini_batch_size
 
-    for e in range(100):
+    if not dynamic_data:
         train_data, test_data = create_experiment(N_train=N_train, N_test=25, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
+
+    for e in range(100):
+        if dynamic_data:
+            train_data, test_data = create_experiment(N_train=N_train, N_test=25, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
         for k in range(num_train_batches):
             start, end = k * mini_batch_size, (k + 1) * mini_batch_size
             # Forward
