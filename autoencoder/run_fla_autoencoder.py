@@ -143,7 +143,6 @@ def main():
 
     transform = transforms.Compose([
             torchvision.transforms.Resize(256),
-            torchvision.transforms.CenterCrop(224),
             transforms.ToTensor(),
             normalize,
     ])
