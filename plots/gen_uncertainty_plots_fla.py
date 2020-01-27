@@ -311,14 +311,13 @@ def collect_autoencoder_stats(saved_file):
                         shuffle=False, num_workers=args.num_workers, drop_last=False)
         
 
-    if args.model == 'A_sym':
-        model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
-        model.load_state_dict(checkpoint['model'], strict=False)
-        l1_meanst = evaluate_autoenc(train_loader, model, device, tensor_type)
-        l1_means1 = evaluate_autoenc(valid_loader1, model, device, tensor_type)
-        l1_means2 = evaluate_autoenc(valid_loader2, model, device, tensor_type)
-        l1_means3 = evaluate_autoenc(valid_loader3, model, device, tensor_type)
-        return (l1_meanst, l1_means1, l1_means2, l1_means3)
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
+    model.load_state_dict(checkpoint['model'], strict=False)
+    l1_meanst = evaluate_autoenc(train_loader, model, device, tensor_type)
+    l1_means1 = evaluate_autoenc(valid_loader1, model, device, tensor_type)
+    l1_means2 = evaluate_autoenc(valid_loader2, model, device, tensor_type)
+    l1_means3 = evaluate_autoenc(valid_loader3, model, device, tensor_type)
+    return (l1_meanst, l1_means1, l1_means2, l1_means3)
 
 
 def create_fla_autoencoder_data():
