@@ -11,6 +11,7 @@ delta = 1
 test_portion = 0.1
 scenes = ['indoor', 'outdoor']
 indices = [indoor_indices, outdoor_indices]
+reverse = False
 
 for s_i, scene in enumerate(scenes):
     idx = indices[s_i]
@@ -18,17 +19,22 @@ for s_i, scene in enumerate(scenes):
     num_test = int(idx.shape[0]*test_portion)
     num_train = idx.shape[0] - num_test
     
-    train_idx = np.empty((num_train*2, 2), dtype=np.int32)
+    if reverse:
+        train_idx = np.empty((num_train*2, 2), dtype=np.int32)
+    else:
+        train_idx = np.empty((num_train, 2), dtype=np.int32)
+        
     train_idx[:num_train, 0] = idx[:num_train]
     train_idx[:num_train, 1] = idx[:num_train] + delta
-    train_idx[num_train:, 0] = idx[:num_train] + delta
-    train_idx[num_train:, 1] = idx[:num_train] 
+    if reverse:
+        train_idx[num_train:, 0] = idx[:num_train] + delta
+        train_idx[num_train:, 1] = idx[:num_train] 
 
     test_idx = np.empty((num_test, 2), dtype=np.int32)
     test_idx[:, 0] = idx[num_train:]
     test_idx[:, 1] = idx[num_train:] + delta
     
-    np.savetxt(scene+"_train.csv", train_idx, fmt='%i', delimiter=",")
+    np.savetxt(scene+"_train_reverse_{}.csv".format(reverse), train_idx, fmt='%i', delimiter=",")
     np.savetxt(scene+"_test.csv", test_idx, fmt='%i',delimiter=",")
 
 
