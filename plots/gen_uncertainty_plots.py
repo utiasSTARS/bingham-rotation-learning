@@ -1,14 +1,6 @@
-from quaternions import *
-from networks import *
-from helpers_train_test import *
-from liegroups.numpy import SO3
-import torch
-from datetime import datetime
-from convex_layers import *
-from torch.utils.data import Dataset, DataLoader
-from loaders import KITTIVODatasetPreTransformed
 import numpy as np
 import torchvision
+import torch
 import matplotlib
 matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
@@ -16,6 +8,17 @@ matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from matplotlib.colors import to_rgba
+import sys
+sys.path.insert(0,'..')
+from quaternions import *
+from networks import *
+from helpers_train_test import *
+from liegroups.numpy import SO3
+from datetime import datetime
+from convex_layers import *
+from torch.utils.data import Dataset, DataLoader
+from loaders import KITTIVODatasetPreTransformed
+
 
 def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
@@ -156,7 +159,7 @@ def collect_vo_errors(saved_file):
     if args.megalith:
         seqs_base_path = '/media/datasets/KITTI/single_files'
     seq_prefix = 'seq_'
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = '../experiments/kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
 
     valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=None, run_type='test', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
@@ -176,7 +179,7 @@ def collect_errors(saved_file, validation_transform=None):
     if args.megalith:
         seqs_base_path = '/media/datasets/KITTI/single_files'
     seq_prefix = 'seq_'
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = '../experiments/kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
 
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=None, run_type='train', seq_prefix=seq_prefix),
                                 batch_size=args.batch_size_test, pin_memory=False,
@@ -216,7 +219,7 @@ def collect_errors(saved_file, validation_transform=None):
 
 def create_kitti_data():
 
-    prefix = 'saved_data/kitti/'
+    prefix = '../saved_data/kitti/'
     file_list_6D = ['kitti_model_6D_seq_00_01-02-2020-14-21-01.pt', 'kitti_model_6D_seq_02_01-02-2020-15-13-10.pt','kitti_model_6D_seq_05_01-02-2020-16-09-34.pt']
     file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
     file_list_quat = ['kitti_model_quat_seq_00_01-04-2020-02-56-31.pt','kitti_model_quat_seq_02_01-04-2020-03-47-36.pt', 'kitti_model_quat_seq_05_01-04-2020-04-43-22.pt']
@@ -257,7 +260,7 @@ def create_kitti_data():
     print('Done')
 
     saved_data_file_name = 'kitti_comparison_data_6Dvec_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-    full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
+    full_saved_path = '../saved_data/kitti/{}.pt'.format(saved_data_file_name)
 
     torch.save({
                 'file_list_6D': file_list_6D,
@@ -340,7 +343,7 @@ def compute_prec_recall(A_train, A_test, quantile, uncertainty_metric_fn):
     return precision, recall
 
 def create_precision_recall_plot(uncertainty_metric_fn, selected_quantile):
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    saved_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     colors = ['--k', '-.k', '-k']
@@ -369,13 +372,13 @@ def create_precision_recall_plot(uncertainty_metric_fn, selected_quantile):
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
     #ax.set_ylim([0.7, 1])
-    output_file = 'plots/kitti_prec_recall.pdf'
+    output_file = 'kitti_prec_recall.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
 
 def create_table_stats(uncertainty_metric_fn=first_eig_gap):
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    saved_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantiles = [0.75, 0.5, 0.25]
@@ -424,7 +427,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
             print('Quantile: {}. A (sym + Thresh): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
 
 def create_table_stats_6D():
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_6Dvec_01-15-2020-16-19-36.pt'
+    saved_data_file = '../saved_data/kitti/kitti_comparison_data_6Dvec_01-15-2020-16-19-36.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
     quantiles = [0.25, 0.5, 0.75]
@@ -463,7 +466,7 @@ def create_table_stats_6D():
 
 def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logscale=False):
     if cache_data:
-        prefix = 'saved_data/kitti/'
+        prefix = '../saved_data/kitti/'
         file_list_A_sym = ['kitti_model_A_sym_seq_00_01-01-2020-23-16-53.pt', 'kitti_model_A_sym_seq_02_01-02-2020-00-24-03.pt', 'kitti_model_A_sym_seq_05_01-01-2020-21-52-03.pt']
         A_list = []
         for path in file_list_A_sym:
@@ -478,14 +481,14 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
             if args.megalith:
                 seqs_base_path = '/media/datasets/KITTI/single_files'
             seq_prefix = 'seq_'
-            kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+            kitti_data_pickle_file = '../experiments/kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
             train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                                         batch_size=args.batch_size_test, pin_memory=False,
                                         shuffle=False, num_workers=args.num_workers, drop_last=False)
             valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
                                         batch_size=args.batch_size_test, pin_memory=False,
                                         shuffle=False, num_workers=args.num_workers, drop_last=False)
-            kitti_data_pickle_file_new = 'kitti/kitti_singlefile_data_sequence_01_delta_1_reverse_True_min_turn_0.0.pickle'
+            kitti_data_pickle_file_new = '../experiments/kitti/kitti_singlefile_data_sequence_01_delta_1_reverse_True_min_turn_0.0.pickle'
             valid_loader2 = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file_new, use_flow=args.optical_flow, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
                                         batch_size=args.batch_size_test, pin_memory=False,
                                         shuffle=False, num_workers=args.num_workers, drop_last=False)
@@ -523,7 +526,7 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
             A_list.append((A_predt, A_pred, A_pred2, A_pred3, A_randn))
         
         saved_data_file_name = 'kitti_boxplot_data_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-        full_saved_path = 'saved_data/kitti/{}.pt'.format(saved_data_file_name)
+        full_saved_path = '../saved_data/kitti/{}.pt'.format(saved_data_file_name)
 
         torch.save({
                     'A_list': A_list,
@@ -531,7 +534,7 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
         }, full_saved_path)
         print('Saved data to {}.'.format(full_saved_path))
     else:
-        full_saved_path = "saved_data/kitti/kitti_boxplot_data_01-06-2020-13-26-15.pt"
+        full_saved_path = "../saved_data/kitti/kitti_boxplot_data_01-06-2020-13-26-15.pt"
     
     
     data = torch.load(full_saved_path)
@@ -546,14 +549,12 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
         ax.set_ylabel(decode_metric_name(uncertainty_metric_fn)) 
         if logscale:
             ax.set_yscale('symlog')   
-        output_file = 'plots/kitti_box_seq_{}_metric_{}.pdf'.format(seqs[i], uncertainty_metric_fn.__name__)
+        output_file = 'kitti_box_seq_{}_metric_{}.pdf'.format(seqs[i], uncertainty_metric_fn.__name__)
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
 
 def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=first_eig_gap, quantile=0.25):
-    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-01-03-26.pt'
-    #saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-03-2020-19-19-50.pt'
-    saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    saved_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
 
@@ -582,7 +583,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             fig = _create_scatter_plot(thresh, 
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
             [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=True)
-            output_file = 'plots/kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
+            output_file = 'kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
 
@@ -611,7 +612,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             fig = _create_scatter_plot(thresh, 
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
             [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=False)
-            output_file = 'plots/kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
+            output_file = 'kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
 
@@ -625,13 +626,13 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
     bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.8])
-    output_file = 'plots/kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    output_file = 'kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
     bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.8], legend=False)
-    output_file = 'plots/kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    output_file = 'kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -641,9 +642,9 @@ if __name__=='__main__':
     #create_kitti_data()
     uncertainty_metric_fn = sum_bingham_dispersion_coeff
     create_bar_and_scatter_plots(output_scatter=False, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
-    #create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
-    #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
+    create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
+    create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
     #create_table_stats_6D()
     # print("=================")
