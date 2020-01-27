@@ -22,7 +22,7 @@ def main():
 
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--megalith', action='store_true', default=False)
+    parser.add_argument('--megalith', action='store_true', default=True)
     parser.add_argument('--save_model', action='store_true', default=False)
 
 
