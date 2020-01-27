@@ -74,7 +74,7 @@ def evaluate_autoenc(loader, model, device, tensor_type):
     with torch.no_grad():
         model.eval()
         print('Evaluating Auto Encoder model...')
-        for _, (imgs, _) in enumerate(train_loader):
+        for _, (imgs, _) in enumerate(loader):
             #Move all data to appropriate device
             img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
             img_out, code = model.forward(img)
