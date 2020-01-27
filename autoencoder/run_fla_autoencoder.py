@@ -125,7 +125,7 @@ def main():
         pbar = tqdm.tqdm(total=num_train_batches)
         for _, (imgs, _) in enumerate(train_loader):
             #Move all data to appropriate device
-            img = imgs[:,0,:,:].to(device=device, dtype=tensor_type)
+            img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
             _, train_loss_k = train_autoenc(model, loss_fn, optimizer, img)
             
             train_loss += (1./num_train_batches)*train_loss_k
