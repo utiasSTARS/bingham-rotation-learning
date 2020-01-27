@@ -41,7 +41,7 @@ class ComplexAutoEncoder(torch.nn.Module):
             deconv_unit(512, 256, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(256, 128, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(128, 64, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
-            deconv_unit(64, dim_in, kernel_size=3, stride=2, padding=0, batchnorm=batchnorm)
+            deconv_unit(64, dim_in, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm)
         )
 
     def encode(self, x):
@@ -67,7 +67,7 @@ class ComplexAutoEncoder(torch.nn.Module):
 
 class BasicAutoEncoder(torch.nn.Module):
     def __init__(self):
-        super(ConvAutoencoder, self).__init__()
+        super(BasicAutoEncoder, self).__init__()
         ## encoder layers ##
         # conv layer (depth from 1 --> 16), 3x3 kernels
         self.conv1 = torch.nn.Conv2d(1, 16, 3, padding=1)  
