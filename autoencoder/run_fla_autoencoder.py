@@ -22,7 +22,6 @@ class ComplexAutoEncoder(torch.nn.Module):
             conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
-            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
         )
         self.fc_encoder = torch.nn.Sequential(
             torch.nn.Linear(4096, dim_transition),
@@ -36,7 +35,6 @@ class ComplexAutoEncoder(torch.nn.Module):
             torch.nn.Linear(dim_transition, 4096)
         )
         self.cnn_decode = torch.nn.Sequential(
-            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             deconv_unit(1024, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             deconv_unit(512, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
@@ -58,6 +56,7 @@ class ComplexAutoEncoder(torch.nn.Module):
 
     def forward(self, x):
         code = self.encode(x)
+        print(code.shape)
         out = self.decode(code)
         # if self.normalize_output:
         #     out = out / out.norm(dim=1).view(-1, 1)
