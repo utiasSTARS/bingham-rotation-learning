@@ -66,14 +66,9 @@ def test_discontinuity_unit_quat():
     mini_batch_size = 100
     dynamic_data = False
 
-    #model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
-    model = PointNet(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
-    
-    #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.99)
+    model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-
     loss_fn = quat_chordal_squared_loss #quat_squared_loss
-
     num_train_batches = N_train // mini_batch_size
 
     if not dynamic_data:
@@ -91,8 +86,6 @@ def test_discontinuity_unit_quat():
             out = model.forward(train_data.x[start:end])
             q = out/out.norm(dim=1, keepdim=True)
             loss = loss_fn(q, train_data.q[start:end])
-            # mean_err = quat_angle_diff(q, train_data.q, reduce=False)
-
 
             # Backward
             loss.backward()
@@ -107,6 +100,9 @@ def test_discontinuity_unit_quat():
         # model.final_layer.weight
         # model.final_layer.bias
 
+        #Penultimate outputs ('alpha_i's)
+        #alpha = model.pre_forward(train_data.x)
+
         #Test data
         model.eval()
         x_test = test_data.x
@@ -114,9 +110,6 @@ def test_discontinuity_unit_quat():
         q_test = q_test/q_test.norm(dim=1, keepdim=True)
         err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
 
-        #Penultimate outputs ('alpha_i's)
-        #alpha = model.pre_forward(x_test)
-        #model.eval()
         q_train = model.forward(train_data.x)
         q_train = q_train/q_train.norm(dim=1, keepdim=True)
         loss = loss_fn(q_train, train_data.q)
