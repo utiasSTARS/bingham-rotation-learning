@@ -7,6 +7,14 @@ from sdp_layers import x_from_xxT
 import math
 from losses import quat_chordal_squared_loss, rotmat_frob_squared_norm_loss
 
+def test_180_quat():
+    a = torch.randn(25,3).to(torch.float64)
+    a = a / a.norm(dim=1, keepdim=True)
+    angle = (150)*(np.pi/180.)
+    aa = a * angle
+    C = SO3.exp(aa).as_matrix() 
+    print(rotmat_to_quat(C))
+
 def test_rotmat_quat_conversions():
     print('Rotation matrix to quaternion conversions...')
     C1 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
@@ -17,8 +25,8 @@ def test_rotmat_quat_conversions():
 
 def test_chordal_squared_loss_equality():
     print('Equality of quaternion and rotation matrix chordal loss...')
-    C1 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
-    C2 = SO3.exp(torch.randn(100, 3, dtype=torch.double)).as_matrix()
+    C1 = SO3.exp(torch.randn(1000, 3, dtype=torch.double)).as_matrix()
+    C2 = SO3.exp(torch.randn(1000, 3, dtype=torch.double)).as_matrix()
 
     q1 = rotmat_to_quat(C1)
     q2 = rotmat_to_quat(C2)
@@ -58,8 +66,9 @@ def test_xxT():
     print('All passed.')
 
 if __name__=='__main__':
-    test_rotmat_quat_conversions()
-    test_rot_angles()
-    test_xxT()
-    test_rotmat_quat_large_conversions()
-    test_chordal_squared_loss_equality()
+    # test_rotmat_quat_conversions()
+    # test_rot_angles()
+    # test_xxT()
+    # test_rotmat_quat_large_conversions()
+    # test_chordal_squared_loss_equality()
+    test_180_quat()

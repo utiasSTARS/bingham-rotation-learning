@@ -125,11 +125,12 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = './saved_data/synthetic/diff_lr_synthetic_wahba_experiment_3models_chordal_dynamic_01-16-2020-04-24-48.pt'
+    path = 'saved_data/synthetic/diff_lr_synthetic_wahba_experiment_3models_chordal_dynamic_01-16-2020-04-24-48.pt'
     plot_learning_rate_experiment(path)
 
 def plot_learning_rate_shapenet_experiment():
-    path = './saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-22-2020-12-31-56.pt'
+    #path = 'saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-24-2020-03-03-36.pt'
+    path = 'saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-25-2020-00-56-49.pt'
     plot_learning_rate_experiment(path)
 
 def plot_learning_rate_experiment(data_path):
@@ -268,6 +269,7 @@ def rotmat_angle_table_stats(cache_data=True):
         axes[a_i].grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
         if a_i == 0:
             axes[a_i].set_ylabel('error (°)')
+        
     
     desc = processed_data_file.split('/')[2].split('.pt')[0]
     output_file = 'plots/maxrotangle_{}.pdf'.format(desc)
@@ -279,7 +281,7 @@ def rotmat_angle_table_stats(cache_data=True):
 if __name__=='__main__':
     #plot_wahba_training_comparisons()
     #plot_learning_rate_wahba_experiment()
-    #plot_learning_rate_shapenet_experiment()
+    plot_learning_rate_shapenet_experiment()
     #scatter_shapenet_example()
     #scatter_shapenet_example()
-    rotmat_angle_table_stats(cache_data=True)
+    #rotmat_angle_table_stats(cache_data=False)

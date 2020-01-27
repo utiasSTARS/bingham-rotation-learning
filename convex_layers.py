@@ -104,6 +104,7 @@ def min_eig_vec(A_vec):
         A = A.unsqueeze(dim=0)
     _, evs = torch.symeig(A, eigenvectors=True)
     return evs[:,:,0].squeeze()
+    
 
 class QuadQuatFastSolver(torch.autograd.Function):
     """

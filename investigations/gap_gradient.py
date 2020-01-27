@@ -11,9 +11,6 @@ from quaternions import *
 from utils import sixdim_to_rotmat
 
 
-def test_span():
-    x_1 = tr
-
 
 def test_single_grad():
     A = np.random.randn(4,4)
