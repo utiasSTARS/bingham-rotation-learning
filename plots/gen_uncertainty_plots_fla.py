@@ -70,7 +70,7 @@ def evaluate_6D_model(loader, model, device, tensor_type):
 
 def evaluate_autoenc(loader, model, device, tensor_type):
     l1_means = []
-    loss_fn = torch.nn.L1Loss(reduction=None)
+    loss_fn = torch.nn.L1Loss(reduction='none')
     with torch.no_grad():
         model.eval()
         print('Evaluating Auto Encoder model...')
