@@ -14,7 +14,7 @@ from helpers_train_test import train_test_model
 
 
 def main():
-    parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
+    parser = argparse.ArgumentParser(description='Autoencoder on FLA data')
     parser.add_argument('--epochs', type=int, default=10)
 
     parser.add_argument('--batch_size_test', type=int, default=64)

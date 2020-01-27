@@ -424,18 +424,24 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 
 
 
-def create_table_stats_autoenc(Asym_data_file, autoenc_data_file):
+def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file):
     asym_data = torch.load(Asym_data_file)
-    quantiles = [0.25, 0.5, 0.75]
+    quantiles = [0.25, 0.5, 0.75,0.99]
     autoenc_data = torch.load(autoenc_data_file)
+    l1_meanst = autoenc_data['autoenc_l1_means'][0]
+    (_, q_estt, q_targett) = asym_data['data_fla'][0]
+    #Account for reversing
+    q_estt = q_estt[:int(q_estt.shape[0]/2)]
+    q_targett = q_targett[:int(q_targett.shape[0]/2)]
     
+
+
     for i in range(3):
         (_, q_est, q_target) = asym_data['data_fla'][i+1]
-        mean_err_A = quat_angle_diff(q_est, q_target)
-        l1_meanst = autoenc_data['autoenc_l1_means'][0]
+        mean_err_A = quat_angle_diff(q_est, q_target, reduce=False)
 
         print('Total Pairs: {}.'.format(q_est.shape[0]))
-        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
+        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A.mean()))
 
         for q_i, quantile in enumerate(quantiles):
 
@@ -445,7 +451,15 @@ def create_table_stats_autoenc(Asym_data_file, autoenc_data_file):
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
             
             print('Quantile: {}. A (sym + autoenc): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
-        
+    
+    fig = _create_scatter_plot(thresh, 
+    [l1_means.numpy(), l1_meanst.numpy()],
+    [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(l1_norm),labels=['Validation', 'Training'], ylim=[1e-4, 5])
+    
+    desc = Asym_data_file.split('/')[-1].split('.pt')[0]
+    output_file = 'fla_scatter_autoenc_{}.pdf'.format(desc)
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
 
 
 def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
@@ -464,6 +478,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     output_file = 'fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
+
 
 
 def create_video(full_data_file=None):
@@ -581,4 +596,4 @@ if __name__=='__main__':
 
     Asym_data_file = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
-    create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
+    create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file)
