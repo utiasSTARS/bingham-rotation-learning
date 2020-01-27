@@ -68,8 +68,8 @@ def main():
     ])
     dim_in = 2
 
-    test_dataset = 'FLA/{}_test.csv'.format(args.scene)
-    train_dataset = 'FLA/{}_train.csv'.format(args.scene)
+    test_dataset = 'experiments/FLA/{}_test.csv'.format(args.scene)
+    train_dataset = 'experiments/FLA/{}_train.csv'.format(args.scene)
 
     train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
