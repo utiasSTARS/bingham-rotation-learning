@@ -1,12 +1,3 @@
-from quaternions import *
-from networks import *
-from helpers_train_test import *
-from liegroups.numpy import SO3
-import torch
-from datetime import datetime
-from convex_layers import *
-from torch.utils.data import Dataset, DataLoader
-from loaders import FLADataset
 import torchvision.transforms as transforms
 import numpy as np
 import torchvision
@@ -18,6 +9,17 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 from matplotlib.colors import to_rgba
 from cv2 import VideoWriter, VideoWriter_fourcc
+import sys
+sys.path.insert(0,'..')
+from quaternions import *
+from networks import *
+from helpers_train_test import *
+from liegroups.numpy import SO3
+import torch
+from datetime import datetime
+from convex_layers import *
+from torch.utils.data import Dataset, DataLoader
+from loaders import FLADataset
 
 def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
@@ -179,16 +181,16 @@ def collect_errors(saved_file):
     ])
     dim_in = 2
 
-    train_dataset = 'FLA/{}_train.csv'.format(args.scene)
+    train_dataset = '../experiments/FLA/{}_train.csv'.format(args.scene)
 
     train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
 
 
-    test_outdoor = FLADataset('FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    test_indoor = FLADataset('FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
-    test_transition = FLADataset('FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_outdoor = FLADataset('../experiments/FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_indoor = FLADataset('../experiments/FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_transition = FLADataset('../experiments/FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
     #valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3])
     #test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
     
@@ -221,14 +223,14 @@ def collect_errors(saved_file):
 def create_fla_data():
 
     print('Collecting data....')
-    base_dir = 'saved_data/fla/'
+    base_dir = '../saved_data/fla/'
     file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
 
     data_fla = collect_errors(base_dir+file_fla)
 
     saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
-    full_saved_path = 'saved_data/fla/{}'.format(saved_data_file_name)
+    full_saved_path = '../saved_data/fla/{}'.format(saved_data_file_name)
 
     torch.save({
                 'file_fla': file_fla,
@@ -327,8 +329,8 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     [uncertainty_metric_fn(A_pred.numpy()), uncertainty_metric_fn(A_predt.numpy())],
     [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
     
-    desc = data_file.split('/')[2].split('.pt')[0]
-    output_file = 'plots/fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
+    desc = data_file.split('/')[-1].split('.pt')[0]
+    output_file = 'fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -336,7 +338,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
 def create_video(full_data_file=None):
     
     if full_data_file is None:
-        data_file = 'saved_data/fla/fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+        data_file = '../saved_data/fla/fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
         checkpoint = torch.load(data_file)
         args = checkpoint['args']
         print(args)
@@ -360,13 +362,13 @@ def create_video(full_data_file=None):
                 normalize,
         ])
         dim_in = 2
-        train_dataset = 'FLA/{}_train.csv'.format(args.scene)
+        train_dataset = '../experiments/FLA/{}_train.csv'.format(args.scene)
         train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                                 batch_size=args.batch_size_train, pin_memory=False,
                                 shuffle=True, num_workers=args.num_workers, drop_last=False)
 
 
-        valid_dataset = FLADataset('FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+        valid_dataset = FLADataset('../experiments/FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
         #valid_dataset = torch.utils.data.ConcatDataset([valid_dataset1, valid_dataset2, valid_dataset3])
         #test_dataset = FLADataset('FLA/{}_test.csv'.format(args.scene), image_dir=image_dir, pose_dir=pose_dir, transform=transform)
         valid_loader = DataLoader(valid_dataset,
@@ -378,9 +380,9 @@ def create_video(full_data_file=None):
         A_pred, q_est, q_target = evaluate_A_model(valid_loader, model, device, tensor_type)
         data = ((A_predt, q_estt, q_targett), (A_pred, q_est, q_target))
 
-        desc = data_file.split('/')[2].split('.pt')[0]
+        desc = data_file.split('/')[-1].split('.pt')[0]
         saved_data_file_name = 'processed_video_{}.pt'.format(desc)
-        full_data_file = 'saved_data/fla/{}'.format(saved_data_file_name)
+        full_data_file = '../saved_data/fla/{}'.format(saved_data_file_name)
         torch.save({
                     'file_fla': data_file,
                     'data_fla': data
@@ -401,7 +403,7 @@ def create_video(full_data_file=None):
         image_dir = dataset_dir+'flea3'
         pose_dir = dataset_dir+'pose'
         
-        all_dataset = FLADataset('FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+        all_dataset = FLADataset('../FLA/all_moving_unshuffled.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
         
         fourcc = VideoWriter_fourcc(*'MP4V')
         FPS = 60
@@ -445,10 +447,11 @@ if __name__=='__main__':
     #create_table_stats_6D()
     # print("=================")
 
-    #full_saved_path = 'saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
-    #full_saved_path = 'saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    full_saved_path = 'saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
-    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
+    #full_saved_path = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
+    
+    #full_saved_path = '../saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
+    full_saved_path = '../saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)

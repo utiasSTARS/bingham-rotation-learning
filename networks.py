@@ -4,27 +4,6 @@ import torch.nn.functional as F
 from convex_layers import *
 from utils import sixdim_to_rotmat
 import torchvision
-from sdp_layers import RotMatSDPSolver
-
-
-class RotMatSDPNet(torch.nn.Module):
-    def __init__(self, dim_rep=55, enforce_psd=True, unit_frob_norm=True, batchnorm=True):
-        super(RotMatSDPNet, self).__init__()        
-        self.net = PointNet(dim_out=dim_rep, normalize_output=False, batchnorm=batchnorm)
-        self.rotation_layer = RotMatSDPSolver()
-        self.enforce_psd = enforce_psd
-        self.unit_frob_norm = unit_frob_norm
-
-    def forward(self, x):
-        A_vec = self.net(x)
-        if A_vec.shape[-1] == 55:
-            if self.enforce_psd:
-                A_vec = convert_Avec_to_Avec_psd(A_vec)
-            if self.unit_frob_norm:
-                A_vec = normalize_Avec(A_vec)
-
-        C = self.rotation_layer(A_vec)
-        return C
 
 
 class RotMat6DDirect(torch.nn.Module):
@@ -289,18 +268,7 @@ def conv_unit(in_planes, out_planes, kernel_size=3, stride=2,padding=1, batchnor
                 torch.nn.PReLU()
             )
 
-def deconv_unit(in_planes, out_planes, kernel_size=3, stride=2, padding=1, batchnorm=True):
-    if batchnorm:
-        return torch.nn.Sequential(
-            torch.nn.PReLU(),
-            torch.nn.BatchNorm2d(out_planes),
-            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
-        )
-    else:
-        return torch.nn.Sequential(
-            torch.nn.PReLU(),
-            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
-        )
+
 
 class BasicCNN(torch.nn.Module):
     def __init__(self, dim_in, dim_out, normalize_output=True, batchnorm=True):
@@ -330,6 +298,19 @@ class BasicCNN(torch.nn.Module):
         return out
 
 
+
+def deconv_unit(in_planes, out_planes, kernel_size=3, stride=2, padding=1, batchnorm=True):
+    if batchnorm:
+        return torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.BatchNorm2d(out_planes),
+            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
+        )
+    else:
+        return torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding)
+        )
 class BasicAutoEncoder(torch.nn.Module):
     def __init__(self, dim_in, dim_latent, dim_transition, normalize_output=True, batchnorm=True):
         super(BasicAutoEncoder, self).__init__()
