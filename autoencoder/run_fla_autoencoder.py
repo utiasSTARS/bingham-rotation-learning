@@ -116,7 +116,6 @@ def main():
 
     parser.add_argument('--dim_latent', type=int, default=16)
     parser.add_argument('--dim_transition', type=int, default=128)
-\
 
     parser.add_argument('--lr', type=float, default=5e-4)
 
