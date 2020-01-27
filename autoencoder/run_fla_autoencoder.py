@@ -134,7 +134,7 @@ def main():
         pbar.close()
         elapsed_time = time.time() - start_time
         
-        output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
+        output_string = 'Epoch: {}/{}. Train: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, elapsed_time)
         print(output_string)
 
 #Generic training function
