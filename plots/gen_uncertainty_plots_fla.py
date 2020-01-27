@@ -265,7 +265,7 @@ def collect_autoencoder_stats(saved_file):
     args = checkpoint['args']
     print(args)
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
-    tensor_type = torch.double if args.double else torch.float
+    tensor_type = torch.float
     if args.megalith:
         dataset_dir = '/media/datasets/'
     else:
