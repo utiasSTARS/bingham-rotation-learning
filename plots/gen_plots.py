@@ -5,6 +5,8 @@ matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
+import sys
+sys.path.insert(0,'..')
 from loaders import PointNetDataset, pointnet_collate
 from torch.utils.data import Dataset, DataLoader
 from mpl_toolkits.mplot3d import Axes3D
@@ -64,7 +66,7 @@ def _create_training_fig_combined(train_stats_direct, train_stats_rep, test_stat
     return fig
 
 def plot_wahba_training_comparisons(individual=True, combined=False):
-    datafile = './saved_data/synthetic/synthetic_wahba_experiment_12-06-2019-01-20-24.pt'
+    datafile = '../saved_data/synthetic/synthetic_wahba_experiment_12-06-2019-01-20-24.pt'
     data = torch.load(datafile, map_location=lambda storage, loc: storage)
 
     train_stats_direct = data['train_stats_direct'].detach().numpy()
@@ -75,18 +77,18 @@ def plot_wahba_training_comparisons(individual=True, combined=False):
     #Individual plots
     if individual:
         fig = _create_training_fig(train_stats_direct, train_stats_rep)
-        output_file = 'plots/' + datafile.replace('.pt','').replace('saved_data/synthetic/','') + '_train.pdf'
+        output_file = 'plots/' + datafile.replace('.pt','').replace('../saved_data/synthetic/','') + '_train.pdf'
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
 
         fig = _create_training_fig(test_stats_direct, test_stats_rep)
-        output_file = 'plots/' + datafile.replace('.pt','').replace('saved_data/synthetic/','') + '_test.pdf'
+        output_file = 'plots/' + datafile.replace('.pt','').replace('../saved_data/synthetic/','') + '_test.pdf'
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
     
     if combined:
         fig = _create_training_fig_combined(train_stats_direct, train_stats_rep, test_stats_direct, test_stats_rep)
-        output_file = 'plots/' + datafile.replace('.pt','').replace('saved_data/synthetic/','') + '_combined.pdf'
+        output_file = 'plots/' + datafile.replace('.pt','').replace('../saved_data/synthetic/','') + '_combined.pdf'
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
 
@@ -125,12 +127,12 @@ def _create_learning_rate_fig_combined(args, train_err, test_err, names):
     return fig
 
 def plot_learning_rate_wahba_experiment():
-    path = 'saved_data/synthetic/diff_lr_synthetic_wahba_experiment_3models_chordal_dynamic_01-16-2020-04-24-48.pt'
+    path = '../saved_data/synthetic/diff_lr_synthetic_wahba_experiment_3models_chordal_dynamic_01-16-2020-04-24-48.pt'
     plot_learning_rate_experiment(path)
 
 def plot_learning_rate_shapenet_experiment():
-    #path = 'saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-24-2020-03-03-36.pt'
-    path = 'saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-25-2020-00-56-49.pt'
+    #path = '../saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-24-2020-03-03-36.pt'
+    path = '../saved_data/shapenet/diff_lr_shapenet_experiment_3models_01-25-2020-00-56-49.pt'
     plot_learning_rate_experiment(path)
 
 def plot_learning_rate_experiment(data_path):
@@ -154,7 +156,7 @@ def plot_learning_rate_experiment(data_path):
             test_err[app_i, t_i, :] = test_stats[app_i][:, 1].detach().numpy()
             
     fig = _create_learning_rate_fig_combined(args, train_err, test_err, names)
-    output_file = 'plots/' + data_path.split('/')[2].replace('.pt','') + '_plot.pdf'
+    output_file =  data_path.split('/')[-1].replace('.pt','') + '_plot.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -186,7 +188,7 @@ def scatter_shapenet_example():
         if i == N - 1:
             break
 
-    output_file = 'plots/shapenet_vis_{}_clouds.pdf'.format(N)
+    output_file = 'shapenet_vis_{}_clouds.pdf'.format(N)
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -204,7 +206,7 @@ def test_wabha_model(model, x, targets, **kwargs):
 def rotmat_angle_table_stats(cache_data=True):
     
     if cache_data:
-        path = 'saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
+        path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
         data = torch.load(path)
         args = data['args']
         device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu') 
@@ -245,8 +247,8 @@ def rotmat_angle_table_stats(cache_data=True):
 
             maxrot_data.append((error_quat, error_6D, error_A))
 
-        desc = path.split('/')[2].split('.pt')[0]
-        processed_data_file = 'saved_data/synthetic/'+'processed_{}.pt'.format(desc)
+        desc = path.split('/')[-1].split('.pt')[0]
+        processed_data_file = '../saved_data/synthetic/'+'processed_{}.pt'.format(desc)
         
         torch.save({
                     'maxrot_data': maxrot_data,
@@ -254,7 +256,7 @@ def rotmat_angle_table_stats(cache_data=True):
         }, processed_data_file)
         print('Saved data to {}.'.format(processed_data_file))
     else:
-        processed_data_file = 'saved_data/synthetic/processed_rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
+        processed_data_file = '../saved_data/synthetic/processed_rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
 
     processed_data = torch.load(processed_data_file)
     fig, axes = plt.subplots(ncols=3, sharey=True)
@@ -272,7 +274,7 @@ def rotmat_angle_table_stats(cache_data=True):
         
     
     desc = processed_data_file.split('/')[2].split('.pt')[0]
-    output_file = 'plots/maxrotangle_{}.pdf'.format(desc)
+    output_file = 'maxrotangle_{}.pdf'.format(desc)
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
