@@ -112,9 +112,6 @@ def main():
     loss_fn = torch.nn.MSELoss()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
-    
-    device = next(model.parameters()).device
-    tensor_type = torch.double if args.double else torch.float
 
     for e in range(args.epochs):
         start_time = time.time()
