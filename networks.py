@@ -337,3 +337,55 @@ class CustomResNet(torch.nn.Module):
         for param in self.cnn.fc.parameters():
             param.requires_grad = True
 
+
+class ComplexAutoEncoder(torch.nn.Module):
+    def __init__(self, dim_in, dim_latent, dim_transition, batchnorm=False):
+        super(ComplexAutoEncoder, self).__init__()
+        self.cnn = torch.nn.Sequential(
+            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(64, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(128, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+        )
+        self.fc_encoder = torch.nn.Sequential(
+            torch.nn.Linear(4096, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, dim_latent),
+        )
+        self.fc_decoder = torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_latent, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, 4096)
+        )
+        self.cnn_decode = torch.nn.Sequential(
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(1024, 512, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(512, 256, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(256, 128, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(128, 64, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(64, dim_in, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm)
+        )
+
+    def encode(self, x):
+        code = self.cnn(x)
+        code = code.view(code.shape[0], -1)
+        code = self.fc_encoder(code)
+        return code
+
+    def decode(self, x):
+        out = self.fc_decoder(x)
+        out = out.view(-1, 1024, 2, 2)
+        out = self.cnn_decode(out)
+        return out
+
+    def forward(self, x):
+        code = self.encode(x)
+        out = self.decode(code)
+        # if self.normalize_output:
+        #     out = out / out.norm(dim=1).view(-1, 1)
+        return out, code

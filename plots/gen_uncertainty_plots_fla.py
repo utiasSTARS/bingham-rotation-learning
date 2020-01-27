@@ -68,6 +68,24 @@ def evaluate_6D_model(loader, model, device, tensor_type):
     
     return (six_vec, q_est, q_target)
 
+def evaluate_autoenc(loader, model, device, tensor_type):
+    l1_means = []
+    loss_fn = torch.nn.L1Loss(reduction=None)
+    with torch.no_grad():
+        model.eval()
+        print('Evaluating Auto Encoder model...')
+        for _, (imgs, _) in enumerate(train_loader):
+            #Move all data to appropriate device
+            img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
+            img_out, code = model.forward(img)
+            losses = loss_fn(img_out, img).mean(dim=(1,2))
+            l1_means.append(losses.cpu())
+            
+    l1_means = torch.cat(l1_means, dim=0)
+    
+    return l1_means
+
+
 def evaluate_A_model(loader, model, device, tensor_type):
     q_est = []
     q_target = []
@@ -241,6 +259,87 @@ def create_fla_data():
 
     return full_saved_path
 
+
+def collect_autoencoder_stats(saved_file):
+    checkpoint = torch.load(saved_file)
+    args = checkpoint['args']
+    print(args)
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+    if args.megalith:
+        dataset_dir = '/media/datasets/'
+    else:
+        dataset_dir = '/media/m2-drive/datasets/'
+
+    image_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/flea3'
+    pose_dir = dataset_dir+'fla/2020.01.14_rss2020_data/2017_05_10_10_18_40_fla-19/pose'
+    
+    normalize = transforms.Normalize(mean=[0.45],
+                                    std=[0.25])
+
+    transform = transforms.Compose([
+            torchvision.transforms.Resize(256),
+            torchvision.transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            normalize,
+    ])
+    dim_in = 2
+
+    train_dataset = '../experiments/FLA/{}_train_reverse_False.csv'.format(args.scene)
+
+    train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
+                            batch_size=args.batch_size_train, pin_memory=False,
+                            shuffle=True, num_workers=args.num_workers, drop_last=False)
+
+
+    test_outdoor = FLADataset('../experiments/FLA/outdoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_indoor = FLADataset('../experiments/FLA/indoor_test.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    test_transition = FLADataset('../experiments/FLA/transition.csv', image_dir=image_dir, pose_dir=pose_dir, transform=transform)
+    
+    valid_dataset1 = torch.utils.data.ConcatDataset([test_outdoor])
+    valid_dataset2 = torch.utils.data.ConcatDataset([test_outdoor, test_indoor])
+    valid_dataset3 = torch.utils.data.ConcatDataset([test_outdoor, test_indoor, test_transition])
+
+    valid_loader1 = DataLoader(valid_dataset1,
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+    valid_loader2 = DataLoader(valid_dataset2,
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+    valid_loader3 = DataLoader(valid_dataset3,
+                        batch_size=args.batch_size_test, pin_memory=True,
+                        shuffle=False, num_workers=args.num_workers, drop_last=False)
+        
+
+    if args.model == 'A_sym':
+        model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
+        model.load_state_dict(checkpoint['model'], strict=False)
+        l1_meanst = evaluate_autoenc(train_loader, model, device, tensor_type)
+        l1_means1 = evaluate_autoenc(valid_loader1, model, device, tensor_type)
+        l1_means2 = evaluate_autoenc(valid_loader2, model, device, tensor_type)
+        l1_means3 = evaluate_autoenc(valid_loader3, model, device, tensor_type)
+        return (l1_meanst, l1_means1, l1_means2, l1_means3)
+
+
+def create_fla_autoencoder_data():
+
+    print('Collecting autoencoder data....')
+    base_dir = '../saved_data/fla/'
+    file_fla = 'fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+
+    autoenc_l1_means = collect_errors(base_dir+file_fla)
+
+    saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
+    full_saved_path = '../saved_data/fla/{}'.format(saved_data_file_name)
+
+    torch.save({
+                'file_fla': file_fla,
+                'autoenc_l1_means': autoenc_l1_means
+    }, full_saved_path)
+
+    print('Saved data to {}.'.format(full_saved_path))
+
+    return full_saved_path
 
 
 def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0., 0.8], legend=True):
@@ -436,22 +535,14 @@ def create_video(full_data_file=None):
 
 if __name__=='__main__':
     #create_fla_data()
-    #uncertainty_metric_fn = det_inertia_mat
-    #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=True)
-     
-    #create_precision_recall_plot()
-    #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
-    #create_box_plots(cache_data=False)
-
-    #create_table_stats_6D()
-    # print("=================")
 
     #full_saved_path = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     
     #full_saved_path = '../saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
-    full_saved_path = '../saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
+    #full_saved_path = '../saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
+
+    create_fla_autoencoder_data()
