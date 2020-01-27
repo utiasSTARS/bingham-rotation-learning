@@ -327,7 +327,7 @@ def create_fla_autoencoder_data():
     base_dir = '../saved_data/fla/'
     file_fla = 'fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
 
-    autoenc_l1_means = collect_errors(base_dir+file_fla)
+    autoenc_l1_means = collect_autoencoder_stats(base_dir+file_fla)
 
     saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
     full_saved_path = '../saved_data/fla/{}'.format(saved_data_file_name)
