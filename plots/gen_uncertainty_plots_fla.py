@@ -78,7 +78,9 @@ def evaluate_autoenc(loader, model, device, tensor_type):
             #Move all data to appropriate device
             img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
             img_out, code = model.forward(img)
-            losses = loss_fn(img_out, img).mean(dim=(1,2))
+            losses = loss_fn(img_out, img)
+            print(losses.shape)
+            losses = losses.mean(dim=(1,2))
             l1_means.append(losses.cpu())
             
     l1_means = torch.cat(l1_means, dim=0)
