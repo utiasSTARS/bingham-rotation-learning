@@ -64,19 +64,14 @@ def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
     N_train = 500
     mini_batch_size = 100
     dynamic_data = False
-    train_data, test_data = create_experiment(N_train=10, N_test=10, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
-    # model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
-    model = PointNet(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
 
-    #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.99)
+    model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-
     loss_fn = quat_chordal_squared_loss #quat_squared_loss
-
     num_train_batches = N_train // mini_batch_size
 
     if not dynamic_data:
-        train_data, test_data = create_experiment(N_train=N_train, N_test=25, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
+        train_data, test_data = create_experiment(N_train=N_train, N_test=500, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
 
     for e in range(100):
         if dynamic_data:
@@ -90,8 +85,6 @@ def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
             out = model.forward(train_data.x[start:end])
             q = out/out.norm(dim=1, keepdim=True)
             loss = loss_fn(q, train_data.q[start:end])
-            # mean_err = quat_angle_diff(q, train_data.q, reduce=False)
-
 
             # Backward
             loss.backward()
@@ -106,23 +99,24 @@ def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
         # model.final_layer.weight
         # model.final_layer.bias
 
+        #Penultimate outputs ('alpha_i's)
+        #alpha = model.pre_forward(train_data.x)
+
         #Test data
         model.eval()
         x_test = test_data.x
         q_test = model.forward(x_test)
         q_test = q_test/q_test.norm(dim=1, keepdim=True)
-        mean_err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
+        err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
 
-        #Penultimate outputs ('alpha_i's)
-        #alpha = model.pre_forward(x_test)
-        #model.eval()
         q_train = model.forward(train_data.x)
         q_train = q_train/q_train.norm(dim=1, keepdim=True)
         loss = loss_fn(q_train, train_data.q)
-        mean_err = quat_angle_diff(q_train, train_data.q, reduce=False)
-        print('Epoch {}. Loss: {:.3F}. Mean err (Train/Test): {:.3F} / {:.3F}'.format(e, loss.item(), mean_err.mean(),mean_err_test.mean()))
+        err = quat_angle_diff(q_train, train_data.q, reduce=False)
+        print('Epoch {}. Loss: {:.3F}. Mean err (Train/Test): {:.3F} / {:.3F} | Max err: {:.3F} / {:.3F}'.format(e, loss.item(), err.mean(),err_test.mean(), err.max(), err_test.max()))
 
-    print(mean_err)
+    print(err)
+    print(err_test)
     return model
 
 
@@ -133,4 +127,4 @@ if __name__ == "__main__":
 
     a1 = np.ones(3)/np.sqrt(3)
     q1 = np.append(np.cos(np.pi*t_min/2./180.0), np.sin(np.pi*t_min/2./180.0)*a1)
-    
+
