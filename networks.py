@@ -120,10 +120,10 @@ class PointNetInspect(torch.nn.Module):
         self.head = torch.nn.Sequential(
           torch.nn.Linear(1024, 256),
           torch.nn.PReLU(),
-          torch.nn.Linear(256, 12),
-          torch.nn.ReLU()
+          torch.nn.Linear(256, 128),
+          torch.nn.PReLU()
         )
-        self.final_layer = torch.nn.Linear(12, dim_out, bias=False)
+        self.final_layer = torch.nn.Linear(128, dim_out, bias=True)
 
     def pre_forward(self, x):
         #Decompose input into two point clouds
@@ -140,13 +140,15 @@ class PointNetInspect(torch.nn.Module):
             feats_12 = feats_12.unsqueeze(dim=0)
         
         out = self.head(feats_12)
-        out = out / out.sum(dim=1, keepdim=True)
+        #out = out / out.sum(dim=1, keepdim=True)
         return out
 
     def forward(self, x):
-        weights = self.pre_forward(x)
-        inv_norms = 1./self.final_layer.weight.norm(dim=0, keepdim=True)
-        out = self.final_layer(weights*inv_norms)
+        #weights = self.pre_forward(x)
+        #inv_norms = 1./self.final_layer.weight.norm(dim=0, keepdim=True)
+        #out = self.final_layer(weights*inv_norms)
+        
+        out = self.final_layer(self.pre_forward(x))
         
         if self.normalize_output:
             out = out / out.norm(dim=1, keepdim=True)
