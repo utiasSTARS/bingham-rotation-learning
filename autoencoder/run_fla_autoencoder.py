@@ -12,8 +12,58 @@ import torchvision.transforms as transforms
 import tqdm
 from helpers_train_test import train_test_model
 
+class ComplexAutoEncoder(torch.nn.Module):
+    def __init__(self, dim_in, dim_latent, dim_transition, batchnorm=False):
+        super(ComplexAutoEncoder, self).__init__()
+        self.cnn = torch.nn.Sequential(
+            conv_unit(dim_in, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(64, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(128, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(256, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(512, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
+        )
+        self.fc_encoder = torch.nn.Sequential(
+            torch.nn.Linear(4096, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, dim_latent),
+        )
+        self.fc_decoder = torch.nn.Sequential(
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_latent, dim_transition),
+            torch.nn.PReLU(),
+            torch.nn.Linear(dim_transition, 4096)
+        )
+        self.cnn_decode = torch.nn.Sequential(
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(1024, 512, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(512, 256, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(256, 128, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(128, 64, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
+            deconv_unit(64, dim_in, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm)
+        )
 
-class ConvAutoencoder(torch.nn.Module):
+    def encode(self, x):
+        code = self.cnn(x)
+        code = code.view(code.shape[0], -1)
+        code = self.fc_encoder(code)
+        return code
+
+    def decode(self, x):
+        out = self.fc_decoder(x)
+        out = self.cnn_decode(out)
+        return out
+
+    def forward(self, x):
+        code = self.encode(x)
+        out = self.decode(code)
+        # if self.normalize_output:
+        #     out = out / out.norm(dim=1).view(-1, 1)
+        return out, code
+
+class BasicAutoEncoder(torch.nn.Module):
     def __init__(self):
         super(ConvAutoencoder, self).__init__()
         ## encoder layers ##
@@ -108,7 +158,9 @@ def main():
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
     
-    model = ConvAutoencoder().to(device=device, dtype=tensor_type)
+    #model = ConvAutoencoder().to(device=device, dtype=tensor_type)
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=15).to(device=device, dtype=tensor_type)
+
     loss_fn = torch.nn.L1Loss()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
