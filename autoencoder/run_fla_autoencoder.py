@@ -114,6 +114,10 @@ def main():
     parser.add_argument('--save_model', action='store_true', default=False)
 
 
+    parser.add_argument('--dim_latent', type=int, default=16)
+    parser.add_argument('--dim_transition', type=int, default=128)
+\
+
     parser.add_argument('--lr', type=float, default=5e-4)
 
 
@@ -156,7 +160,7 @@ def main():
 
     
     #model = ConvAutoencoder().to(device=device, dtype=tensor_type)
-    model = ComplexAutoEncoder(dim_in=1, dim_latent=16, dim_transition=128).to(device=device, dtype=tensor_type)
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
 
     loss_fn = torch.nn.L1Loss()
 
