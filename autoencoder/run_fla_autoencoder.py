@@ -71,7 +71,7 @@ def main():
 
 
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
-    tensor_type = torch.double if args.double else torch.float
+    tensor_type = torch.float
 
 
     #Monolith
