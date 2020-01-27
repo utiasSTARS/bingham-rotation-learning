@@ -36,7 +36,7 @@ class ComplexAutoEncoder(torch.nn.Module):
             torch.nn.Linear(dim_transition, 4096)
         )
         self.cnn_decode = torch.nn.Sequential(
-            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=0, batchnorm=batchnorm),
+            deconv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
             deconv_unit(1024, 1024, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(1024, 512, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(512, 256, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
@@ -48,7 +48,6 @@ class ComplexAutoEncoder(torch.nn.Module):
     def encode(self, x):
         code = self.cnn(x)
         print(code.shape)
-        code = code.view(code.shape[0], -1)
         code = self.fc_encoder(code)
         return code
 
