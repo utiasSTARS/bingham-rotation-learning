@@ -290,7 +290,7 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
     colors = ['tab:green', 'tab:red', 'tab:blue', 'black']
     width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=0.5), edgecolor=colors[i], linewidth=0.5)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=0.75), edgecolor=colors[i], linewidth=0.75)
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
@@ -308,15 +308,16 @@ def _plot_curve(ax, x, y, label, style):
     ax.plot(x, y,  style, linewidth=1., label=label)
     return
 
-def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None):
+def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None, legend=True):
     fig, ax = plt.subplots()
-    fig.set_size_inches(4,1.5)
+    fig.set_size_inches(2,1.5)
     ax.axvline(thresh, c='k', ls='--', label='Threshold')
     colors = ['tab:orange','grey']
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
         _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
-    ax.legend(loc='upper left')
+    if legend:
+        ax.legend(loc='upper left')
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
     ax.set_ylabel('rotation error (deg)')
     ax.set_xlabel(xlabel)
@@ -377,7 +378,8 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
     saved_data_file = 'saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     data = torch.load(saved_data_file)
     seqs = ['00', '02', '05']
-    quantiles = [0.25, 0.5, 0.75]
+    quantiles = [0.75, 0.5, 0.25]
+    print('Uncertainty metric: {}'.format(uncertainty_metric_fn.__name__))
     for s_i, seq in enumerate(seqs):
         _, (q_est, q_target) = data['data_quat'][s_i]
         mean_err_quat = quat_angle_diff(q_est, q_target)
@@ -398,7 +400,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
 
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
             
-            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
+            print('Quantile: {}. A (sym + Thresh): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
 
         
         _, (q_est, q_target) = data['data_quat_transformed'][s_i]
@@ -419,7 +421,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap):
             mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
             precision, recall = compute_prec_recall(A_train.numpy(), A_test.numpy(), quantile, uncertainty_metric_fn)
 
-            print('Quantile: {}. A (sym + WLLT): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
+            print('Quantile: {}. A (sym + Thresh): {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0], 100.*precision))
 
 def create_table_stats_6D():
     saved_data_file = 'saved_data/kitti/kitti_comparison_data_6Dvec_01-15-2020-16-19-36.pt'
@@ -579,7 +581,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             #Create scatter plot
             fig = _create_scatter_plot(thresh, 
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=True)
             output_file = 'plots/kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -608,7 +610,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             #Create scatter plot
             fig = _create_scatter_plot(thresh, 
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Validation', 'Training'], ylim=[1e-4, 5])
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=False)
             output_file = 'plots/kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -621,13 +623,13 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 
 
-    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) \n Thresh (q: {:.2F})'.format(quantile)]
+    bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.8])
     output_file = 'plots/kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
-    bar_labels = ['Quat', '6D', 'A (Sym)', 'A (Sym) \n Thresh (q: {:.2F})'.format(quantile)]
+    bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.8], legend=False)
     output_file = 'plots/kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     fig.savefig(output_file, bbox_inches='tight')
@@ -638,11 +640,11 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 if __name__=='__main__':
     #create_kitti_data()
     uncertainty_metric_fn = sum_bingham_dispersion_coeff
-    #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    create_bar_and_scatter_plots(output_scatter=False, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
+    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
     #create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     #create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
     #create_table_stats_6D()
-    print("=================")
-    create_table_stats(sum_bingham_dispersion_coeff)
+    # print("=================")
+    # create_table_stats(sum_bingham_dispersion_coeff)
