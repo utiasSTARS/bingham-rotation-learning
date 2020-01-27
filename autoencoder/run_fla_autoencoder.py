@@ -159,7 +159,7 @@ def main():
 
     
     #model = ConvAutoencoder().to(device=device, dtype=tensor_type)
-    model = ComplexAutoEncoder(dim_in=1, dim_latent=15).to(device=device, dtype=tensor_type)
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=15, dim_transition=30).to(device=device, dtype=tensor_type)
 
     loss_fn = torch.nn.L1Loss()
 
