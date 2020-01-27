@@ -59,9 +59,9 @@ def gen_sim_data(N_rotations, N_matches_per_rotation, sigma, angle_limits=[0, 18
 
 
 
-def test_discontinuity_unit_quat():
+def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
     tensor_type = torch.float64
-    angle_limits = [140.,160.]
+    angle_limits = [160., 179.]
     train_data, test_data = create_experiment(N_train=10, N_test=10, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
     model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     #optimizer = torch.optim.SGD(model.parameters(), lr=5e-4, momentum=0.99)
@@ -88,7 +88,7 @@ def test_discontinuity_unit_quat():
         optimizer.step()
         
         #Print unnormalized quaternions
-        #print(out)
+        print(out)
         
         #Final layer weights
         # model.final_layer.weight
@@ -104,7 +104,13 @@ def test_discontinuity_unit_quat():
 
         print('Epoch {}. Loss: {:.3F}. Mean angle err: {:.3F}'.format(i, loss.item(), mean_err))
     
-    
+    return model
 
 if __name__ == "__main__":
-    test_discontinuity_unit_quat()
+    t_min = 160.0
+    t_max = 179.0
+    model1 = test_discontinuity_unit_quat(angle_min=t_min, angle_max=t_max)
+
+    a1 = np.ones(3)/np.sqrt(3)
+    q1 = np.append(np.cos(np.pi*t_min/2./180.0), np.sin(np.pi*t_min/2./180.0)*a1)
+    
