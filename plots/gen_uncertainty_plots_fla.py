@@ -149,6 +149,10 @@ def sum_bingham_dispersion_coeff(A):
 def l2_norm(vecs):
     return np.linalg.norm(vecs, axis=1)
 
+#Used for autoencoder
+def l1_norm(l1_means):
+    return l1_means
+
 def decode_metric_name(uncertainty_metric_fn):
     if uncertainty_metric_fn == first_eig_gap:
         return 'First Eigenvalue Gap'
@@ -156,6 +160,8 @@ def decode_metric_name(uncertainty_metric_fn):
         return 'tr($\mathbf{\Lambda}$)'
     elif uncertainty_metric_fn == det_inertia_mat:
         return 'Det of Inertia Matrix (min eigvalue added)'
+    elif uncertainty_metric_fn == l1_norm:
+        return 'Average $L_1$ reconstruction error'
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -171,6 +177,9 @@ def compute_mask(A, uncertainty_metric_fn, thresh):
         return uncertainty_metric_fn(A) < thresh
     elif uncertainty_metric_fn == l2_norm:
         return uncertainty_metric_fn(A) > thresh
+    elif uncertainty_metric_fn == l1_norm:
+        return uncertainty_metric_fn(A) < thresh
+        
     else:
         raise ValueError('Unknown uncertainty metric')
 
@@ -413,6 +422,29 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
             
             print('Quantile: {}. A (sym + thresh): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
 
+
+
+def create_table_stats_autoenc(Asym_data_file, autoenc_data_file):
+    asym_data = torch.load(Asym_data_file)
+    quantiles = [0.25, 0.5, 0.75]
+    autoenc_data = torch.load(autoenc_data_file)
+    
+    for i in range(3):
+        (_, q_est, q_target) = asym_data['data_fla'][i+1]
+        mean_err_A = quat_angle_diff(q_est, q_target)
+        l1_meanst = autoenc_data['autoenc_l1_means'][0]
+
+        print('Total Pairs: {}.'.format(q_est.shape[0]))
+        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
+
+        for q_i, quantile in enumerate(quantiles):
+
+            thresh = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
+            l1_means = autoenc_data['autoenc_l1_means'][i+1]
+            mask = compute_mask(l1_means.numpy(), l1_norm, thresh)
+            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            
+            print('Quantile: {}. A (sym + autoenc): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
         
 
 
@@ -545,4 +577,8 @@ if __name__=='__main__':
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
 
-    create_fla_autoencoder_data()
+    #create_fla_autoencoder_data()
+
+    Asym_data_file = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
