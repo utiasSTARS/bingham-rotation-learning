@@ -36,7 +36,7 @@ def create_experiment(N_train=100, N_test=10, N_matches_per_sample=100, sigma=0.
     return train_data, test_data    
 
 
-def gen_sim_data(N_rotations, N_matches_per_rotation, sigma, angle_limits=[0, 180.], dtype=torch.double):
+def gen_sim_data(N_rotations, N_matches_per_rotation, sigma, angle_limits=[0., 180.], dtype=torch.double):
     ##Simulation
     #Create a random rotation
     axis = torch.randn(N_rotations, 3, dtype=dtype)
@@ -63,7 +63,7 @@ def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
     angle_limits = [angle_min, angle_max]
     N_train = 500
     mini_batch_size = 100
-    dynamic_data = False
+    dynamic_data = True
 
     model = PointNetInspect(dim_out=4, normalize_output=False, batchnorm=False).to(dtype=tensor_type)
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
@@ -117,14 +117,29 @@ def test_discontinuity_unit_quat(angle_min=160.0, angle_max=179.0):
 
     print(err)
     print(err_test)
-    return model
+    return model, train_data, test_data
+
+
+def visualize_pre_averaging(model, input):
+    alpha = model.pre_forward(input).numpy()
+    w_normalized = model1.final_layer.weight / model1.final_layer.weight.norm(dim=0, keepdim=True)
+    w_normalized = w_normalized.detach().numpy()
 
 
 if __name__ == "__main__":
-    t_min = 160.0
+    t_min = 90.0
     t_max = 179.0
-    model1 = test_discontinuity_unit_quat(angle_min=t_min, angle_max=t_max)
+    model1, train_data, test_data = test_discontinuity_unit_quat(angle_min=t_min, angle_max=t_max)
 
-    a1 = np.ones(3)/np.sqrt(3)
-    q1 = np.append(np.cos(np.pi*t_min/2./180.0), np.sin(np.pi*t_min/2./180.0)*a1)
 
+
+
+    # # Normalize the final layer weights
+    # w_normalized = model1.final_layer.weight/model1.final_layer.weight.norm(dim=0, keepdim=True)
+    # w_normalized = w_normalized.detach().numpy()
+    # # Look at the distribution of the angle parameter
+    # angles = 2.0*np.arccos(w_normalized[0, :])
+    # import matplotlib.pyplot as plt
+    # plt.figure()
+    # plt.hist(angles)
+    # plt.show()
