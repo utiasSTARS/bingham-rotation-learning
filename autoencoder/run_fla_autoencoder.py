@@ -24,7 +24,7 @@ class ComplexAutoEncoder(torch.nn.Module):
             conv_unit(1024, 1024, kernel_size=3, stride=2, padding=1, batchnorm=batchnorm),
         )
         self.fc_encoder = torch.nn.Sequential(
-            torch.nn.Linear(4096, dim_transition),
+            torch.nn.Linear(16384, dim_transition),
             torch.nn.PReLU(),
             torch.nn.Linear(dim_transition, dim_latent),
         )
@@ -32,7 +32,7 @@ class ComplexAutoEncoder(torch.nn.Module):
             torch.nn.PReLU(),
             torch.nn.Linear(dim_latent, dim_transition),
             torch.nn.PReLU(),
-            torch.nn.Linear(dim_transition, 4096)
+            torch.nn.Linear(dim_transition, 16384)
         )
         self.cnn_decode = torch.nn.Sequential(
             deconv_unit(1024, 1024, kernel_size=3, stride=1, padding=0, batchnorm=batchnorm),
@@ -161,7 +161,7 @@ def main():
 
     
     #model = ConvAutoencoder().to(device=device, dtype=tensor_type)
-    model = ComplexAutoEncoder(dim_in=1, dim_latent=15, dim_transition=30).to(device=device, dtype=tensor_type)
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=16, dim_transition=128).to(device=device, dtype=tensor_type)
 
     loss_fn = torch.nn.L1Loss()
 
