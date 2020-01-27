@@ -60,6 +60,8 @@ class ComplexAutoEncoder(torch.nn.Module):
     def forward(self, x):
         code = self.encode(x)
         out = self.decode(code)
+
+        print(out.shape)
         # if self.normalize_output:
         #     out = out / out.norm(dim=1).view(-1, 1)
         return out, code
