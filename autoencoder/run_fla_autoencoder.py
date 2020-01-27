@@ -187,7 +187,7 @@ def main():
     
     if args.save_model:
         saved_data_file_name = 'fla_autoencoder_model_{}_{}'.format(args.scene, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-        full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
+        full_saved_path = '../saved_data/fla/{}.pt'.format(saved_data_file_name)
         torch.save({
                 'train_dataset': train_dataset,
                 'model': model.state_dict(),
