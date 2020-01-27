@@ -111,6 +111,7 @@ def main():
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--megalith', action='store_true', default=False)
     parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='outdoor')
+    parser.add_argument('--save_model', action='store_true', default=False)
 
 
     parser.add_argument('--lr', type=float, default=5e-4)
@@ -145,18 +146,13 @@ def main():
             transforms.ToTensor(),
             normalize,
     ])
-    dim_in = 2
 
-    test_dataset = '../experiments/FLA/{}_test.csv'.format(args.scene)
+    #test_dataset = '../experiments/FLA/{}_test.csv'.format(args.scene)
     train_dataset = '../experiments/FLA/{}_train_reverse_False.csv'.format(args.scene)
 
     train_loader = DataLoader(FLADataset(train_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform),
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=False)
-
-    valid_loader = DataLoader(FLADataset(test_dataset, image_dir=image_dir, pose_dir=pose_dir, transform=transform, eval_mode=True),
-                            batch_size=args.batch_size_test, pin_memory=False,
-                            shuffle=False, num_workers=args.num_workers, drop_last=False)
 
     
     #model = ConvAutoencoder().to(device=device, dtype=tensor_type)
@@ -172,7 +168,6 @@ def main():
         #Train model
         model.train()
         train_loss = torch.tensor(0.)
-        train_mean_err = torch.tensor(0.)
         num_train_batches = len(train_loader)
 
         pbar = tqdm.tqdm(total=num_train_batches)
@@ -189,6 +184,16 @@ def main():
         
         output_string = 'Epoch: {}/{}. Train: Loss {:.3E}. Epoch time: {:.3f} sec.'.format(e+1, args.epochs, train_loss, elapsed_time)
         print(output_string)
+    
+    if args.save_model:
+        saved_data_file_name = 'fla_autoencoder_model_{}_{}'.format(args.scene, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = 'saved_data/fla/{}.pt'.format(saved_data_file_name)
+        torch.save({
+                'train_dataset': train_dataset,
+                'model': model.state_dict(),
+                'args': args,
+            }, full_saved_path)
+        print('Saved data to {}.'.format(full_saved_path))
 
 #Generic training function
 def train_autoenc(model, loss_fn, optimizer, img):
