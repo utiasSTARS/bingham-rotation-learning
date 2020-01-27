@@ -42,7 +42,7 @@ class ComplexAutoEncoder(torch.nn.Module):
             deconv_unit(512, 256, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(256, 128, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
             deconv_unit(128, 64, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm),
-            deconv_unit(64, dim_in, kernel_size=2, stride=2, padding=0, batchnorm=batchnorm)
+            deconv_unit(64, dim_in, kernel_size=3, stride=2, padding=0, batchnorm=batchnorm)
         )
 
     def encode(self, x):
