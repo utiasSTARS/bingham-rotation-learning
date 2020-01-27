@@ -61,7 +61,7 @@ def gen_sim_data(N_rotations, N_matches_per_rotation, sigma, angle_limits=[0, 18
 
 def test_discontinuity_unit_quat():
     tensor_type = torch.float32
-    angle_limits = [175.,180.]
+    angle_limits = [179.,180.]
     N_train = 500
     mini_batch_size = 100
     dynamic_data = False
@@ -77,7 +77,7 @@ def test_discontinuity_unit_quat():
     num_train_batches = N_train // mini_batch_size
 
     if not dynamic_data:
-        train_data, test_data = create_experiment(N_train=N_train, N_test=25, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
+        train_data, test_data = create_experiment(N_train=N_train, N_test=500, sigma=0.01, angle_limits=angle_limits, dtype=tensor_type)
 
     for e in range(100):
         if dynamic_data:
@@ -112,7 +112,7 @@ def test_discontinuity_unit_quat():
         x_test = test_data.x
         q_test = model.forward(x_test)
         q_test = q_test/q_test.norm(dim=1, keepdim=True)
-        mean_err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
+        err_test = quat_angle_diff(q_test, test_data.q, reduce=False)
 
         #Penultimate outputs ('alpha_i's)
         #alpha = model.pre_forward(x_test)
@@ -120,11 +120,11 @@ def test_discontinuity_unit_quat():
         q_train = model.forward(train_data.x)
         q_train = q_train/q_train.norm(dim=1, keepdim=True)
         loss = loss_fn(q_train, train_data.q)
-        mean_err = quat_angle_diff(q_train, train_data.q, reduce=False)
-        print('Epoch {}. Loss: {:.3F}. Mean err (Train/Test): {:.3F} / {:.3F}'.format(e, loss.item(), mean_err.mean(),mean_err_test.mean()))
+        err = quat_angle_diff(q_train, train_data.q, reduce=False)
+        print('Epoch {}. Loss: {:.3F}. Mean err (Train/Test): {:.3F} / {:.3F} | Max err: {:.3F} / {:.3F}'.format(e, loss.item(), err.mean(),err_test.mean(), err.max(), err_test.max()))
 
-    print(mean_err)
-    
+    print(err)
+    print(err_test)
 
 if __name__ == "__main__":
     test_discontinuity_unit_quat()
