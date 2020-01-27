@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import sys
 sys.path.insert(0,'..')
-from loaders import FLADataset
+from loaders import KITTIVODatasetPreTransformed
 from networks import *
 from losses import *
 from torch.utils.data import Dataset, DataLoader
@@ -23,12 +23,12 @@ def main():
     parser.add_argument('--cuda', action='store_true', default=False)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--megalith', action='store_true', default=False)
-    parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='outdoor')
     parser.add_argument('--save_model', action='store_true', default=False)
 
 
     parser.add_argument('--dim_latent', type=int, default=16)
     parser.add_argument('--dim_transition', type=int, default=128)
+    parser.add_argument('--seq', choices=['00', '02', '05'], default='00')
 
     parser.add_argument('--lr', type=float, default=5e-4)
 
@@ -38,6 +38,7 @@ def main():
 
     #Float or Double?
     tensor_type = torch.float
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
 
 
     transform = None
@@ -47,8 +48,7 @@ def main():
 
     seq_prefix = 'seq_'
 
-    #kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_2_reverse_True_min_turn_1.0.pickle'.format(args.seq)
-    kitti_data_pickle_file = 'kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_True_minta_0.0.pickle'.format(args.seq)
+    kitti_data_pickle_file = '../experiments/kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_False_min_turn_0.0.pickle'.format(args.seq)
     
     train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=False, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_train, pin_memory=False,
@@ -84,10 +84,10 @@ def main():
         print(output_string)
     
     if args.save_model:
-        saved_data_file_name = 'fla_autoencoder_model_{}_{}'.format(args.scene, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-        full_saved_path = '../saved_data/fla/{}.pt'.format(saved_data_file_name)
+        saved_data_file_name = 'kitti_autoencoder_seq_{}_{}'.format(args.seq, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+        full_saved_path = '../saved_data/kitti/{}.pt'.format(saved_data_file_name)
         torch.save({
-                'train_dataset': train_dataset,
+                'kitti_data_pickle_file': kitti_data_pickle_file,
                 'model': model.state_dict(),
                 'args': args,
             }, full_saved_path)
