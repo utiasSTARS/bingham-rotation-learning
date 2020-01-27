@@ -47,6 +47,7 @@ class ComplexAutoEncoder(torch.nn.Module):
 
     def encode(self, x):
         code = self.cnn(x)
+        print(code.shape)
         code = code.view(code.shape[0], -1)
         code = self.fc_encoder(code)
         return code
