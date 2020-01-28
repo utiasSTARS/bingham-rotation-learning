@@ -198,7 +198,8 @@ def create_fla_data():
     print('Collecting data....')
     base_dir = '../saved_data/fla/'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
-    file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
+    #file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
+    file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-48-46.pt'
     file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
     
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
@@ -378,7 +379,7 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
-    quantile = 0.75
+    quantile = 0.5
     (A_train, _, _)  = asym_data['data_A'][0]
 
     autoenc_data = torch.load(autoenc_data_file)
@@ -473,7 +474,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     data = torch.load(data_file)
     
     (A_predt, q_estt, q_targett) = data['data_A'][0]
-    (A_pred, q_est, q_target) = data['data_A'][1]
+    (A_pred, q_est, q_target) = data['data_A'][-1]
 
     thresh = compute_threshold(A_predt.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
     mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
@@ -601,7 +602,8 @@ if __name__=='__main__':
 
     #create_fla_autoencoder_data()
 
-    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
+    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-44-44.pt'
     # autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    # create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
     # create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
     # create_bar_autoenc(models_data_file, autoenc_data_file)
