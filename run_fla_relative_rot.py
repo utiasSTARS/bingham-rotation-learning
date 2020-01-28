@@ -30,7 +30,7 @@ def main():
     parser.add_argument('--unit_frob', action='store_true', default=False)
     parser.add_argument('--save_model', action='store_true', default=False)
     parser.add_argument('--enforce_psd', action='store_true', default=False)
-    parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='indoor')
+    parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='outdoor')
 
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
     parser.add_argument('--lr', type=float, default=5e-4)
