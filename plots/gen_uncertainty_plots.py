@@ -89,6 +89,24 @@ def evaluate_A_model(loader, model, device, tensor_type):
     
     return (A_pred, q_est, q_target)
 
+def evaluate_autoenc(loader, model, device, tensor_type):
+    l1_means = []
+    loss_fn = torch.nn.L1Loss(reduction='none')
+    with torch.no_grad():
+        model.eval()
+        print('Evaluating Auto Encoder model...')
+        for _, (imgs, _) in enumerate(loader):
+            #Move all data to appropriate device
+            img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
+            img_out, code = model.forward(img)
+            losses = loss_fn(img_out, img) #Bx1x224x224
+            losses = losses.mean(dim=(1,2,3))
+            l1_means.append(losses.cpu())
+            
+    l1_means = torch.cat(l1_means, dim=0)
+    
+    return l1_means
+
 def wigner_log_likelihood_measure(A, reduce=False):
     el, _ = np.linalg.eig(A)
     el.sort(axis=1)
@@ -216,6 +234,59 @@ def collect_errors(saved_file, validation_transform=None):
         six_vect, q_estt, q_targett = evaluate_6D_model(train_loader, model, device, tensor_type)
         six_vec, q_est, q_target = evaluate_6D_model(valid_loader, model, device, tensor_type)
         return ((six_vect, q_estt, q_targett), (six_vec, q_est, q_target))
+
+def collect_autoencoder_stats(saved_file):
+    checkpoint = torch.load(saved_file)
+    args = checkpoint['args']
+    print(args)
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.float
+    transform = None
+    seqs_base_path = '/media/m2-drive/datasets/KITTI/single_files'
+    if args.megalith:
+        seqs_base_path = '/media/datasets/KITTI/single_files'
+
+    seq_prefix = 'seq_'
+
+    kitti_data_pickle_file = '../experiments/kitti/kitti_singlefile_data_sequence_{}_delta_1_reverse_False_min_turn_0.0.pickle'.format(args.seq)
+
+
+    train_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=False, seqs_base_path=seqs_base_path, transform_img=transform, run_type='train', seq_prefix=seq_prefix),
+                            batch_size=args.batch_size_train, pin_memory=False,
+                            shuffle=True, num_workers=args.num_workers, drop_last=True)
+
+    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=False, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
+                            batch_size=args.batch_size_test, pin_memory=False,
+                            shuffle=False, num_workers=args.num_workers, drop_last=False)
+
+    model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
+    model.load_state_dict(checkpoint['model'], strict=False)
+    l1_meanst = evaluate_autoenc(train_loader, model, device, tensor_type)
+    l1_means = evaluate_autoenc(valid_loader, model, device, tensor_type)
+    return (l1_meanst, l1_means)
+
+def create_kitti_autoencoder_data():
+
+    print('Collecting KITTI autoencoder data....')
+    base_dir = '../saved_data/kitti/'
+    file_list = ['kitti_autoencoder_seq_00_01-27-2020-18-20-26.pt', 'kitti_autoencoder_seq_02_01-27-2020-18-37-21.pt', 'kitti_autoencoder_seq_05_01-27-2020-18-56-11.pt']
+    seqs = ['00','02', '05']
+    autoenc_l1_means = []
+    for file in file_list:
+        autoenc_l1_means.append(collect_autoencoder_stats(base_dir+file))
+
+    saved_data_file_name = 'processed_autoenc_3seqs_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    full_saved_path = '../saved_data/kitti/{}'.format(saved_data_file_name)
+
+    torch.save({
+                'file_list': file_list,
+                'seqs': seqs,
+                'autoenc_l1_means': autoenc_l1_means
+    }, full_saved_path)
+
+    print('Saved data to {}.'.format(full_saved_path))
+
+    return full_saved_path
 
 def create_kitti_data():
 
@@ -640,12 +711,13 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 if __name__=='__main__':
     #create_kitti_data()
-    uncertainty_metric_fn = sum_bingham_dispersion_coeff
-    create_bar_and_scatter_plots(output_scatter=False, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
-    create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
-    create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
+    # uncertainty_metric_fn = sum_bingham_dispersion_coeff
+    # create_bar_and_scatter_plots(output_scatter=False, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
+    # create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
+    # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
+    create_kitti_autoencoder_data()
     #create_table_stats_6D()
     # print("=================")
     # create_table_stats(sum_bingham_dispersion_coeff)
