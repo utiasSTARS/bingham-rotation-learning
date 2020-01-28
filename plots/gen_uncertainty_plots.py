@@ -18,7 +18,7 @@ from datetime import datetime
 from convex_layers import *
 from torch.utils.data import Dataset, DataLoader
 from loaders import KITTIVODatasetPreTransformed
-
+from metrics import *
 
 def evaluate_model(loader, model, device, tensor_type, rotmat_output=False):
     q_est = []
@@ -107,68 +107,6 @@ def evaluate_autoenc(loader, model, device, tensor_type):
     
     return l1_means
 
-def wigner_log_likelihood_measure(A, reduce=False):
-    el, _ = np.linalg.eig(A)
-    el.sort(axis=1)
-    spacings = np.diff(el, axis=1)
-    lls = np.log(spacings) - 0.25*np.pi*(spacings**2)
-    if reduce:
-        return np.sum(lls, axis=1).mean()
-    else:
-        return np.sum(lls, axis=1)
-
-
-def first_eig_gap(A):
-    el = np.linalg.eigvalsh(A)
-    spacings = np.diff(el, axis=1)
-    return spacings[:, 0] 
-
-def det_inertia_mat(A):
-    #A_inertia = -A
-    
-    els = np.linalg.eigvalsh(A)
-
-    els = els[:, 1:] + els[:, 0, None] 
-    # min_el = els[:,0]
-    # I = np.repeat(np.eye(4).reshape(1,4,4), A_inertia.shape[0], axis=0)
-    # A_inertia = A_inertia + I*min_el[:,None,None]
-
-    return els[:,0]*els[:,1]*els[:,2] #np.linalg.det(A_inertia)
-
-def sum_bingham_dispersion_coeff(A):
-    if len(A.shape) == 2:
-        A = A.reshape(1,4,4)
-    els = np.linalg.eigvalsh(A)
-    min_el = els[:,0]
-    I = np.repeat(np.eye(4).reshape(1,4,4), A.shape[0], axis=0)
-    return np.trace(-A + I*min_el[:,None,None], axis1=1, axis2=2)
-
-   
-def l2_norm(vecs):
-    return np.linalg.norm(vecs, axis=1)
-
-def decode_metric_name(uncertainty_metric_fn):
-    if uncertainty_metric_fn == first_eig_gap:
-        return 'First Eigenvalue Gap'
-    elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
-        return 'tr($\mathbf{\Lambda}$)'
-    else:
-        raise ValueError('Unknown uncertainty metric')
-
-def compute_threshold(A, uncertainty_metric_fn=first_eig_gap, quantile=0.75):
-    #stats = wigner_log_likelihood(A)
-    stats = uncertainty_metric_fn(A)
-    return np.quantile(stats, quantile)
-
-def compute_mask(A, uncertainty_metric_fn, thresh):
-    if uncertainty_metric_fn == first_eig_gap:
-        return uncertainty_metric_fn(A) > thresh
-    elif uncertainty_metric_fn == sum_bingham_dispersion_coeff:
-        return uncertainty_metric_fn(A) < thresh
-    elif uncertainty_metric_fn == l2_norm:
-        return uncertainty_metric_fn(A) > thresh
-    else:
-        raise ValueError('Unknown uncertainty metric')
 
 def collect_vo_errors(saved_file):
     checkpoint = torch.load(saved_file)
@@ -275,7 +213,7 @@ def create_kitti_autoencoder_data():
     for file in file_list:
         autoenc_l1_means.append(collect_autoencoder_stats(base_dir+file))
 
-    saved_data_file_name = 'processed_autoenc_3seqs_{}'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    saved_data_file_name = 'processed_autoenc_3seqs_{}.pt'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = '../saved_data/kitti/{}'.format(saved_data_file_name)
 
     torch.save({
@@ -287,6 +225,59 @@ def create_kitti_autoencoder_data():
     print('Saved data to {}.'.format(full_saved_path))
 
     return full_saved_path
+
+
+def create_bar_autoenc(Asym_data_file, autoenc_data_file):
+
+    asym_data = torch.load(Asym_data_file)
+    autoenc_data = torch.load(autoenc_data_file)
+    quantile_ae = 0.95
+    quantile_dt = 0.75
+
+    
+    mean_err_A = []
+    mean_err_ae = []
+    mean_err_dt = []
+    mean_err_dual = []
+
+    for i in range(3):
+
+        (A_train, _, _)  = asym_data['data_A'][i][0]
+
+        l1_meanst = autoenc_data['autoenc_l1_means'][i][0]
+
+
+        
+        
+        (A_test, q_est, q_target) = asym_data['data_A'][i][1]
+        mean_err_A.append(quat_angle_diff(q_est, q_target))
+
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
+        l1_means = autoenc_data['autoenc_l1_means'][i][1]
+
+        mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+
+        print(mask_ae.sum())
+        print(l1_meanst.mean())
+        print(l1_means.mean())
+        
+        mean_err_ae.append(quat_angle_diff(q_est[mask_ae], q_target[mask_ae]))
+        
+        thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile_dt)
+        mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
+        
+        mean_err_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
+
+        mask_dual = mask_ae & mask_dt
+        mean_err_dual.append(quat_angle_diff(q_est[mask_dual], q_target[mask_dual]))
+
+    dataset_names = ['00', '02', '05']
+    bar_labels = ['A', 'A + DT', 'A + AE', 'A + AE + DT']
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_A, mean_err_dt, mean_err_ae, mean_err_dual], ylim=[0,0.4], xlabel='KITTI Dataset')
+    output_file = 'kitti_autoenc_errors_bar.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+    print('Outputted {}.'.format(output_file))
 
 def create_kitti_data():
 
@@ -717,7 +708,12 @@ if __name__=='__main__':
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
-    create_kitti_autoencoder_data()
+    #create_kitti_autoencoder_data()
+
+    Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_01-27-2020-19-19-18.pt'
+    create_bar_autoenc(Asym_data_file, autoenc_data_file)
+
     #create_table_stats_6D()
     # print("=================")
     # create_table_stats(sum_bingham_dispersion_coeff)
