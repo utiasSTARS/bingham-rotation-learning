@@ -240,7 +240,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
     autoenc_data = torch.load(autoenc_data_file)
-    quantile_ae = 0.75
+    quantile_ae = 0.95
     quantile_dt = 0.75
 
     
@@ -749,11 +749,11 @@ if __name__=='__main__':
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
-    create_kitti_autoencoder_data()
+    #create_kitti_autoencoder_data()
 
-    # Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
-    # autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-20-29-35.pt'
-    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-23-34-30.pt'
+    create_bar_autoenc(Asym_data_file, autoenc_data_file)
 
     #create_table_stats_6D()
     # print("=================")
