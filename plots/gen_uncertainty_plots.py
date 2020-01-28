@@ -6,6 +6,7 @@ matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 import matplotlib.pyplot as plt
+plt.rc('axes', axisbelow=True)
 import matplotlib.ticker as mtick
 from matplotlib.colors import to_rgba
 import sys
@@ -236,11 +237,45 @@ def create_kitti_autoencoder_data():
     return full_saved_path
 
 
+def create_table_stats_autoenc(Asym_data_file, autoenc_data_file):
+    asym_data = torch.load(Asym_data_file)
+    autoenc_data = torch.load(autoenc_data_file)
+    seqs = ['00', '02', '05']
+    quantile_ae = 1.0
+    for i in range(3):
+        l1_meanst = autoenc_data['autoenc_l1_means'][i][0]
+        (q_est_6D, q_target_6D) = asym_data['data_6D'][i][1]
+
+        mean_err_6D =  quat_angle_diff(q_est_6D, q_target_6D)
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
+        l1_means = autoenc_data['autoenc_l1_means'][i][1]
+        mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+
+        mean_err_6D_ae = quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae])
+        precision, recall = compute_prec_recall(l1_meanst.numpy(), l1_means.numpy(), quantile_ae, l1_norm)
+
+        print('Seq {} 6D err: {:.2F} | 6D + AE (q: {}) err: {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(seqs[i], mean_err_6D, quantile_ae, mean_err_6D_ae, 100.*mask_ae.sum()/mask_ae.shape[0], 100.*precision))
+
+    for i in range(3):
+        l1_meanst = autoenc_data['autoenc_l1_means'][i][0]
+        (q_est_6D, q_target_6D) = asym_data['data_6D_transformed'][i][1]
+
+        mean_err_6D =  quat_angle_diff(q_est_6D, q_target_6D)
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
+        l1_means = autoenc_data['autoenc_l1_means_corrupted'][i][1]
+        mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+        mean_err_6D_ae = quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae])
+
+
+        precision, recall = compute_prec_recall(l1_meanst.numpy(), l1_means.numpy(), quantile_ae, l1_norm)
+
+        print('Seq {} CORRUPT 6D err: {:.2F} | 6D + AE (q: {}) err: {:.2F} | Kept: {:.1F}% | Precision: {:.2F}'.format(seqs[i],mean_err_6D, quantile_ae, mean_err_6D_ae, 100.*mask_ae.sum()/mask_ae.shape[0], 100.*precision))
+
 def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
     autoenc_data = torch.load(autoenc_data_file)
-    quantile_ae = 0.95
+    quantile_ae = 1.0
     quantile_dt = 0.75
 
     
@@ -393,10 +428,11 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
-    colors = ['tab:green', 'tab:red', 'tab:blue', 'black']
+    colors = ['tab:red', 'tab:blue', 'tab:red', 'tab:blue']
+    alpha = [1.,1.,0.5,0.5]
     width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=0.75), edgecolor=colors[i], linewidth=0.75)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=alpha[i]), linewidth=0.75)
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
@@ -754,7 +790,7 @@ if __name__=='__main__':
     Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-23-34-30.pt'
     create_bar_autoenc(Asym_data_file, autoenc_data_file)
-
+    create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
     #create_table_stats_6D()
     # print("=================")
     # create_table_stats(sum_bingham_dispersion_coeff)
