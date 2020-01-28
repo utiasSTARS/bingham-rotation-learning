@@ -13,8 +13,8 @@ from helpers_train_test import train_test_model
 
 
 def main():
-    parser = argparse.ArgumentParser(description='KITTI relative odometry experiment')
-    parser.add_argument('--epochs', type=int, default=10)
+    parser = argparse.ArgumentParser(description='FLA relative odometry experiment')
+    parser.add_argument('--epochs', type=int, default=25)
 
     parser.add_argument('--batch_size_test', type=int, default=64)
     parser.add_argument('--batch_size_train', type=int, default=32)
