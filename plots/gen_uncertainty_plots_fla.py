@@ -181,17 +181,23 @@ def create_fla_data():
 
     print('Collecting data....')
     base_dir = '../saved_data/fla/'
-    file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
+    file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
+    
+    #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
 
-    data_fla = collect_errors(base_dir+file_fla)
+    data_A = collect_errors(base_dir+file_A)
+    data_6D = collect_errors(base_dir+file_6D)
 
-    saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
+    saved_data_file_name = 'processed_3tests_6DAsym_outdoor_{}.pt'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = '../saved_data/fla/{}'.format(saved_data_file_name)
 
     torch.save({
-                'file_fla': file_fla,
-                'data_fla': data_fla
+                'file_A': file_A,
+                'file_6D': file_6D,
+                'data_A': data_A,
+                'data_6D': data_6D
     }, full_saved_path)
 
     print('Saved data to {}.'.format(full_saved_path))
@@ -263,7 +269,7 @@ def create_fla_autoencoder_data():
     print('Collecting autoencoder data....')
     base_dir = '../saved_data/fla/'
     file_fla = 'fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
-
+    
     autoenc_l1_means = collect_autoencoder_stats(base_dir+file_fla)
 
     saved_data_file_name = 'processed_3tests_{}'.format(file_fla)
@@ -566,7 +572,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    #create_fla_data()
+    create_fla_data()
 
     #full_saved_path = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
