@@ -200,7 +200,7 @@ def create_fla_data():
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
     file_A = 'fla_model_outdoor_A_sym_01-28-2020-02-00-11.pt'
-    file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
+    file_6D = 'fla_model_outdoor_A_sym_01-28-2020-02-24-26.pt'
     
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
@@ -311,17 +311,18 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
-    colors = ['tab:green', 'tab:red', 'tab:blue', 'black']
+    colors = ['tab:red', 'tab:blue', 'tab:red', 'tab:blue']
+    alpha = [1.,1.,0.5,0.5]
     width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=0.5), edgecolor=colors[i], linewidth=0.5)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=alpha[i]), linewidth=0.75)
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
     ax.set_xlabel(xlabel)
     ax.set_ylim(ylim)
     if legend:
-        ax.legend(loc='upper left', fontsize = 8)
+        ax.legend(loc='upper right', fontsize = 8)
     return fig
 
 def _scatter(ax, x, y, title, color='tab:red', marker=".", size =4, rasterized=False):
@@ -379,42 +380,49 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
-    quantile = 0.5
-    (A_train, _, _)  = asym_data['data_A'][0]
-
     autoenc_data = torch.load(autoenc_data_file)
-    l1_meanst = autoenc_data['autoenc_l1_means'][0]
-   
+    quantile_ae = 1.0
+    quantile_dt = 0.5
     
     mean_err_A = []
-    mean_err_ae = []
-    mean_err_dt = []
-    mean_err_dual = []
+    mean_err_A_dt = []
+    mean_err_6D = []
+    mean_err_6D_ae = []
+
+    (A_train, _, _)  = asym_data['data_A'][0]
+    l1_meanst = autoenc_data['autoenc_l1_means'][0]
 
     for i in range(3):
-        (A_test, q_est, q_target) = asym_data['data_A'][i+1]
-        mean_err_A.append(quat_angle_diff(q_est, q_target))
 
-        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
+
+        
+        (A_test, q_est, q_target) = asym_data['data_A'][i+1]
+        (_, q_est_6D, q_target_6D) = asym_data['data_6D'][i+1]
+
+        mean_err_A.append(quat_angle_diff(q_est, q_target))
+        mean_err_6D.append(quat_angle_diff(q_est_6D, q_target_6D))
+
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
         l1_means = autoenc_data['autoenc_l1_means'][i+1]
         mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
-        mean_err_ae.append(quat_angle_diff(q_est[mask_ae], q_target[mask_ae]))
+
+        mean_err_6D_ae.append(quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae]))
         
-        thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile)
+        thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile_dt)
         mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
         
-        mean_err_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
+        mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
 
-        mask_dual = mask_ae & mask_dt
-        mean_err_dual.append(quat_angle_diff(q_est[mask_dual], q_target[mask_dual]))
 
     dataset_names = ['O', 'O+I', 'O+I+T']
-    bar_labels = ['A', 'A + DT', 'A + AE', 'A + AE + DT']
-    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_A, mean_err_dt, mean_err_ae, mean_err_dual], ylim=[0,1.1], xlabel='MAV Dataset')
+    bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1.0], xlabel='MAV Dataset')
     output_file = 'fla_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
     print('Outputted {}.'.format(output_file))
+
+
 
 def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=True):
     asym_data = torch.load(Asym_data_file)
@@ -590,7 +598,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    #create_fla_data()
+    create_fla_data()
 
     #full_saved_path = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
@@ -602,8 +610,8 @@ if __name__=='__main__':
 
     #create_fla_autoencoder_data()
 
-    models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-01-49.pt'
-    autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
-    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
-    create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
-    create_bar_autoenc(models_data_file, autoenc_data_file)
+    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-01-49.pt'
+    # autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    # create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
+    # create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
+    # create_bar_autoenc(models_data_file, autoenc_data_file)
