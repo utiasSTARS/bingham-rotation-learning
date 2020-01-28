@@ -177,11 +177,28 @@ def collect_errors(saved_file):
         A_pred3, q_est3, q_target3 = evaluate_A_model(valid_loader3, model, device, tensor_type)
         return ((A_predt, q_estt, q_targett), (A_pred1, q_est1, q_target1), (A_pred2, q_est2, q_target2), (A_pred3, q_est3, q_target3))
 
+    elif args.model == '6D':
+        model = RotMat6DFlowNet(dim_in=dim_in, batchnorm=args.batchnorm).to(device=device, dtype=tensor_type)
+        model.load_state_dict(checkpoint['model'], strict=False)
+
+        train_loader.dataset.rotmat_targets = True
+        six_vect, q_estt, q_targett = evaluate_6D_model(train_loader, model, device, tensor_type)
+        valid_loader1.dataset.rotmat_targets = True
+        six_vec1, q_est1, q_target1 = evaluate_6D_model(valid_loader1, model, device, tensor_type)
+        valid_loader2.dataset.rotmat_targets = True
+        six_vec2, q_est2, q_target2 = evaluate_6D_model(valid_loader2, model, device, tensor_type)
+        valid_loader3.dataset.rotmat_targets = True
+        six_vec3, q_est3, q_target3 = evaluate_6D_model(valid_loader3, model, device, tensor_type)
+        
+        return ((six_vect, q_estt, q_targett), (six_vec1, q_est1, q_target1), (six_vec2, q_est2, q_target2), (six_vec3, q_est3, q_target3))
+    else:
+        raise ValueError('Unsupported model type.')
 def create_fla_data():
 
     print('Collecting data....')
     base_dir = '../saved_data/fla/'
-    file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
+    #file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
+    file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
     file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
     
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
@@ -361,9 +378,8 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
-    quantile = 0.5
-
-    (A_train, _, _)  = asym_data['data_fla'][0]
+    quantile = 0.75
+    (A_train, _, _)  = asym_data['data_A'][0]
 
     autoenc_data = torch.load(autoenc_data_file)
     l1_meanst = autoenc_data['autoenc_l1_means'][0]
@@ -375,7 +391,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     mean_err_dual = []
 
     for i in range(3):
-        (A_test, q_est, q_target) = asym_data['data_fla'][i+1]
+        (A_test, q_est, q_target) = asym_data['data_A'][i+1]
         mean_err_A.append(quat_angle_diff(q_est, q_target))
 
         thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
@@ -399,11 +415,11 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     plt.close(fig)
     print('Outputted {}.'.format(output_file))
 
-def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=False, bar=True):
+def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=True):
     asym_data = torch.load(Asym_data_file)
     quantiles = [0.25, 0.5, 0.75]
 
-    (A_train, _, _)  = asym_data['data_fla'][0]
+    (A_train, _, _)  = asym_data['data_A'][0]
 
     autoenc_data = torch.load(autoenc_data_file)
     l1_meanst = autoenc_data['autoenc_l1_means'][0]
@@ -411,7 +427,7 @@ def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=
 
 
     for i in range(3):
-        (A_test, q_est, q_target) = asym_data['data_fla'][i+1]
+        (A_test, q_est, q_target) = asym_data['data_A'][i+1]
         mean_err_A = quat_angle_diff(q_est, q_target)
 
         print('Total Pairs: {}.'.format(q_est.shape[0]))
@@ -439,11 +455,11 @@ def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=
             
     
     if scatter:
-        (_, q_estt, q_targett) = asym_data['data_fla'][0]
+        (_, q_estt, q_targett) = asym_data['data_A'][0]
         #Account for reversing
         q_estt = q_estt[:int(q_estt.shape[0]/2)]
         q_targett = q_targett[:int(q_targett.shape[0]/2)]
-        fig = _create_scatter_plot(thresh, 
+        fig = _create_scatter_plot(thresh_ae, 
         [l1_means.numpy(), l1_meanst.numpy()],
         [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(l1_norm),labels=['Validation', 'Training'], ylim=[1e-4, 5])
         
@@ -453,10 +469,11 @@ def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=
         plt.close(fig)
 
 
-def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
+def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.75, data_file=None):
     data = torch.load(data_file)
     
-    (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_fla']
+    (A_predt, q_estt, q_targett) = data['data_A'][0]
+    (A_pred, q_est, q_target) = data['data_A'][1]
 
     thresh = compute_threshold(A_predt.numpy(), uncertainty_metric_fn=uncertainty_metric_fn, quantile=quantile)
     mask = compute_mask(A_pred.numpy(), uncertainty_metric_fn, thresh)
@@ -574,18 +591,17 @@ def create_video(full_data_file=None):
 if __name__=='__main__':
     create_fla_data()
 
-    #full_saved_path = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    #full_saved_path = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
-    
     #full_saved_path = '../saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
     #full_saved_path = '../saved_data/fla/processed_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
-    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=full_saved_path)
+    #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.75, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
 
     #create_fla_autoencoder_data()
 
-    # Asym_data_file = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
+    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
     # autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
-    # create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file)
-    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    # create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
+    # create_bar_autoenc(models_data_file, autoenc_data_file)
