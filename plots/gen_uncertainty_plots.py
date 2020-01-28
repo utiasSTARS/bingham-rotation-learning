@@ -249,6 +249,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     mean_err_6D = []
     mean_err_6D_ae = []
 
+
     for i in range(3):
 
         (A_train, _, _)  = asym_data['data_A'][i][0]
@@ -277,6 +278,44 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
     fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='KITTI Dataset')
     output_file = 'kitti_autoenc_errors_bar.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+    print('Outputted {}.'.format(output_file))
+
+    #====================CORRUPTED==================
+    mean_err_A = []
+    mean_err_A_dt = []
+    mean_err_6D = []
+    mean_err_6D_ae = []
+
+    for i in range(3):
+
+        (A_train, _, _)  = asym_data['data_A'][i][0]
+
+        l1_meanst = autoenc_data['autoenc_l1_means'][i][0]
+        
+        (A_test, q_est, q_target) = asym_data['data_A_transformed'][i][1]
+        (q_est_6D, q_target_6D) = asym_data['data_6D_transformed'][i][1]
+
+        mean_err_A.append(quat_angle_diff(q_est, q_target))
+        mean_err_6D.append(quat_angle_diff(q_est_6D, q_target_6D))
+
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
+        l1_means = autoenc_data['autoenc_l1_means_corrupted'][i][1]
+        mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+
+        mean_err_6D_ae.append(quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae]))
+        
+        thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile_dt)
+        mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
+        
+        mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
+
+
+    dataset_names = ['00', '02', '05']
+    bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1.5], xlabel='KITTI Dataset')
+    output_file = 'kitti_autoenc_errors_corrupted_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
     print('Outputted {}.'.format(output_file))
@@ -710,11 +749,11 @@ if __name__=='__main__':
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
-    create_kitti_autoencoder_data()
+    #create_kitti_autoencoder_data()
 
-    # Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
-    # autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_01-27-2020-19-19-18.pt'
-    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-20-29-35.pt'
+    create_bar_autoenc(Asym_data_file, autoenc_data_file)
 
     #create_table_stats_6D()
     # print("=================")
