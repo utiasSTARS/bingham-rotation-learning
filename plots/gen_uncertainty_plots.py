@@ -173,7 +173,7 @@ def collect_errors(saved_file, validation_transform=None):
         six_vec, q_est, q_target = evaluate_6D_model(valid_loader, model, device, tensor_type)
         return ((six_vect, q_estt, q_targett), (six_vec, q_est, q_target))
 
-def collect_autoencoder_stats(saved_file):
+def collect_autoencoder_stats(saved_file, validation_transform=None):
     checkpoint = torch.load(saved_file)
     args = checkpoint['args']
     print(args)
@@ -193,7 +193,7 @@ def collect_autoencoder_stats(saved_file):
                             batch_size=args.batch_size_train, pin_memory=False,
                             shuffle=True, num_workers=args.num_workers, drop_last=True)
 
-    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=False, seqs_base_path=seqs_base_path, transform_img=transform, run_type='test', seq_prefix=seq_prefix),
+    valid_loader = DataLoader(KITTIVODatasetPreTransformed(kitti_data_pickle_file, use_flow=False, seqs_base_path=seqs_base_path, transform_second_half_only=True, transform_img=validation_transform, run_type='test', seq_prefix=seq_prefix),
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
@@ -210,16 +210,25 @@ def create_kitti_autoencoder_data():
     file_list = ['kitti_autoencoder_seq_00_01-27-2020-18-20-26.pt', 'kitti_autoencoder_seq_02_01-27-2020-18-37-21.pt', 'kitti_autoencoder_seq_05_01-27-2020-18-56-11.pt']
     seqs = ['00','02', '05']
     autoenc_l1_means = []
+    autoenc_l1_means_corrupted = []
+    
     for file in file_list:
         autoenc_l1_means.append(collect_autoencoder_stats(base_dir+file))
 
-    saved_data_file_name = 'processed_autoenc_3seqs_{}.pt'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    transform = torchvision.transforms.RandomErasing(p=1, scale=(0.25, 0.5), ratio=(0.33, 3))
+
+    for file in file_list:
+        autoenc_l1_means_corrupted.append(collect_autoencoder_stats(base_dir+file, validation_transform=transform))
+
+
+    saved_data_file_name = 'processed_autoenc_3seqs_withcorrupted_{}.pt'.format(datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
     full_saved_path = '../saved_data/kitti/{}'.format(saved_data_file_name)
 
     torch.save({
                 'file_list': file_list,
                 'seqs': seqs,
-                'autoenc_l1_means': autoenc_l1_means
+                'autoenc_l1_means': autoenc_l1_means,
+                'autoenc_l1_means_corrupted': autoenc_l1_means_corrupted
     }, full_saved_path)
 
     print('Saved data to {}.'.format(full_saved_path))
@@ -231,49 +240,42 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     asym_data = torch.load(Asym_data_file)
     autoenc_data = torch.load(autoenc_data_file)
-    quantile_ae = 0.95
+    quantile_ae = 0.75
     quantile_dt = 0.75
 
     
     mean_err_A = []
-    mean_err_ae = []
-    mean_err_dt = []
-    mean_err_dual = []
+    mean_err_A_dt = []
+    mean_err_6D = []
+    mean_err_6D_ae = []
 
     for i in range(3):
 
         (A_train, _, _)  = asym_data['data_A'][i][0]
 
         l1_meanst = autoenc_data['autoenc_l1_means'][i][0]
-
-
-        
         
         (A_test, q_est, q_target) = asym_data['data_A'][i][1]
+        (q_est_6D, q_target_6D) = asym_data['data_6D'][i][1]
+
         mean_err_A.append(quat_angle_diff(q_est, q_target))
+        mean_err_6D.append(quat_angle_diff(q_est_6D, q_target_6D))
 
         thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
         l1_means = autoenc_data['autoenc_l1_means'][i][1]
-
         mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
 
-        print(mask_ae.sum())
-        print(l1_meanst.mean())
-        print(l1_means.mean())
-        
-        mean_err_ae.append(quat_angle_diff(q_est[mask_ae], q_target[mask_ae]))
+        mean_err_6D_ae.append(quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae]))
         
         thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile_dt)
         mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
         
-        mean_err_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
+        mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
 
-        mask_dual = mask_ae & mask_dt
-        mean_err_dual.append(quat_angle_diff(q_est[mask_dual], q_target[mask_dual]))
 
     dataset_names = ['00', '02', '05']
-    bar_labels = ['A', 'A + DT', 'A + AE', 'A + AE + DT']
-    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_A, mean_err_dt, mean_err_ae, mean_err_dual], ylim=[0,0.4], xlabel='KITTI Dataset')
+    bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='KITTI Dataset')
     output_file = 'kitti_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -708,11 +710,11 @@ if __name__=='__main__':
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
-    #create_kitti_autoencoder_data()
+    create_kitti_autoencoder_data()
 
-    Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
-    autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_01-27-2020-19-19-18.pt'
-    create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    # Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    # autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_01-27-2020-19-19-18.pt'
+    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
 
     #create_table_stats_6D()
     # print("=================")
