@@ -199,7 +199,7 @@ def create_fla_data():
     base_dir = '../saved_data/fla/'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
-    file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-48-46.pt'
+    file_A = 'fla_model_outdoor_A_sym_01-28-2020-02-00-11.pt'
     file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
     
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
@@ -602,7 +602,7 @@ if __name__=='__main__':
 
     #create_fla_autoencoder_data()
 
-    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-44-44.pt'
+    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-52-21.pt'
     # autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
     # create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
     # create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
