@@ -97,7 +97,7 @@ def evaluate_autoenc(loader, model, device, tensor_type):
         print('Evaluating Auto Encoder model...')
         for _, (imgs, _) in enumerate(loader):
             #Move all data to appropriate device
-            img = imgs[:,[0],:,:].to(device=device, dtype=tensor_type)
+            img = imgs[:,[:2],:,:].to(device=device, dtype=tensor_type)
             img_out, code = model.forward(img)
             losses = loss_fn(img_out, img) #Bx1x224x224
             losses = losses.mean(dim=(1,2,3))
@@ -197,7 +197,7 @@ def collect_autoencoder_stats(saved_file, validation_transform=None):
                             batch_size=args.batch_size_test, pin_memory=False,
                             shuffle=False, num_workers=args.num_workers, drop_last=False)
 
-    model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
+    model = ComplexAutoEncoder(dim_in=3, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
     model.load_state_dict(checkpoint['model'], strict=False)
     l1_meanst = evaluate_autoenc(train_loader, model, device, tensor_type)
     l1_means = evaluate_autoenc(valid_loader, model, device, tensor_type)
@@ -207,7 +207,7 @@ def create_kitti_autoencoder_data():
 
     print('Collecting KITTI autoencoder data....')
     base_dir = '../saved_data/kitti/'
-    file_list = ['kitti_autoencoder_seq_00_01-27-2020-18-20-26.pt', 'kitti_autoencoder_seq_02_01-27-2020-18-37-21.pt', 'kitti_autoencoder_seq_05_01-27-2020-18-56-11.pt']
+    file_list = ['kitti_autoencoder_seq_00_01-27-2020-22-13-12.pt', 'kitti_autoencoder_seq_02_01-27-2020-22-48-15.pt', 'kitti_autoencoder_seq_05_01-27-2020-23-27-20.pt']
     seqs = ['00','02', '05']
     autoenc_l1_means = []
     autoenc_l1_means_corrupted = []
@@ -749,11 +749,11 @@ if __name__=='__main__':
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
-    #create_kitti_autoencoder_data()
+    create_kitti_autoencoder_data()
 
-    Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
-    autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-20-29-35.pt'
-    create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    # Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
+    # autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-20-29-35.pt'
+    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
 
     #create_table_stats_6D()
     # print("=================")
