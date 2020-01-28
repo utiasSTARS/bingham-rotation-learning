@@ -590,7 +590,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    create_fla_data()
+    #create_fla_data()
 
     #full_saved_path = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
@@ -602,8 +602,8 @@ if __name__=='__main__':
 
     #create_fla_autoencoder_data()
 
-    # models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-52-21.pt'
-    # autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
-    # create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
-    # create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
-    # create_bar_autoenc(models_data_file, autoenc_data_file)
+    models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-01-49.pt'
+    autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
+    create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
+    create_bar_autoenc(models_data_file, autoenc_data_file)
