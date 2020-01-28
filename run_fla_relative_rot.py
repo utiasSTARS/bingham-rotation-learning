@@ -94,7 +94,7 @@ def main():
         train_loader.dataset.rotmat_targets = True
         valid_loader.dataset.rotmat_targets = True
         loss_fn = rotmat_frob_squared_norm_loss
-        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False)
+        (train_stats, test_stats) = train_test_model(args, loss_fn, model, train_loader, valid_loader, tensorboard_output=False, scheduler=True)
 
     elif args.model == 'quat':
         print('=========TRAINING DIRECT QUAT MODEL==================')
