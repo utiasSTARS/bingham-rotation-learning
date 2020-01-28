@@ -566,7 +566,7 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    create_fla_data()
+    #create_fla_data()
 
     #full_saved_path = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
