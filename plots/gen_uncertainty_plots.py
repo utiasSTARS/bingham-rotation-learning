@@ -97,7 +97,7 @@ def evaluate_autoenc(loader, model, device, tensor_type):
         print('Evaluating Auto Encoder model...')
         for _, (imgs, _) in enumerate(loader):
             #Move all data to appropriate device
-            img = imgs[:,[:2],:,:].to(device=device, dtype=tensor_type)
+            img = imgs[:,:3,:,:].to(device=device, dtype=tensor_type)
             img_out, code = model.forward(img)
             losses = loss_fn(img_out, img) #Bx1x224x224
             losses = losses.mean(dim=(1,2,3))
