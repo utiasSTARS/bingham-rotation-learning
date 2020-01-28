@@ -354,7 +354,7 @@ def create_fla_autoencoder_data():
 def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0., 0.8], legend=True):
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots()
-    fig.set_size_inches(2,2)
+    fig.set_size_inches(4,2)
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
 
     x = np.arange(len(x_labels))
@@ -369,7 +369,7 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
     ax.set_xlabel(xlabel)
     ax.set_ylim(ylim)
     if legend:
-        ax.legend(loc='upper right', fontsize = 8)
+        ax.legend(loc='upper left', fontsize = 8)
     return fig
 
 def _scatter(ax, x, y, title, color='tab:red', marker=".", size =4, rasterized=False):
@@ -424,42 +424,99 @@ def create_table_stats(uncertainty_metric_fn=first_eig_gap, data_file=None):
 
 
 
-def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file):
+def create_bar_autoenc(Asym_data_file, autoenc_data_file):
+
     asym_data = torch.load(Asym_data_file)
-    quantiles = [0.25, 0.5, 0.75,0.99]
+    quantile = 0.5
+
+    (A_train, _, _)  = asym_data['data_fla'][0]
+
     autoenc_data = torch.load(autoenc_data_file)
     l1_meanst = autoenc_data['autoenc_l1_means'][0]
-    (_, q_estt, q_targett) = asym_data['data_fla'][0]
-    #Account for reversing
-    q_estt = q_estt[:int(q_estt.shape[0]/2)]
-    q_targett = q_targett[:int(q_targett.shape[0]/2)]
+   
     
+    mean_err_A = []
+    mean_err_ae = []
+    mean_err_dt = []
+    mean_err_dual = []
+
+    for i in range(3):
+        (A_test, q_est, q_target) = asym_data['data_fla'][i+1]
+        mean_err_A.append(quat_angle_diff(q_est, q_target))
+
+        thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
+        l1_means = autoenc_data['autoenc_l1_means'][i+1]
+        mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+        mean_err_ae.append(quat_angle_diff(q_est[mask_ae], q_target[mask_ae]))
+        
+        thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile)
+        mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
+        
+        mean_err_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
+
+        mask_dual = mask_ae & mask_dt
+        mean_err_dual.append(quat_angle_diff(q_est[mask_dual], q_target[mask_dual]))
+
+    dataset_names = ['O', 'O+I', 'O+I+T']
+    bar_labels = ['A', 'A + DT', 'A + AE', 'A + AE + DT']
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_A, mean_err_dt, mean_err_ae, mean_err_dual], ylim=[0,1.1], xlabel='MAV Dataset')
+    output_file = 'fla_autoenc_errors_bar.pdf'
+    fig.savefig(output_file, bbox_inches='tight')
+    plt.close(fig)
+    print('Outputted {}.'.format(output_file))
+
+def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=False, bar=True):
+    asym_data = torch.load(Asym_data_file)
+    quantiles = [0.25, 0.5, 0.75]
+
+    (A_train, _, _)  = asym_data['data_fla'][0]
+
+    autoenc_data = torch.load(autoenc_data_file)
+    l1_meanst = autoenc_data['autoenc_l1_means'][0]
+   
 
 
     for i in range(3):
-        (_, q_est, q_target) = asym_data['data_fla'][i+1]
-        mean_err_A = quat_angle_diff(q_est, q_target, reduce=False)
+        (A_test, q_est, q_target) = asym_data['data_fla'][i+1]
+        mean_err_A = quat_angle_diff(q_est, q_target)
 
         print('Total Pairs: {}.'.format(q_est.shape[0]))
-        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A.mean()))
+        print('Mean Error (deg): A (sym) {:.2F}'.format(mean_err_A))
+
 
         for q_i, quantile in enumerate(quantiles):
 
-            thresh = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
+            thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile)
             l1_means = autoenc_data['autoenc_l1_means'][i+1]
-            mask = compute_mask(l1_means.numpy(), l1_norm, thresh)
-            mean_err_A_filter = quat_angle_diff(q_est[mask], q_target[mask])
+            mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
+            mean_err_ae = quat_angle_diff(q_est[mask_ae], q_target[mask_ae])
             
-            print('Quantile: {}. A (sym + autoenc): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_A_filter, 100.*mask.sum()/mask.shape[0]))
+            thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile)
+            mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
+            
+            mean_err_dt = quat_angle_diff(q_est[mask_dt], q_target[mask_dt])
+
+            mask_dual = mask_ae & mask_dt
+            mean_err_dual = quat_angle_diff(q_est[mask_dual], q_target[mask_dual])
+
+            print('Quantile: {}. A (sym + autoenc): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_ae, 100.*mask_ae.sum()/mask_ae.shape[0]))
+            print('Quantile: {}. A (sym + dt): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_dt, 100.*mask_dt.sum()/mask_dt.shape[0]))
+            print('Quantile: {}. A (sym + autoenc + dt): {:.2F} | Kept: {:.1F}%'.format(quantile, mean_err_dual, 100.*mask_dual.sum()/mask_dual.shape[0]))
+            
     
-    fig = _create_scatter_plot(thresh, 
-    [l1_means.numpy(), l1_meanst.numpy()],
-    [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(l1_norm),labels=['Validation', 'Training'], ylim=[1e-4, 5])
-    
-    desc = Asym_data_file.split('/')[-1].split('.pt')[0]
-    output_file = 'fla_scatter_autoenc_{}.pdf'.format(desc)
-    fig.savefig(output_file, bbox_inches='tight')
-    plt.close(fig)
+    if scatter:
+        (_, q_estt, q_targett) = asym_data['data_fla'][0]
+        #Account for reversing
+        q_estt = q_estt[:int(q_estt.shape[0]/2)]
+        q_targett = q_targett[:int(q_targett.shape[0]/2)]
+        fig = _create_scatter_plot(thresh, 
+        [l1_means.numpy(), l1_meanst.numpy()],
+        [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(l1_norm),labels=['Validation', 'Training'], ylim=[1e-4, 5])
+        
+        desc = Asym_data_file.split('/')[-1].split('.pt')[0]
+        output_file = 'fla_scatter_autoenc_{}.pdf'.format(desc)
+        fig.savefig(output_file, bbox_inches='tight')
+        plt.close(fig)
 
 
 def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0.25, data_file=None):
@@ -597,3 +654,4 @@ if __name__=='__main__':
     Asym_data_file = '../saved_data/fla/processed_3tests_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
     create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file)
+    create_bar_autoenc(Asym_data_file, autoenc_data_file)
