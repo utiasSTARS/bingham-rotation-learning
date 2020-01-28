@@ -33,7 +33,7 @@ def main():
     parser.add_argument('--scene', choices=['indoor', 'outdoor'], default='outdoor')
 
     parser.add_argument('--model', choices=['A_sym', '6D', 'quat'], default='A_sym')
-    parser.add_argument('--lr', type=float, default=5e-4)
+    parser.add_argument('--lr', type=float, default=1e-4)
 
 
     args = parser.parse_args()
