@@ -199,8 +199,8 @@ def create_fla_data():
     base_dir = '../saved_data/fla/'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-00-59-14.pt'
     #file_A = 'fla_model_outdoor_A_sym_01-28-2020-01-41-40.pt'
-    file_A = 'fla_model_outdoor_A_sym_01-28-2020-02-00-11.pt'
-    file_6D = 'fla_model_outdoor_A_sym_01-28-2020-02-24-26.pt'
+    file_A = 'fla_model_outdoor_A_sym_01-28-2020-02-24-26.pt'
+    file_6D = 'fla_model_outdoor_6D_01-28-2020-00-52-48.pt'
     
     #file_fla = 'fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     #file_fla = 'fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
