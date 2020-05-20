@@ -2,9 +2,13 @@ import numpy as np
 import torchvision
 import torch
 import matplotlib
+from matplotlib.colors import to_rgba
+
 matplotlib.use('Agg')
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
+matplotlib.rcParams['text.usetex'] = True
+
 import matplotlib.pyplot as plt
 plt.rc('axes', axisbelow=True)
 import matplotlib.ticker as mtick
@@ -279,6 +283,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     quantile_dt = 0.75
 
     
+    mean_err_quat = []
     mean_err_A = []
     mean_err_A_dt = []
     mean_err_6D = []
@@ -293,7 +298,9 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
         
         (A_test, q_est, q_target) = asym_data['data_A'][i][1]
         (q_est_6D, q_target_6D) = asym_data['data_6D'][i][1]
+        (q_est_quat, q_target_quat) = asym_data['data_quat'][i][1]
 
+        mean_err_quat.append(quat_angle_diff(q_est_quat, q_target_quat))
         mean_err_A.append(quat_angle_diff(q_est, q_target))
         mean_err_6D.append(quat_angle_diff(q_est_6D, q_target_6D))
 
@@ -310,7 +317,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
 
     dataset_names = ['00', '02', '05']
-    bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
+    bar_labels = ['\\texttt{6D}', '$\mathbf{A}$', '\\texttt{6D} + \\textit{AE} ' + '($q:$ {})'.format(quantile_ae), '$\mathbf{A}$ + \\textit{DT}' + ' ($q: {}$)'.format(quantile_dt)]
     fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='KITTI Dataset')
     output_file = 'kitti_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
@@ -318,6 +325,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     print('Outputted {}.'.format(output_file))
 
     #====================CORRUPTED==================
+    mean_err_quat = []
     mean_err_A = []
     mean_err_A_dt = []
     mean_err_6D = []
@@ -331,7 +339,9 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
         
         (A_test, q_est, q_target) = asym_data['data_A_transformed'][i][1]
         (q_est_6D, q_target_6D) = asym_data['data_6D_transformed'][i][1]
+        (q_est_quat, q_target_quat) = asym_data['data_quat_transformed'][i][1]
 
+        mean_err_quat.append(quat_angle_diff(q_est_quat, q_target_quat))
         mean_err_A.append(quat_angle_diff(q_est, q_target))
         mean_err_6D.append(quat_angle_diff(q_est_6D, q_target_6D))
 
@@ -349,7 +359,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
 
     dataset_names = ['00', '02', '05']
     bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
-    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1.5], xlabel='KITTI Dataset')
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1], xlabel='KITTI Dataset', legend=False, ylabel=None)
     output_file = 'kitti_autoenc_errors_corrupted_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -428,11 +438,14 @@ def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', x
 
     x = np.arange(len(x_labels))
     N = len(bar_labels)
+    # colors = ['tab:green','tab:red', 'tab:blue', 'tab:red', 'tab:blue']
+    # alpha = [1.,1.,1.,0.5,0.5]
     colors = ['tab:red', 'tab:blue', 'tab:red', 'tab:blue']
     alpha = [1.,1.,0.5,0.5]
+    
     width = 0.5/N
     for i, (label, height) in enumerate(zip(bar_labels, heights)):
-        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=alpha[i]), linewidth=0.75)
+        ax.bar(x - 0.25 + width*i, height, width, label=label, color=to_rgba(colors[i], alpha=alpha[i]), linewidth=0.75, edgecolor=colors[i])
     ax.set_xticks(x)
     ax.set_xticklabels(x_labels)
     ax.set_ylabel(ylabel)
@@ -450,18 +463,19 @@ def _plot_curve(ax, x, y, label, style):
     ax.plot(x, y,  style, linewidth=1., label=label)
     return
 
-def _create_scatter_plot(thresh, lls, errors, labels, xlabel, ylim=None, legend=True):
+def _create_scatter_plot(thresh, thresh_label, lls, errors, labels, xlabel, ylim=None, legend=True, ylabel=True):
     fig, ax = plt.subplots()
     fig.set_size_inches(2,1.5)
-    ax.axvline(thresh, c='k', ls='--', label='Threshold')
+    ax.axvline(thresh, c='k', ls='--', lw=0.75, label=thresh_label)
     colors = ['tab:orange','grey']
     markers = ['.', '+']
     for i, (ll, error, label) in enumerate(zip(lls, errors, labels)):
-        _scatter(ax, ll, error, label, color=colors[i], size=5, marker=markers[i], rasterized=True)
+        _scatter(ax, ll, error, label, color=colors[i], size=1, marker=markers[i], rasterized=True)
     if legend:
-        ax.legend(loc='upper left')
+        ax.legend(loc='upper left', markerscale=5.0)
     ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
-    ax.set_ylabel('rotation error (deg)')
+    if ylabel:
+        ax.set_ylabel('error (deg)')
     ax.set_xlabel(xlabel)
     #ax.set_yscale('log')
     #ax.set_xscale('symlog')
@@ -679,13 +693,45 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
     data = torch.load(full_saved_path)
     seqs = ['00', '02', '05']
 
+    lw = 0.5
+    boxprops = dict(linewidth=0.5, facecolor=to_rgba('tab:orange', alpha=0.4)) 
+    whiskerprops = dict(linewidth=2*lw)
+    flierprops = dict(marker='o', markersize=5,
+                  markeredgewidth=lw)
+    medianprops = dict(linewidth=lw, color='k')
+
     for i, As in enumerate(data['A_list']):
         fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
-        fig.set_size_inches(5,2)
-        ax.boxplot([uncertainty_metric_fn(As[0]),uncertainty_metric_fn(As[1]), uncertainty_metric_fn(As[2]), uncertainty_metric_fn(As[3]), uncertainty_metric_fn(As[4])], 
-        labels=['Training \n (Res / City)', 'Seq ' + seqs[i] + '\n (Res)', 'Seq 01 \n (Road)', 'Seq ' + seqs[i] + '\n (Corrupted)', 'Random Input'])
+        fig.set_size_inches(5,1.5)
+        bp = ax.boxplot([uncertainty_metric_fn(As[0]),uncertainty_metric_fn(As[1]), uncertainty_metric_fn(As[2]), uncertainty_metric_fn(As[3]), uncertainty_metric_fn(As[4])], 
+        labels=['training \n (\\textit{res} / \\textit{city})', '\\texttt{seq ' + seqs[i] + '}\n (\\textit{res})', '\\texttt{seq 01} \n (\\textit{road})', '\\texttt{seq ' + seqs[i] + '}\n (\\textbf{corrupted})', 'random \n input'],
+        patch_artist=True, flierprops=flierprops, notch=True, boxprops=boxprops, whiskerprops=whiskerprops, medianprops=medianprops
+        )
+
+        for p_i in range(len(bp['boxes'])):
+            if p_i == 0:
+                bp['boxes'][p_i].set(facecolor=to_rgba('tab:grey', alpha=0.4), edgecolor='k')
+                bp['medians'][p_i].set(color='k')
+                bp['fliers'][p_i].set(markeredgecolor='tab:grey')
+            else:
+                bp['boxes'][p_i].set(facecolor=to_rgba('tab:orange', alpha=0.4), edgecolor='tab:orange')
+                bp['medians'][p_i].set(color='orange')
+                bp['fliers'][p_i].set(markeredgecolor='tab:orange')
+
+        for p_i in range(len(bp['whiskers'])):
+            c_i = math.floor(p_i/2)
+            if c_i==0:
+                bp['whiskers'][p_i].set(color='tab:grey')
+                bp['caps'][p_i].set(color='tab:grey')
+            else:
+                bp['whiskers'][p_i].set(color='tab:orange')
+                bp['caps'][p_i].set(color='tab:orange')
+
+            
+            
         ax.grid(True, which='both', color='tab:grey', linestyle='--', alpha=0.5, linewidth=0.5)
         ax.set_ylabel(decode_metric_name(uncertainty_metric_fn)) 
+        ax.set_yticklabels([])
         if logscale:
             ax.set_yscale('symlog')   
         output_file = 'kitti_box_seq_{}_metric_{}.pdf'.format(seqs[i], uncertainty_metric_fn.__name__)
@@ -708,6 +754,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
     mean_err_corrupted_6D = []
     mean_err_corrupted_quat = []
 
+    thresh_label = '\\textit{thresh} \n $q:' + '{:.2F}'.format(quantile) + '$'
     for s_i, seq in enumerate(seqs):
         (A_predt, q_estt, q_targett), (A_pred, q_est, q_target) = data['data_A'][s_i]
         mean_err.append(quat_angle_diff(q_est, q_target, reduce=True))
@@ -719,9 +766,9 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
         
         if output_scatter:
             #Create scatter plot
-            fig = _create_scatter_plot(thresh, 
+            fig = _create_scatter_plot(thresh, thresh_label,
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=True)
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['test', 'train'], ylim=[1e-4, 5], legend=True)
             output_file = 'kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -748,9 +795,9 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
         
         if output_scatter:
             #Create scatter plot
-            fig = _create_scatter_plot(thresh, 
+            fig = _create_scatter_plot(thresh, thresh_label,
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
-            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Validation', 'Training'], ylim=[1e-4, 5], legend=False)
+            [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Test', 'Train'], ylim=[1e-4, 5], legend=False, ylabel=False)
             output_file = 'kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
@@ -779,9 +826,10 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
 if __name__=='__main__':
     #create_kitti_data()
-    # uncertainty_metric_fn = sum_bingham_dispersion_coeff
-    # create_bar_and_scatter_plots(output_scatter=False, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
-    # create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    uncertainty_metric_fn = sum_bingham_dispersion_coeff
+    #create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
+    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    
     # create_precision_recall_plot(uncertainty_metric_fn, selected_quantile=0.75)
     # create_table_stats(uncertainty_metric_fn=uncertainty_metric_fn)
 
@@ -790,7 +838,7 @@ if __name__=='__main__':
     Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-23-34-30.pt'
     create_bar_autoenc(Asym_data_file, autoenc_data_file)
-    create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
+    # create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
     #create_table_stats_6D()
     # print("=================")
     # create_table_stats(sum_bingham_dispersion_coeff)

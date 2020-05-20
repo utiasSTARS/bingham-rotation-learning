@@ -63,6 +63,10 @@ def main():
             normalize,
     ])
 
+    # model = ComplexAutoEncoder(dim_in=1, dim_latent=args.dim_latent, dim_transition=args.dim_transition).to(device=device, dtype=tensor_type)
+    # print(model)
+    # return
+
     #test_dataset = '../experiments/FLA/{}_test.csv'.format(args.scene)
     train_dataset = '../experiments/FLA/{}_train_reverse_False.csv'.format(args.scene)
 

@@ -40,6 +40,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
+
     #Float or Double?
     tensor_type = torch.float
 
