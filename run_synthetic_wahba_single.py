@@ -62,7 +62,7 @@ def main():
         #loss_fn = quat_squared_loss
         loss_fn = quat_chordal_squared_loss
         (_, _) = train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets=False, tensorboard_output=True)
-
+    
     #Train and test with new representation
     elif args.model == 'A_sym':
         print('===================TRAINING A sym (Quat) MODEL=======================')
