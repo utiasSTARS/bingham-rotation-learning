@@ -316,9 +316,9 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
         mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
 
 
-    dataset_names = ['00', '02', '05']
+    dataset_names = ['\\texttt{00}', '\\texttt{02}', '\\texttt{05}']
     bar_labels = ['\\texttt{6D}', '$\mathbf{A}$', '\\texttt{6D} + \\textit{AE} ' + '($q:$ {})'.format(quantile_ae), '$\mathbf{A}$ + \\textit{DT}' + ' ($q: {}$)'.format(quantile_dt)]
-    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='KITTI Dataset')
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='Test sequence')
     output_file = 'kitti_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -357,9 +357,9 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
         mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
 
 
-    dataset_names = ['00', '02', '05']
+    dataset_names = ['\\texttt{00}', '\\texttt{02}', '\\texttt{05}']
     bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
-    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1], xlabel='KITTI Dataset', legend=False, ylabel=None)
+    fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1], xlabel='Test sequence', legend=False, ylabel=None)
     output_file = 'kitti_autoenc_errors_corrupted_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -694,11 +694,11 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
     seqs = ['00', '02', '05']
 
     lw = 0.5
-    boxprops = dict(linewidth=0.5, facecolor=to_rgba('tab:orange', alpha=0.4)) 
+    boxprops = dict(linewidth=0.5) 
     whiskerprops = dict(linewidth=2*lw)
     flierprops = dict(marker='o', markersize=5,
                   markeredgewidth=lw)
-    medianprops = dict(linewidth=lw, color='k')
+    medianprops = dict(linewidth=lw)
 
     for i, As in enumerate(data['A_list']):
         fig, ax = plt.subplots(1, 1, sharex='col', sharey='row')
@@ -714,8 +714,8 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
                 bp['medians'][p_i].set(color='k')
                 bp['fliers'][p_i].set(markeredgecolor='tab:grey')
             else:
+                bp['medians'][p_i].set(color='tab:orange')
                 bp['boxes'][p_i].set(facecolor=to_rgba('tab:orange', alpha=0.4), edgecolor='tab:orange')
-                bp['medians'][p_i].set(color='orange')
                 bp['fliers'][p_i].set(markeredgecolor='tab:orange')
 
         for p_i in range(len(bp['whiskers'])):
@@ -838,6 +838,7 @@ if __name__=='__main__':
     Asym_data_file = '../saved_data/kitti/kitti_comparison_data_01-04-2020-12-35-32.pt'
     autoenc_data_file = '../saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-23-34-30.pt'
     create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    
     # create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
     #create_table_stats_6D()
     # print("=================")
