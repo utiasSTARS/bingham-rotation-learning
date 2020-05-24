@@ -1,4 +1,4 @@
-#A Smooth Representation of SO(3) for Deep Rotation Learning with Uncertainty
+# A Smooth Representation of SO(3) for Deep Rotation Learning with Uncertainty
 ### To appear at Robotics: Science and Systems (2020)
 Paper website: https://valentinp.com/bingham-rotation-learning
 arXiv paper:
