@@ -2,7 +2,7 @@ import cvxpy as cp
 import torch
 from cvxpylayers.torch import CvxpyLayer
 from rotation_matrix_sdp import rotation_matrix_constraints
-from convex_layers import *
+from qcqp_layers import *
 import time
 from utils import allclose
 from quaternions import *

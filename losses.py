@@ -43,7 +43,6 @@ def quat_loss(q, q_target, reduce=True):
 
 
 ## Rotation matrices
-
 def rotmat_frob_squared_norm_loss(C, C_target, reduce=True):
     """Return the Frobenius norm of the difference betwen two batchs of N rotation matrices."""
     assert(C.shape == C_target.shape)
