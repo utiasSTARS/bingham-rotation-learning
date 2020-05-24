@@ -4,7 +4,6 @@ from liegroups.numpy import SO3
 from numpy.linalg import norm
 import math
 
-#See https://github.com/utiasSTARS/liegroups
 def allclose(mat1, mat2, tol=1e-6):
     """Check if all elements of two tensors are close within some tolerance.
 
@@ -132,7 +131,6 @@ def compute_rotation_from_two_vectors(a_1, a_2, b_1, b_2):
     C = M_b.dot(M_a)
     
     return C
-
 
 def so3_diff(C_1, C_2, unit='deg'):
     A = SO3.from_matrix(C_1)

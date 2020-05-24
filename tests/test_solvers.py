@@ -2,7 +2,7 @@ import torch
 from torch.autograd import gradcheck
 import numpy as np
 from liegroups.numpy import SO3
-from convex_layers import *
+from qcqp_layers import *
 from quaternions import *
 from helpers_sim import *
 import os

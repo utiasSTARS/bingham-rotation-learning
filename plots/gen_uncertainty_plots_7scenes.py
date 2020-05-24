@@ -4,7 +4,7 @@ from helpers_train_test import *
 from liegroups.numpy import SO3
 import torch
 from datetime import datetime
-from convex_layers import *
+from qcqp_layers import *
 from torch.utils.data import Dataset, DataLoader
 from loaders import SevenScenesData
 import torchvision.transforms as transforms
