@@ -20,7 +20,7 @@ from networks import *
 from helpers_train_test import *
 from liegroups.numpy import SO3
 from datetime import datetime
-from convex_layers import *
+from qcqp_layers import *
 from torch.utils.data import Dataset, DataLoader
 from loaders import KITTIVODatasetPreTransformed
 from metrics import *

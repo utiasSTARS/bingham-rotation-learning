@@ -3,7 +3,7 @@ import torch
 import sys
 sys.path.insert(0,'..')
 from helpers_sim import SyntheticData
-from convex_layers import QuadQuatFastSolver
+from qcqp_layers import QuadQuatFastSolver
 from losses import quat_squared_loss, rotmat_frob_squared_norm_loss, quat_chordal_squared_loss
 from networks import QuatNet, PointNet, PointNetInspect
 from quaternions import *

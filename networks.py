@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from convex_layers import *
+from qcqp_layers import *
 from utils import sixdim_to_rotmat
 import torchvision
 

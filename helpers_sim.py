@@ -6,7 +6,7 @@ from numpy.linalg import norm
 from quaternions import *
 from losses import *
 from utils import *
-from convex_layers import QuadQuatFastSolver, convert_A_to_Avec
+from qcqp_layers import QuadQuatFastSolver, convert_A_to_Avec
 from tensorboardX import SummaryWriter
 import time
 import tqdm
@@ -80,10 +80,6 @@ def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets
         writer = SummaryWriter()
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', verbose=True)
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=200, gamma=0.1)
-    # if pretrain_A_net:
-    #     pretrain(A_net, train_data, test_data)
 
     #Save stats
     train_stats = torch.empty(args.epochs, 2)
