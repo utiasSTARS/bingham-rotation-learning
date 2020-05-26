@@ -2,7 +2,7 @@
 *Valentin Peretroukhin, Matthew Giamou, David M. Rosen, W. Nicholas Greene, Nicholas Roy, and Jonathan Kelly*
 ### To appear at Robotics: Science and Systems (2020)
 
-**Paper website:** https://valentinp.com/bingham-rotation-learning
+**Paper website:** https://valentinp.com/bingham-rotation-learning  
 **arXiv paper**: [coming soon!]
 
 
@@ -71,7 +71,7 @@ class RotationNet(torch.nn.Module):
         q = self.A_vec_to_quat(A_vec)
         return q #unit quaternion!
 ```
-This incurs minimal (but non-zero) overhead and should improve training you have `large' rotation targets (i.e., rotations close to 180 degrees about any axis).
+This incurs minimal (but non-zero) overhead and should improve training if you have `large' rotation targets (i.e., rotations close to 180 degrees about any axis).
 
 ## Citation
 If you use this in your work, please cite:
