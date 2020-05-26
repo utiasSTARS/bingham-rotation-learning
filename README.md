@@ -3,7 +3,9 @@
 Paper website: https://valentinp.com/bingham-rotation-learning
 arXiv paper:
 
-![SO(3) Learning](so3_learning.png)
+
+<img src="https://raw.githubusercontent.com/utiasSTARS/bingham-rotation-learning/master/so3_learning.png" width="75%" >
+
 There are many ways to represent rotations including Euler angles, rotation matrices, axis-angle vectors, and unit quaternions. In deep learning applications, it is common to use unit quaternions for their simple geometric and algebraic structure. However, unit quaternions lack an important smoothness property that makes learning 'large' rotations difficult, and other representations are not easily amenable to learning uncertainty. In this work, we address this gap through a symmetric-matrix-based representation that is both smooth and defines a <em>belief</em> (or distribution) over rotations. 
 
 This repository contains example code to implement our representation in your work and all of our experiments from the paper (in `pytorch`). 
