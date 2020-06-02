@@ -2,8 +2,8 @@
 *Valentin Peretroukhin, Matthew Giamou, David M. Rosen, W. Nicholas Greene, Nicholas Roy, and Jonathan Kelly*
 ### To appear at Robotics: Science and Systems (2020)
 
-**Paper website:** https://valentinp.com/bingham-rotation-learning  
-**arXiv paper**: [coming soon!]
+**Paper website:** https://papers.starslab.ca/bingham-rotation-learning/  
+**arXiv paper**: https://arxiv.org/abs/2006.01031
 
 
 <img src="https://raw.githubusercontent.com/utiasSTARS/bingham-rotation-learning/master/so3_learning.png" width="75%" >
