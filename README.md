@@ -30,7 +30,7 @@ The demo will train three models on a synthetic point cloud dataset, with the un
 
 `python run_rotation_learning_experiment.py`
 
-You can see alist of options within the script.
+You can see a list of options within the script.
 
 ### Recreate our experiments
 
@@ -44,7 +44,7 @@ Our representation is very easy to use for any rotation learning!
 
 2. Create a function that converts each 10-vector into a symmetric 4x4 matrix (Bx4x4). We have written a function `convert_Avec_to_A()` which you can steal! The file `qcqp_layers.py` contains this function as well as some other (batch-ified) helper functions that may be useful.
 
-3. To convert each 4x4 symmetric matrix into a unit quaternion, simply apply `torch.symeig()` and extract the eigenvector corresponding to the smallest eigenvector. This function can be a simple as:
+3. To convert each 4x4 symmetric matrix into a unit quaternion, simply apply `torch.symeig()` and extract the eigenvector corresponding to the smallest eigenvalue. This function can be a simple as:
 
     ```python
     def A_vec_to_quat(A_vec):
