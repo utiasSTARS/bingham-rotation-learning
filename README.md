@@ -52,7 +52,7 @@ Our representation is very easy to use for any rotation learning!
         _, evs = torch.symeig(A, eigenvectors=True)
         return evs[:,:,0].squeeze()
     ```
-    Our version of this function (see `qcqp_layers.py`) has a small check for dimensionality but is othewise identical to the one above. Note that we have also implemented a `torch.autograd` function with an explicit analytic gradient but the built-in pytorch differentiation of `torch.symeig()` results in identical performance. Feel free to use either.
+    Our version of this function (see `qcqp_layers.py`) has a small check for dimensionality but is otherwise identical to the one above. Note that we have also implemented a `torch.autograd` function with an explicit analytic gradient but the built-in pytorch differentiation of `torch.symeig()` results in identical performance. Feel free to use either.
 
 This entire procedure can be implemented within your model. For example:
 ```python
@@ -67,9 +67,9 @@ class RotationNet(torch.nn.Module):
         return evs[:,:,0].squeeze()
 
     def forward(self, x):
-        A_vec = self.net(x) #Bx10 -> Bx4x4
-        q = self.A_vec_to_quat(A_vec)
-        return q #unit quaternion!
+        A_vec = self.net(x) #Bx10
+        q = self.A_vec_to_quat(A_vec) #Bx10 -> Bx4x4
+        return q #unit quaternion! (Bx4)
 ```
 This incurs minimal (but non-zero) overhead and should improve training if you have `large' rotation targets (i.e., rotations close to 180 degrees about any axis).
 
