@@ -77,9 +77,11 @@ This incurs minimal (but non-zero) overhead and should improve training if you h
 If you use this in your work, please cite:
 <pre>
 @inproceedings{peretroukhin_so3_2020,
-   author={Peretroukhin, Valentin and Giamou, Matthew and Rosen, David and Greene, W. Nicholas and Roy, Nicholas and Kelly, Jonathan},
+   author={Valentin Peretroukhin and Matthew Giamou and David M. Rosen and W. Nicholas Greene and Nicholas Roy and Jonathan Kelly},
    title={A {S}mooth {R}epresentation of {SO(3)} for {D}eep {R}otation {L}earning with {U}ncertainty},
-   booktitle={Proceedings of Robotics: Science and Systems},
-   year={2020}
+   booktitle={Proceedings of {R}obotics: {S}cience and {S}ystems {(RSS'20)}},
+   year={2020},
+   date = {2020-07-12/2020-07-16},
+   month = {Jul. 12--16},
 }
 </pre>
