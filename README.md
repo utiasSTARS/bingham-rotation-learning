@@ -68,8 +68,8 @@ class RotationNet(torch.nn.Module):
 
     def forward(self, x):
         A_vec = self.net(x) #Bx10
-        q = self.A_vec_to_quat(A_vec) #Bx10 -> Bx4x4
-        return q #unit quaternion! (Bx4)
+        q = self.A_vec_to_quat(A_vec) #Bx10 -> Bx4
+        return q #unit quaternions!
 ```
 This incurs minimal (but non-zero) overhead and should improve training if you have `large' rotation targets (i.e., rotations close to 180 degrees about any axis).
 
