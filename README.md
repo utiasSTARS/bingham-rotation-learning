@@ -62,7 +62,7 @@ class RotationNet(torch.nn.Module):
         self.net = GenericNet() #Outputs Bx10
     
     def A_vec_to_quat(self, A_vec):
-        A = convert_Avec_to_A(A_vec)
+        A = convert_Avec_to_A(A_vec) #Bx10 -> Bx4x4
         _, evs = torch.symeig(A, eigenvectors=True)
         return evs[:,:,0].squeeze()
 
