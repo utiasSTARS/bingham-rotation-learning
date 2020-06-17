@@ -78,8 +78,9 @@ def main():
         (train_stats_A_sym, test_stats_A_sym) = train_test_model(args, train_data, test_data, model, loss_fn,  rotmat_targets=False, tensorboard_output=True)
         models_A_sym.append(model.state_dict())
 
-        saved_data_file_name = 'rotangle_synthetic_wahba_experiment_3models_chordal_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
-        full_saved_path = 'saved_data/synthetic/{}.pt'.format(saved_data_file_name)
+    
+    saved_data_file_name = 'rotangle_synthetic_wahba_experiment_3models_chordal_{}_{}'.format(args.dataset, datetime.now().strftime("%m-%d-%Y-%H-%M-%S"))
+    full_saved_path = '../saved_data/synthetic/{}.pt'.format(saved_data_file_name)
 
     torch.save({
         'models_quat': models_quat,

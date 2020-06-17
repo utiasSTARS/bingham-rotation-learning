@@ -234,7 +234,7 @@ def rotmat_angle_table_stats(cache_data=True):
 
             model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
             model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
-            model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=True).to(device=device, dtype=tensor_type)
+            model_A_sym = QuatNet(enforce_psd=False, unit_frob_norm=False).to(device=device, dtype=tensor_type)
 
             model_6D.load_state_dict(data['models_6D'][m_i], strict=False)        
             model_quat.load_state_dict(data['models_quat'][m_i], strict=False)        
