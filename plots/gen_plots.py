@@ -218,7 +218,9 @@ def test_wabha_model(model, x, targets, **kwargs):
 def rotmat_angle_table_stats(cache_data=True):
     
     if cache_data:
-        path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
+        #path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
+        path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_chordal_dynamic_06-16-2020-22-48-40.pt'
+        
         data = torch.load(path)
         args = data['args']
         device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu') 
@@ -270,6 +272,7 @@ def rotmat_angle_table_stats(cache_data=True):
     else:
         processed_data_file = '../saved_data/synthetic/processed_rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
 
+    print('Loaded: {}'.format(processed_data_file))
     processed_data = torch.load(processed_data_file)
     fig, axes = plt.subplots(ncols=3, sharey=True)
     fig.subplots_adjust(wspace=0)
@@ -324,4 +327,4 @@ if __name__=='__main__':
     #plot_learning_rate_wahba_experiment()
     #plot_learning_rate_shapenet_experiment()
     #scatter_shapenet_example()
-    rotmat_angle_table_stats(cache_data=False)
+    rotmat_angle_table_stats(cache_data=True)
