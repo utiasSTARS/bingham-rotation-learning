@@ -1,5 +1,7 @@
 import torch
 import numpy as np
+import sys
+sys.path.insert(0,'..')
 from networks import *
 from losses import *
 from helpers_sim import *
@@ -47,7 +49,7 @@ def main():
         train_data, test_data = None, None
 
 
-    max_angles = [10, 25, 100, 150, 160, 170, 180]
+    max_angles = [10, 100, 180]
     models_quat = []
     models_6D = []
     models_A_sym = []
