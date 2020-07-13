@@ -202,8 +202,22 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
     # pp = ProgressPlot(plot_names=["Train", "Test"], line_names=["Quaternion", "6D", "Bingham"],
     #                   x_lim=[0, args.epochs], y_lim=[-3, 3])
     # lrcurve way
-    plot = PlotLearningCurve()
-
+    # plot = PlotLearningCurve()
+    plot = PlotLearningCurve(
+        line_config={
+            'train_quat': {'name': 'quat', 'color': 'r', 'facet': 'train'},
+            'train_6d': {'name': '6D', 'color': 'g', 'facet': 'train'},
+            'train_bing': {'name': 'bing', 'color': 'r', 'facet': 'train'},
+            'test_quat': {'name': 'quat', 'color': 'b', 'facet': 'test'},
+            'test_6d': {'name': '6D', 'color': 'g', 'facet': 'test'},
+            'test_bing': {'name': 'bing', 'color': 'b', 'facet': 'test'}
+        },
+        facet_config={
+            'train': {'name': 'Training', 'limit': [0, None], 'scale': 'log'},
+            'test': {'name': 'Testing', 'limit': [0, None], 'scale': 'log'}
+        },
+        xaxis_config={'name': 'Epoch', 'limit': [0, args.epochs]}
+    )
     # PyPlot way
     # fig = plt.figure()
     # ax = fig.add_subplot(111)
@@ -272,29 +286,32 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
         # pp.update([list(np.log10(train_loss)),
         #            list(np.log10(test_loss))])
 
+        # plot.append(e, {
+        #     'train': {
+        #         'Quat.': train_loss[0],
+        #         '6D': train_loss[1],
+        #         'Bing.': train_loss[2]
+        #     }
+        # })
+        # plot.append(e, {
+        #     'test': {
+        #         'Quat.': test_loss[0],
+        #         '6D': test_loss[1],
+        #         'Bing.': test_loss[2]
+        #     }
+        # })
         plot.append(e, {
-            'train': {
-                'Quat.': train_loss[0],
-                '6D': train_loss[1],
-                'Bing.': train_loss[2]
-            }
-        })
-        plot.append(e, {
-            'test': {
-                'Quat.': test_loss[0],
-                '6D': test_loss[1],
-                'Bing.': test_loss[2]
-            }
+            'train': {'train_quat': train_loss[0]},
+            'train': {'train_6d': train_loss[1]},
+            'train': {'train_bing': train_loss[2]},
+            'test': {'test_quat': test_loss[0]},
+            'test': {'test_6d': test_loss[1]},
+            'test': {'test_bing': test_loss[2]}
         })
         plot.draw()
 
         # ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
         # fig.canvas.draw()
-
-        elapsed_time = time.time() - start_time
-
-        # output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(
-        #     e + 1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
 
     return train_stats, test_stats
 
@@ -523,3 +540,98 @@ def compute_mean_horn_error(sim_data):
         q_est = rotmat_to_quat(C, ordering='xyzw')
         err[i] = quat_angle_diff(q_est, sim_data.q[i])
     return err.mean()
+
+
+if __name__ == '__main__':
+
+    import torch
+    import numpy as np
+    from networks import *
+    from losses import *
+    # from helpers_sim import *
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Synthetic Wahba arguments.')
+    parser.add_argument('--sim_sigma', type=float, default=1e-2)
+    parser.add_argument('--N_train', type=int, default=500)
+    parser.add_argument('--N_test', type=int, default=100)
+    parser.add_argument('--matches_per_sample', type=int, default=25)
+
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--batch_size_train', type=int, default=100)
+    parser.add_argument('--batch_size_test', type=int, default=100)
+    parser.add_argument('--lr', type=float, default=5e-4)
+
+    parser.add_argument('--dataset', choices=['static', 'dynamic', 'dynamic_beachball'], default='dynamic')
+    parser.add_argument('--beachball_sigma_factors', type=lambda s: [float(item) for item in s.split(',')],
+                        default=[0.1, 0.5, 2, 10],
+                        help='Heteroscedastic point cloud that has different noise levels (resembling a beachball).')
+    parser.add_argument('--max_rotation_angle', type=float, default=180.,
+                        help='In degrees. Maximum axis-angle rotation of simulated rotation.')
+
+    parser.add_argument('--cuda', action='store_true', default=False)
+    parser.add_argument('--double', action='store_true', default=False)
+    parser.add_argument('--enforce_psd', action='store_true', default=False)
+    parser.add_argument('--unit_frob', action='store_true', default=False)
+
+    args = parser.parse_args([])
+    print(args)
+
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+
+    if args.dataset == 'static':
+        train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample,
+                                                              sigma=args.sim_sigma, device=device, dtype=tensor_type)
+    else:
+        # Data will be generated on the fly
+        train_data, test_data = None, None
+
+    def A_vec_to_quat(A_vec):
+        A = convert_Avec_to_A(A_vec)
+        _, evs = torch.symeig(A, eigenvectors=True)
+        return evs[:, :, 0].squeeze()
+
+
+    class BinghamNetDemo(torch.nn.Module):
+        def __init__(self, enforce_psd=True, unit_frob_norm=True, batchnorm=False):
+            super(BinghamNetDemo, self).__init__()
+            self.A_net = PointNet(dim_out=10, normalize_output=False, batchnorm=batchnorm)
+            self.enforce_psd = enforce_psd
+            # self.unit_frob_norm = unit_frob_norm
+            # self.qcqp_solver = QuadQuatFastSolver.apply
+
+        def output_A(self, x):
+            A_vec = self.A_net(x)
+            if self.enforce_psd:
+                A_vec = convert_Avec_to_Avec_psd(A_vec)
+            if self.unit_frob_norm:
+                A_vec = normalize_Avec(A_vec)
+
+            return convert_Avec_to_A(A_vec)
+
+        def forward(self, x):
+            A_vec = self.A_net(x)
+
+            # if self.enforce_psd:
+            #     A_vec = convert_Avec_to_Avec_psd(A_vec)
+            # if self.unit_frob_norm:
+            #     A_vec = normalize_Avec(A_vec)
+            # q = self.qcqp_solver(A_vec)
+            q = A_vec_to_quat(A_vec)
+            return q
+
+    model_quat = PointNet(dim_out=4, normalize_output=True).to(device=device, dtype=tensor_type)
+    loss_fn_quat = quat_chordal_squared_loss
+
+    model_6D = RotMat6DDirect().to(device=device, dtype=tensor_type)
+    loss_fn_6D = rotmat_frob_squared_norm_loss
+
+    model_bingham = QuatNet(enforce_psd=args.enforce_psd, unit_frob_norm=args.unit_frob).to(device=device,
+                                                                                            dtype=tensor_type)
+    loss_fn_bingham = quat_chordal_squared_loss
+
+    models = [model_quat, model_6D, model_bingham]
+    losses = [loss_fn_quat, loss_fn_6D, loss_fn_bingham]
+    rotmat_targets = [False, True, False]
+    (_, _) = train_test_models_with_plots(args, train_data, test_data, models, losses, rotmat_targets=rotmat_targets)
