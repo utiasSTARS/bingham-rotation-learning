@@ -172,7 +172,7 @@ def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets
     return train_stats, test_stats
 
 
-def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, rotmat_targets=False, verbose=False):
+def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, rotmat_targets, verbose=False):
     """
     Helper for rss_demo.ipynb
     :param args:
@@ -185,8 +185,8 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
     :return:
     """
     # from jupyterplot import ProgressPlot
-    # from lrcurve.plot_learning_curve import PlotLearningCurve
-    from matplotlib import pyplot as plt
+    from lrcurve.plot_learning_curve import PlotLearningCurve
+    # from matplotlib import pyplot as plt
     optimizers = [torch.optim.Adam(model.parameters(), lr=args.lr) for model in models]
 
     # Save stats for plotting
@@ -195,19 +195,22 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
 
     device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
     tensor_type = torch.double if args.double else torch.float
-    #
+
+    # JupyterPlot way (broken!)
     # pp_train = ProgressPlot(line_names=["Quaternion", "6D", "Bingham"], x_lim=[0, args.epochs])
     # pp_test = ProgressPlot(line_names=["Quaternion", "6D", "Bingham"], x_lim=[0, args.epochs])
     # pp = ProgressPlot(plot_names=["Train", "Test"], line_names=["Quaternion", "6D", "Bingham"],
     #                   x_lim=[0, args.epochs], y_lim=[-3, 3])
-    # plot = PlotLearningCurve()
+    # lrcurve way
+    plot = PlotLearningCurve()
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.ion()
+    # PyPlot way
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111)
+    # plt.ion()
 
-    fig.show()
-    fig.canvas.draw()
+    # fig.show()
+    # fig.canvas.draw()
 
     for e in range(args.epochs):
         start_time = time.time()
@@ -222,13 +225,13 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
                                                                   dtype=tensor_type)
 
         num_train_batches = args.N_train // args.batch_size_train
-        train_loss = np.zeros(len(models))
-        train_mean_err = np.zeros(len(models))
-        for idx, (model, optimizer, loss_fn) in enumerate(zip(models, optimizers, loss_fns)):
+        train_loss = torch.zeros(len(models))
+        train_mean_err = torch.zeros(len(models))
+        for idx, (model, optimizer, loss_fn, rotmat_target) in enumerate(zip(models, optimizers, loss_fns, rotmat_targets)):
             for k in range(num_train_batches):
                 start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
     
-                if rotmat_targets:
+                if rotmat_target:
                     targets = quat_to_rotmat(train_data.q[start:end])
                     (C_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
                     train_mean_err += (1 / num_train_batches) * rotmat_angle_diff(C_est, targets)
@@ -243,13 +246,13 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
         if verbose:
             print('Testing...')
         num_test_batches = args.N_test // args.batch_size_test
-        test_loss = np.zeros(len(models))
-        test_mean_err = np.zeros(len(models))
-        for idx, (model, loss_fn) in enumerate(zip(models, loss_fns)):
+        test_loss = torch.zeros(len(models))
+        test_mean_err = torch.zeros(len(models))
+        for idx, (model, loss_fn, rotmat_target) in enumerate(zip(models, loss_fns, rotmat_targets)):
             for k in range(num_test_batches):
                 start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
     
-                if rotmat_targets:
+                if rotmat_target:
                     targets = quat_to_rotmat(test_data.q[start:end])
                     (C_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
                     test_mean_err += (1 / num_test_batches) * rotmat_angle_diff(C_est, targets)
@@ -268,20 +271,30 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
 
         # pp.update([list(np.log10(train_loss)),
         #            list(np.log10(test_loss))])
-        # plot.append(e, {
-        #     'loss': {
-        #         'train': train_loss[0],
-        #         'test': test_loss[0]
-        #     }
-        # })
-        # plot.draw()
-        ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
-        fig.canvas.draw()
+
+        plot.append(e, {
+            'train': {
+                'Quat.': train_loss[0],
+                '6D': train_loss[1],
+                'Bing.': train_loss[2]
+            }
+        })
+        plot.append(e, {
+            'test': {
+                'Quat.': test_loss[0],
+                '6D': test_loss[1],
+                'Bing.': test_loss[2]
+            }
+        })
+        plot.draw()
+
+        # ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
+        # fig.canvas.draw()
 
         elapsed_time = time.time() - start_time
 
-        output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(
-            e + 1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
+        # output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(
+        #     e + 1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
 
     return train_stats, test_stats
 
