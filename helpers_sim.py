@@ -205,16 +205,16 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
     # plot = PlotLearningCurve()
     plot = PlotLearningCurve(
         line_config={
-            'train_quat': {'name': 'quat', 'color': 'r', 'facet': 'train'},
-            'train_6d': {'name': '6D', 'color': 'g', 'facet': 'train'},
-            'train_bing': {'name': 'bing', 'color': 'r', 'facet': 'train'},
-            'test_quat': {'name': 'quat', 'color': 'b', 'facet': 'test'},
-            'test_6d': {'name': '6D', 'color': 'g', 'facet': 'test'},
-            'test_bing': {'name': 'bing', 'color': 'b', 'facet': 'test'}
+            'train_quat': {'name': 'quat', 'color': '#F90909', 'facet': 'train'},
+            'train_6d': {'name': '6D', 'color': '#63FF14', 'facet': 'train'},
+            'train_bing': {'name': 'bing', 'color': '#00BFC4', 'facet': 'train'},
+            'test_quat': {'name': 'quat', 'color': '#F90909', 'facet': 'test'},
+            'test_6d': {'name': '6D', 'color': '#63FF14', 'facet': 'test'},
+            'test_bing': {'name': 'bing', 'color': '#00BFC4', 'facet': 'test'}
         },
         facet_config={
-            'train': {'name': 'Training', 'limit': [0, None], 'scale': 'log'},
-            'test': {'name': 'Testing', 'limit': [0, None], 'scale': 'log'}
+            'train': {'name': 'Training', 'limit': [-3, 3], 'scale': 'log'},
+            'test': {'name': 'Testing', 'limit': [-3, 3], 'scale': 'log'}
         },
         xaxis_config={'name': 'Epoch', 'limit': [0, args.epochs]}
     )
