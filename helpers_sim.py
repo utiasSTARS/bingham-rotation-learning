@@ -11,6 +11,7 @@ from tensorboardX import SummaryWriter
 import time
 import tqdm
 
+
 def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     #Ensure model gradients are active
     model.train()
@@ -170,7 +171,121 @@ def train_test_model(args, train_data, test_data, model, loss_fn, rotmat_targets
 
     return train_stats, test_stats
 
+
+def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, rotmat_targets=False, verbose=False):
+    """
+    Helper for rss_demo.ipynb
+    :param args:
+    :param train_data:
+    :param test_data:
+    :param models:
+    :param loss_fn:
+    :param rotmat_targets:
+    :param verbose:
+    :return:
+    """
+    # from jupyterplot import ProgressPlot
+    # from lrcurve.plot_learning_curve import PlotLearningCurve
+    from matplotlib import pyplot as plt
+    optimizers = [torch.optim.Adam(model.parameters(), lr=args.lr) for model in models]
+
+    # Save stats for plotting
+    train_stats = torch.empty(len(models), args.epochs, 2)
+    test_stats = torch.empty(len(models), args.epochs, 2)
+
+    device = torch.device('cuda:0') if args.cuda else torch.device('cpu')
+    tensor_type = torch.double if args.double else torch.float
+    #
+    # pp_train = ProgressPlot(line_names=["Quaternion", "6D", "Bingham"], x_lim=[0, args.epochs])
+    # pp_test = ProgressPlot(line_names=["Quaternion", "6D", "Bingham"], x_lim=[0, args.epochs])
+    # pp = ProgressPlot(plot_names=["Train", "Test"], line_names=["Quaternion", "6D", "Bingham"],
+    #                   x_lim=[0, args.epochs], y_lim=[-3, 3])
+    # plot = PlotLearningCurve()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    plt.ion()
+
+    fig.show()
+    fig.canvas.draw()
+
+    for e in range(args.epochs):
+        start_time = time.time()
+
+        if args.dataset is not 'static':
+            beachball = (args.dataset == 'dynamic_beachball')
+            beachball_factors = args.beachball_sigma_factors
+            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample,
+                                                                  max_rotation_angle=args.max_rotation_angle,
+                                                                  sigma=args.sim_sigma, beachball=beachball,
+                                                                  beachball_factors=beachball_factors, device=device,
+                                                                  dtype=tensor_type)
+
+        num_train_batches = args.N_train // args.batch_size_train
+        train_loss = np.zeros(len(models))
+        train_mean_err = np.zeros(len(models))
+        for idx, (model, optimizer, loss_fn) in enumerate(zip(models, optimizers, loss_fns)):
+            for k in range(num_train_batches):
+                start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
     
+                if rotmat_targets:
+                    targets = quat_to_rotmat(train_data.q[start:end])
+                    (C_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                    train_mean_err += (1 / num_train_batches) * rotmat_angle_diff(C_est, targets)
+                else:
+                    targets = train_data.q[start:end]
+                    (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                    train_mean_err[idx] += (1 / num_train_batches) * quat_angle_diff(q_est, targets)
+    
+                train_loss[idx] += (1 / num_train_batches) * train_loss_k
+
+        # Test model
+        if verbose:
+            print('Testing...')
+        num_test_batches = args.N_test // args.batch_size_test
+        test_loss = np.zeros(len(models))
+        test_mean_err = np.zeros(len(models))
+        for idx, (model, loss_fn) in enumerate(zip(models, loss_fns)):
+            for k in range(num_test_batches):
+                start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
+    
+                if rotmat_targets:
+                    targets = quat_to_rotmat(test_data.q[start:end])
+                    (C_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
+                    test_mean_err += (1 / num_test_batches) * rotmat_angle_diff(C_est, targets)
+                else:
+                    targets = test_data.q[start:end]
+                    (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
+                    test_mean_err[idx] += (1 / num_test_batches) * quat_angle_diff(q_est, targets)
+    
+                test_loss[idx] += (1 / num_test_batches) * test_loss_k
+
+        # History tracking
+        train_stats[:, e, 0] = train_loss
+        train_stats[:, e, 1] = train_mean_err
+        test_stats[:, e, 0] = test_loss
+        test_stats[:, e, 1] = test_mean_err
+
+        # pp.update([list(np.log10(train_loss)),
+        #            list(np.log10(test_loss))])
+        # plot.append(e, {
+        #     'loss': {
+        #         'train': train_loss[0],
+        #         'test': test_loss[0]
+        #     }
+        # })
+        # plot.draw()
+        ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
+        fig.canvas.draw()
+
+        elapsed_time = time.time() - start_time
+
+        output_string = 'Epoch: {}/{}. Train: Loss {:.3E} / Error {:.3f} (deg) | Test: Loss {:.3E} / Error {:.3f} (deg). Epoch time: {:.3f} sec.'.format(
+            e + 1, args.epochs, train_loss, train_mean_err, test_loss, test_mean_err, elapsed_time)
+
+    return train_stats, test_stats
+
+
 def build_A(x_1, x_2, sigma_2):
     N = x_1.shape[0]
     A = np.zeros((4, 4), dtype=np.float64)
