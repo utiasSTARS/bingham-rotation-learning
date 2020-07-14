@@ -11,7 +11,6 @@ from tensorboardX import SummaryWriter
 import time
 import tqdm
 
-
 def train_minibatch(model, loss_fn, optimizer, x, targets, A_prior=None):
     #Ensure model gradients are active
     model.train()
@@ -204,17 +203,25 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
     # lrcurve way
     # plot = PlotLearningCurve()
     plot = PlotLearningCurve(
-        line_config={
-            'train_quat': {'name': 'quat', 'color': '#F90909', 'facet': 'train'},
-            'train_6d': {'name': '6D', 'color': '#63FF14', 'facet': 'train'},
-            'train_bing': {'name': 'bing', 'color': '#00BFC4', 'facet': 'train'},
-            'test_quat': {'name': 'quat', 'color': '#F90909', 'facet': 'test'},
-            'test_6d': {'name': '6D', 'color': '#63FF14', 'facet': 'test'},
-            'test_bing': {'name': 'bing', 'color': '#00BFC4', 'facet': 'test'}
-        },
         facet_config={
-            'train': {'name': 'Training', 'limit': [-3, 3], 'scale': 'log'},
-            'test': {'name': 'Testing', 'limit': [-3, 3], 'scale': 'log'}
+            'train': {'name': 'Training', 'limit': [None, None], 'scale': 'log10'},
+            'test': {'name': 'Testing', 'limit': [None, None], 'scale': 'log10'}
+        },
+        mappings = {
+            'train_quat': { 'line': 'train_quat', 'facet': 'train'},
+            'train_6d': { 'line': 'train_6d', 'facet': 'train'},
+            'train_bing': { 'line': 'train_bing', 'facet': 'train'},
+            'test_quat': { 'line': 'test_quat', 'facet': 'test'},
+            'test_6d': { 'line': 'test_6d', 'facet': 'test'},
+            'test_bing': { 'line': 'test_bing', 'facet': 'test'}
+        },
+        line_config={
+            'train_quat': {'name': 'quat', 'color': '#F90909'},
+            'train_6d': {'name': '6D', 'color': '#63FF14'},
+            'train_bing': {'name': 'bing', 'color': '#00BFC4'},
+            'test_quat': {'name': 'quat', 'color': '#F90909'},
+            'test_6d': {'name': '6D', 'color': '#63FF14'},
+            'test_bing': {'name': 'bing', 'color': '#00BFC4'}
         },
         xaxis_config={'name': 'Epoch', 'limit': [0, args.epochs]}
     )
@@ -225,93 +232,92 @@ def train_test_models_with_plots(args, train_data, test_data, models, loss_fns, 
 
     # fig.show()
     # fig.canvas.draw()
+    with plot:
+        for e in range(args.epochs):
+            start_time = time.time()
 
-    for e in range(args.epochs):
-        start_time = time.time()
+            if args.dataset is not 'static':
+                beachball = (args.dataset == 'dynamic_beachball')
+                beachball_factors = args.beachball_sigma_factors
+                train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample,
+                                                                    max_rotation_angle=args.max_rotation_angle,
+                                                                    sigma=args.sim_sigma, beachball=beachball,
+                                                                    beachball_factors=beachball_factors, device=device,
+                                                                    dtype=tensor_type)
 
-        if args.dataset is not 'static':
-            beachball = (args.dataset == 'dynamic_beachball')
-            beachball_factors = args.beachball_sigma_factors
-            train_data, test_data = create_experimental_data_fast(args.N_train, args.N_test, args.matches_per_sample,
-                                                                  max_rotation_angle=args.max_rotation_angle,
-                                                                  sigma=args.sim_sigma, beachball=beachball,
-                                                                  beachball_factors=beachball_factors, device=device,
-                                                                  dtype=tensor_type)
+            num_train_batches = args.N_train // args.batch_size_train
+            train_loss = torch.zeros(len(models))
+            train_mean_err = torch.zeros(len(models))
+            for idx, (model, optimizer, loss_fn, rotmat_target) in enumerate(zip(models, optimizers, loss_fns, rotmat_targets)):
+                for k in range(num_train_batches):
+                    start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
+        
+                    if rotmat_target:
+                        targets = quat_to_rotmat(train_data.q[start:end])
+                        (C_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                        train_mean_err += (1 / num_train_batches) * rotmat_angle_diff(C_est, targets)
+                    else:
+                        targets = train_data.q[start:end]
+                        (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
+                        train_mean_err[idx] += (1 / num_train_batches) * quat_angle_diff(q_est, targets)
+        
+                    train_loss[idx] += (1 / num_train_batches) * train_loss_k
 
-        num_train_batches = args.N_train // args.batch_size_train
-        train_loss = torch.zeros(len(models))
-        train_mean_err = torch.zeros(len(models))
-        for idx, (model, optimizer, loss_fn, rotmat_target) in enumerate(zip(models, optimizers, loss_fns, rotmat_targets)):
-            for k in range(num_train_batches):
-                start, end = k * args.batch_size_train, (k + 1) * args.batch_size_train
-    
-                if rotmat_target:
-                    targets = quat_to_rotmat(train_data.q[start:end])
-                    (C_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
-                    train_mean_err += (1 / num_train_batches) * rotmat_angle_diff(C_est, targets)
-                else:
-                    targets = train_data.q[start:end]
-                    (q_est, train_loss_k) = train_minibatch(model, loss_fn, optimizer, train_data.x[start:end], targets)
-                    train_mean_err[idx] += (1 / num_train_batches) * quat_angle_diff(q_est, targets)
-    
-                train_loss[idx] += (1 / num_train_batches) * train_loss_k
+            # Test model
+            if verbose:
+                print('Testing...')
+            num_test_batches = args.N_test // args.batch_size_test
+            test_loss = torch.zeros(len(models))
+            test_mean_err = torch.zeros(len(models))
+            for idx, (model, loss_fn, rotmat_target) in enumerate(zip(models, loss_fns, rotmat_targets)):
+                for k in range(num_test_batches):
+                    start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
+        
+                    if rotmat_target:
+                        targets = quat_to_rotmat(test_data.q[start:end])
+                        (C_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
+                        test_mean_err += (1 / num_test_batches) * rotmat_angle_diff(C_est, targets)
+                    else:
+                        targets = test_data.q[start:end]
+                        (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
+                        test_mean_err[idx] += (1 / num_test_batches) * quat_angle_diff(q_est, targets)
+        
+                    test_loss[idx] += (1 / num_test_batches) * test_loss_k
 
-        # Test model
-        if verbose:
-            print('Testing...')
-        num_test_batches = args.N_test // args.batch_size_test
-        test_loss = torch.zeros(len(models))
-        test_mean_err = torch.zeros(len(models))
-        for idx, (model, loss_fn, rotmat_target) in enumerate(zip(models, loss_fns, rotmat_targets)):
-            for k in range(num_test_batches):
-                start, end = k * args.batch_size_test, (k + 1) * args.batch_size_test
-    
-                if rotmat_target:
-                    targets = quat_to_rotmat(test_data.q[start:end])
-                    (C_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
-                    test_mean_err += (1 / num_test_batches) * rotmat_angle_diff(C_est, targets)
-                else:
-                    targets = test_data.q[start:end]
-                    (q_est, test_loss_k) = test_model(model, loss_fn, test_data.x[start:end], targets)
-                    test_mean_err[idx] += (1 / num_test_batches) * quat_angle_diff(q_est, targets)
-    
-                test_loss[idx] += (1 / num_test_batches) * test_loss_k
+            # History tracking
+            train_stats[:, e, 0] = train_loss
+            train_stats[:, e, 1] = train_mean_err
+            test_stats[:, e, 0] = test_loss
+            test_stats[:, e, 1] = test_mean_err
 
-        # History tracking
-        train_stats[:, e, 0] = train_loss
-        train_stats[:, e, 1] = train_mean_err
-        test_stats[:, e, 0] = test_loss
-        test_stats[:, e, 1] = test_mean_err
+            # pp.update([list(np.log10(train_loss)),
+            #            list(np.log10(test_loss))])
 
-        # pp.update([list(np.log10(train_loss)),
-        #            list(np.log10(test_loss))])
-
-        # plot.append(e, {
-        #     'train': {
-        #         'Quat.': train_loss[0],
-        #         '6D': train_loss[1],
-        #         'Bing.': train_loss[2]
-        #     }
-        # })
-        # plot.append(e, {
-        #     'test': {
-        #         'Quat.': test_loss[0],
-        #         '6D': test_loss[1],
-        #         'Bing.': test_loss[2]
-        #     }
-        # })
-        plot.append(e, {
-            'train': {'train_quat': train_loss[0]},
-            'train': {'train_6d': train_loss[1]},
-            'train': {'train_bing': train_loss[2]},
-            'test': {'test_quat': test_loss[0]},
-            'test': {'test_6d': test_loss[1]},
-            'test': {'test_bing': test_loss[2]}
-        })
-        plot.draw()
-
-        # ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
-        # fig.canvas.draw()
+            # plot.append(e, {
+            #     'train': {
+            #         'Quat.': train_loss[0],
+            #         '6D': train_loss[1],
+            #         'Bing.': train_loss[2]
+            #     }
+            # })
+            # plot.append(e, {
+            #     'test': {
+            #         'Quat.': test_loss[0],
+            #         '6D': test_loss[1],
+            #         'Bing.': test_loss[2]
+            #     }
+            # })
+            plot.append(e, {
+                'train_quat': train_loss[0],
+                'train_6d': train_loss[1],
+                'train_bing': train_loss[2],
+                'test_quat': test_loss[0],
+                'test_6d': test_loss[1],
+                'test_bing': test_loss[2]
+            })
+            plot.draw()
+            # ax.plot(np.arange(e, e+1), train_loss[0, 0:e, 0], 'r-')
+            # fig.canvas.draw()
 
     return train_stats, test_stats
 
