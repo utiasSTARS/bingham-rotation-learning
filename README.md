@@ -1,10 +1,10 @@
 # A Smooth Representation of SO(3) for Deep Rotation Learning with Uncertainty
-*Valentin Peretroukhin, Matthew Giamou, David M. Rosen, W. Nicholas Greene, Nicholas Roy, and Jonathan Kelly*
-### To appear at Robotics: Science and Systems (2020)
+#### Valentin Peretroukhin, Matthew Giamou, David M. Rosen, W. Nicholas Greene, Nicholas Roy, and Jonathan Kelly
+*Robotics: Science and Systems (2020)*
+** 🏆 Best Student Paper Award Winner! 🏆**
 
 **Paper website:** https://papers.starslab.ca/bingham-rotation-learning/  
 **arXiv paper**: https://arxiv.org/abs/2006.01031
-
 
 <img src="https://raw.githubusercontent.com/utiasSTARS/bingham-rotation-learning/master/so3_learning.png" width="75%" >
 
@@ -23,18 +23,22 @@ Slightly less standard stuff:
 `tqdm, tensorboardx`
 
 To run our experiments, you will need to clone / install our own `pytorch`/`numpy` library:
-`liegroups`, available [here](https://github.com/utiasSTARS/liegroups) (unfortunately not yet on pip)
+`liegroups`, available [here](https://github.com/utiasSTARS/liegroups) (unfortunately not yet on pip):
+`git clone https://github.com/utiasSTARS/liegroups.git`
+`cd liegroups && pip install .`
 
-### Run the demo!
+### Run the script demo!
 The demo will train three models on a synthetic point cloud dataset, with the unit quaternion, six dimensional representation (*Zhou et. al, CVPR 2019 -- [41] in the paper*), and our symmetric **A** representation.
 
 `python run_rotation_learning_experiment.py`
 
+### Run the `rss_demo.ipynb` notebook!
+Note the additional dependancy `lrcurve` (for live plotting)
 You can see a list of options within the script.
 
 ### Recreate our experiments
 
-See the *experiments* folder for all of our experimental scripts. 
+See the *experiments* folder for all of our experimental scripts (you will need to download raw KITTI and ShapeNet files). To regenerate our plots, there are also several readme plots that contain Google Drive links with cached data.
 
 # Use Our Representation in Your Work
 
