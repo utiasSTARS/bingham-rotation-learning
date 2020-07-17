@@ -17,15 +17,16 @@ This repository contains example code to implement our representation in your wo
 
 ### Prerequistes
 
-Standard stuff:
+Standard pip/conda stuff:
 `numpy, scipy, torch, torchvision, argparse, matplotlib`
 
 Slightly less standard stuff:
 `tqdm, tensorboardx`
 
-To run our experiments, you will need to clone / install our own `pytorch`/`numpy` library:
-`liegroups`, available [here](https://github.com/utiasSTARS/liegroups) (unfortunately not yet on pip):
+Finally we rely on our lab's Lie group library, `liegroups` (with bindings for `pytorch`/`numpy`), available [here](https://github.com/utiasSTARS/liegroups) (unfortunately not yet on pip). You can install it via:
+
 `git clone https://github.com/utiasSTARS/liegroups.git`
+
 `cd liegroups && pip install .`
 
 ### Run the script demo!
