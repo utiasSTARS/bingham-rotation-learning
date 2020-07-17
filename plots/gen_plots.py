@@ -218,7 +218,6 @@ def test_wabha_model(model, x, targets, **kwargs):
 def rotmat_angle_table_stats(cache_data=True):
     
     if cache_data:
-        #path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_dynamic_01-06-2020-19-35-48.pt'
         path = '../saved_data/synthetic/rotangle_synthetic_wahba_experiment_3models_chordal_dynamic_06-16-2020-22-48-40.pt'
         
         data = torch.load(path)
