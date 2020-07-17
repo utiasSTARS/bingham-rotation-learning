@@ -1,7 +1,7 @@
 # A Smooth Representation of SO(3) for Deep Rotation Learning with Uncertainty
 #### Valentin Peretroukhin, Matthew Giamou, David M. Rosen, W. Nicholas Greene, Nicholas Roy, and Jonathan Kelly
 *Robotics: Science and Systems (2020)*
-** 🏆 Best Student Paper Award Winner! 🏆**
+**🏆 Best Student Paper Award Winner!🏆**
 
 **Paper website:** https://papers.starslab.ca/bingham-rotation-learning/  
 **arXiv paper**: https://arxiv.org/abs/2006.01031
