@@ -303,7 +303,7 @@ def create_fla_autoencoder_data():
     return full_saved_path
 
 
-def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='KITTI sequence', ylim=[0., 0.8], legend=True):
+def _create_bar_plot(x_labels, bar_labels, heights, ylabel='mean error (deg)', xlabel='sequence', ylim=[0., 0.8], legend=True):
     plt.rc('text', usetex=True)
     fig, ax = plt.subplots()
     fig.set_size_inches(4,1.6)
@@ -405,12 +405,12 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
         thresh_ae = compute_threshold(l1_meanst.numpy(), uncertainty_metric_fn=l1_norm, quantile=quantile_ae)
         l1_means = autoenc_data['autoenc_l1_means'][i+1]
         mask_ae = compute_mask(l1_means.numpy(), l1_norm, thresh_ae)
-
+        
         mean_err_6D_ae.append(quat_angle_diff(q_est_6D[mask_ae], q_target_6D[mask_ae]))
         
         thresh_dt = compute_threshold(A_train.numpy(), uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=quantile_dt)
         mask_dt = compute_mask(A_test.numpy(), sum_bingham_dispersion_coeff, thresh_dt)
-        
+
         mean_err_A_dt.append(quat_angle_diff(q_est[mask_dt], q_target[mask_dt]))
 
 
@@ -421,6 +421,10 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     output_file = 'fla_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
+    print(mean_err_6D)
+    print(mean_err_A) 
+    print(mean_err_6D_ae)
+    print(mean_err_A_dt)
     print('Outputted {}.'.format(output_file))
 
 

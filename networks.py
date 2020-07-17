@@ -17,7 +17,7 @@ class RotMat6DDirect(torch.nn.Module):
         return C
 
 class QuatNet(torch.nn.Module):
-    def __init__(self, enforce_psd=True, unit_frob_norm=True, batchnorm=False):
+    def __init__(self, enforce_psd=True, unit_frob_norm=False, batchnorm=False):
         super(QuatNet, self).__init__()
         self.A_net = PointNet(dim_out=10, normalize_output=False, batchnorm=batchnorm)
         self.enforce_psd = enforce_psd
