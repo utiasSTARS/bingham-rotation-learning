@@ -166,9 +166,9 @@ def plot_learning_rate_experiment(data_path, custom_legend=None):
             test_err[app_i, t_i, :] = test_stats[app_i][:, 1].detach().numpy()
             
     fig = _create_learning_rate_fig_combined(args, train_err, test_err, names)
-    output_file =  data_path.split('/')[-1].replace('.pt','') + '_plot.pdf'
+    output_file =  'synthetic/' + data_path.split('/')[-1].replace('.pt','') + '_plot.pdf'
     fig.savefig(output_file, bbox_inches='tight')
-    print('Saving..{}'.format(output_file))
+    print('Saving ... {}'.format(output_file))
     plt.close(fig)
 
 
@@ -204,7 +204,7 @@ def scatter_shapenet_example():
     output_file = 'shapenet/shapenet_vis_{}_clouds.pdf'.format(N)
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
-    print('Saving..{}'.format(output_file))
+    print('Saving ... {}'.format(output_file))
     plt.close(fig)
 
 
@@ -273,7 +273,7 @@ def rotmat_angle_table_stats(cache_data=True):
     else:
         processed_data_file = 'saved_data/synthetic/processed_rotangle_synthetic_wahba_experiment_3models_chordal_dynamic_06-16-2020-22-48-40.pt'
 
-    print('Loaded: {}'.format(processed_data_file))
+    #print('Loaded: {}'.format(processed_data_file))
     processed_data = torch.load(processed_data_file)
     fig, axes = plt.subplots(ncols=3, sharey=True)
     fig.subplots_adjust(wspace=0)
@@ -317,7 +317,7 @@ def rotmat_angle_table_stats(cache_data=True):
 
         
     desc = processed_data_file.split('/')[2].split('.pt')[0]
-    output_file = 'maxrotangle_{}.pdf'.format(desc)
+    output_file = 'synthetic/maxrotangle_{}.pdf'.format(desc)
     fig.tight_layout()
     fig.savefig(output_file, bbox_inches='tight')
     print('Saving ... {}'.format(output_file))
@@ -327,12 +327,15 @@ def rotmat_angle_table_stats(cache_data=True):
 if __name__=='__main__':
     
     #Figure 3
+    print('====Figure 3====')
     plot_learning_rate_wahba_experiment()
 
     #Figure 4
+    print('====Figure 4====')
     rotmat_angle_table_stats(cache_data=False)
 
     #Figure 5b
+    print('====Figure 5b====')
     plot_learning_rate_shapenet_experiment()
 
     #Figure 5a (airplane visualization)

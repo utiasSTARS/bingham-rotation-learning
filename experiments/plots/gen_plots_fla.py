@@ -416,7 +416,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     dataset_names = ['outdoor', 'outdoor \& indoor', 'outdoor \& indoor \n \& transition']
     bar_labels = ['\\texttt{6D}', '$\mathbf{A}$', '\\texttt{6D} + \\textit{AE} ' + '($q:$ {})'.format(quantile_ae), '$\mathbf{A}$ + \\textit{DT}' + ' ($q: {}$)'.format(quantile_dt)]
     fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1.0], xlabel=None)
-    output_file = 'fla_autoenc_errors_bar.pdf'
+    output_file = 'fla/fla_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
     print('Saving ... {}.'.format(output_file))
@@ -475,7 +475,7 @@ def create_stats_and_scatter_autoenc(Asym_data_file, autoenc_data_file, scatter=
         [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(l1_norm),labels=['Validation', 'Training'], ylim=[1e-4, 5])
         
         desc = Asym_data_file.split('/')[-1].split('.pt')[0]
-        output_file = 'fla_scatter_autoenc_{}.pdf'.format(desc)
+        output_file = 'fla/fla_scatter_autoenc_{}.pdf'.format(desc)
         fig.savefig(output_file, bbox_inches='tight')
         plt.close(fig)
 
@@ -494,7 +494,7 @@ def create_bar_and_scatter_plots(uncertainty_metric_fn=first_eig_gap, quantile=0
     [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['Validation', 'Training'], ylim=[1e-4, 5])
     
     desc = data_file.split('/')[-1].split('.pt')[0]
-    output_file = 'fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
+    output_file = 'fla/fla_scatter_metric_{}_{}.pdf'.format(uncertainty_metric_fn.__name__, desc)
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -604,6 +604,8 @@ if __name__=='__main__':
     # Figure 8
     models_data_file = 'saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-31-07.pt'
     autoenc_data_file = 'saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    
+    print('====Figure 8====')
     create_bar_autoenc(models_data_file, autoenc_data_file)
 
     #Other helper functions and visualizations

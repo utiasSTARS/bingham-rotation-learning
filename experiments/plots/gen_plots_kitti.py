@@ -319,7 +319,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     dataset_names = ['\\texttt{00}', '\\texttt{02}', '\\texttt{05}']
     bar_labels = ['\\texttt{6D}', '$\mathbf{A}$', '\\texttt{6D} + \\textit{AE} ' + '($q:$ {})'.format(quantile_ae), '$\mathbf{A}$ + \\textit{DT}' + ' ($q: {}$)'.format(quantile_dt)]
     fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,0.5], xlabel='Test sequence')
-    output_file = 'kitti_autoenc_errors_bar.pdf'
+    output_file = 'kitti/kitti_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
     print('Outputted {}.'.format(output_file))
@@ -360,7 +360,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     dataset_names = ['\\texttt{00}', '\\texttt{02}', '\\texttt{05}']
     bar_labels = ['6D', 'A', '6D + AE (q: {})'.format(quantile_ae), 'A + DT (q: {})'.format(quantile_dt)]
     fig = _create_bar_plot(dataset_names, bar_labels, [mean_err_6D, mean_err_A, mean_err_6D_ae, mean_err_A_dt], ylim=[0,1], xlabel='Test sequence', legend=False, ylabel=None)
-    output_file = 'kitti_autoenc_errors_corrupted_bar.pdf'
+    output_file = 'kitti/kitti_autoenc_errors_corrupted_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
     print('Outputted {}.'.format(output_file))
@@ -525,7 +525,7 @@ def create_precision_recall_plot(uncertainty_metric_fn, selected_quantile):
     ax.set_ylabel('precision')
     ax.set_xlabel('recall')
     #ax.set_ylim([0.7, 1])
-    output_file = 'kitti_prec_recall.pdf'
+    output_file = 'kitti/kitti_prec_recall.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
@@ -734,7 +734,7 @@ def create_box_plots(cache_data=True, uncertainty_metric_fn=first_eig_gap, logsc
         ax.set_yticklabels([])
         if logscale:
             ax.set_yscale('symlog')   
-        output_file = 'kitti_box_seq_{}_metric_{}.pdf'.format(seqs[i], uncertainty_metric_fn.__name__)
+        output_file = 'kitti/kitti_box_seq_{}_metric_{}.pdf'.format(seqs[i], uncertainty_metric_fn.__name__)
         fig.savefig(output_file, bbox_inches='tight')
         print('Saving ... {}'.format(output_file))
         plt.close(fig)
@@ -770,7 +770,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             fig = _create_scatter_plot(thresh, thresh_label,
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
             [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn),labels=['test', 'train'], ylim=[1e-4, 5], legend=True)
-            output_file = 'kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
+            output_file = 'kitti/kitti_scatter_seq_{}_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             plt.close(fig)
 
@@ -799,7 +799,7 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
             fig = _create_scatter_plot(thresh, thresh_label,
             [uncertainty_metric_fn(A_pred), uncertainty_metric_fn(A_predt)],
             [quat_angle_diff(q_est, q_target, reduce=False), quat_angle_diff(q_estt, q_targett, reduce=False)], xlabel=decode_metric_name(uncertainty_metric_fn), labels=['Test', 'Train'], ylim=[1e-4, 5], legend=False, ylabel=False)
-            output_file = 'kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
+            output_file = 'kitti/kitti_scatter_seq_{}_corrupted_metric_{}.pdf'.format(seq, uncertainty_metric_fn.__name__)
             fig.savefig(output_file, bbox_inches='tight')
             print('Saving ... {}'.format(output_file))
             plt.close(fig)
@@ -814,14 +814,14 @@ def create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=firs
 
     bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_quat, mean_err_6D, mean_err, mean_err_filter], ylim=[0,0.8])
-    output_file = 'kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    output_file = 'kitti/kitti_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     print('Saving ... {}'.format(output_file))
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
 
     bar_labels = ['Quat', '6D', 'A', 'A \n DT (q: {:.2F})'.format(quantile)]
     fig = _create_bar_plot(seqs, bar_labels, [mean_err_corrupted_quat, mean_err_corrupted_6D, mean_err_corrupted, mean_err_corrupted_filter], ylim=[0,0.8], legend=False)
-    output_file = 'kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
+    output_file = 'kitti/kitti_corrupted_errors_metric_{}.pdf'.format(uncertainty_metric_fn.__name__)
     print('Saving ... {}'.format(output_file))
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
@@ -835,14 +835,17 @@ if __name__=='__main__':
     autoenc_data_file = 'saved_data/kitti/processed_autoenc_3seqs_withcorrupted_01-27-2020-23-34-30.pt'
     
     # Figure 6a/b (scatter plots)
+    print('====Figures 6a/b (+ extras)====')
     create_bar_and_scatter_plots(output_scatter=True, uncertainty_metric_fn=uncertainty_metric_fn, quantile=0.75)
    
     # Figure 6c
-    #create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
+    print('====Figure 6c====')
+    create_box_plots(cache_data=False, uncertainty_metric_fn=uncertainty_metric_fn, logscale=False)
 
 
     # Figure 7
-    # create_bar_autoenc(Asym_data_file, autoenc_data_file)
+    print('====Figure 7====')
+    create_bar_autoenc(Asym_data_file, autoenc_data_file)
     
     # Table 1
     # create_table_stats_autoenc(Asym_data_file, autoenc_data_file)
