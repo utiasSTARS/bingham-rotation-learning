@@ -4,8 +4,8 @@
 .vscode
 __pycache__/
 runs/
+experiments/plots/saved_data/
 
-127.0.0.1	reddit.com  #reddit
 # Pycharm
 .idea/
 

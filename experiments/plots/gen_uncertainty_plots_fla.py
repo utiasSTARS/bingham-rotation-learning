@@ -10,7 +10,7 @@ import matplotlib.ticker as mtick
 from matplotlib.colors import to_rgba
 from cv2 import VideoWriter, VideoWriter_fourcc
 import sys
-sys.path.insert(0,'..')
+sys.path.insert(0,'../../')
 from quaternions import *
 from networks import *
 from helpers_train_test import *
@@ -393,8 +393,6 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     l1_meanst = autoenc_data['autoenc_l1_means'][0]
 
     for i in range(3):
-
-
         
         (A_test, q_est, q_target) = asym_data['data_A'][i+1]
         (_, q_est_6D, q_target_6D) = asym_data['data_6D'][i+1]
@@ -421,11 +419,7 @@ def create_bar_autoenc(Asym_data_file, autoenc_data_file):
     output_file = 'fla_autoenc_errors_bar.pdf'
     fig.savefig(output_file, bbox_inches='tight')
     plt.close(fig)
-    print(mean_err_6D)
-    print(mean_err_A) 
-    print(mean_err_6D_ae)
-    print(mean_err_A_dt)
-    print('Outputted {}.'.format(output_file))
+    print('Saving ... {}.'.format(output_file))
 
 
 
@@ -606,8 +600,14 @@ def create_video(full_data_file=None):
         torchvision.io.video.write_video('fla.mp4', video_array, FPS, video_codec='mpeg4', options=None)
 
 if __name__=='__main__':
-    #create_fla_data()
 
+    # Figure 8
+    models_data_file = 'saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-31-07.pt'
+    autoenc_data_file = 'saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
+    create_bar_autoenc(models_data_file, autoenc_data_file)
+
+    #Other helper functions and visualizations
+    #create_fla_data()
     #full_saved_path = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-01-04-36.pt'
     #create_table_stats(uncertainty_metric_fn=sum_bingham_dispersion_coeff, data_file=full_saved_path)
     #full_saved_path = '../saved_data/fla/processed_fla_model_indoor_A_sym_01-21-2020-15-54-30.pt'
@@ -615,11 +615,7 @@ if __name__=='__main__':
     #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.75, data_file=full_saved_path)
     # full_data_file = 'saved_data/fla/processed_video_fla_model_outdoor_A_sym_01-21-2020-15-45-02.pt'
     # create_video(full_data_file)
-
     #create_fla_autoencoder_data()
-
-    models_data_file = '../saved_data/fla/processed_3tests_6DAsym_outdoor_01-28-2020-02-31-07.pt'
-    autoenc_data_file = '../saved_data/fla/processed_3tests_fla_autoencoder_model_outdoor_01-27-2020-16-36-29.pt'
     #create_bar_and_scatter_plots(uncertainty_metric_fn=sum_bingham_dispersion_coeff, quantile=0.5, data_file=models_data_file)
     #create_stats_and_scatter_autoenc(models_data_file, autoenc_data_file)
-    create_bar_autoenc(models_data_file, autoenc_data_file)
+

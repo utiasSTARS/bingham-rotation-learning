@@ -156,7 +156,6 @@ class PointNet(torch.nn.Module):
         x_1 = x[:, 0, :, :].transpose(1,2)
         x_2 = x[:, 1, :, :].transpose(1,2)
 
-
         feats_12 = self.feat_net(torch.cat([x_1, x_2], dim=1))
 
         if feats_12.dim() < 2:
