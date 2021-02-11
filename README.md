@@ -32,7 +32,7 @@ Finally we rely on our lab's Lie group library, `liegroups` (with bindings for `
 ### Run the script demo!
 The demo will train three models on a synthetic point cloud dataset, with the unit quaternion, six dimensional representation (*Zhou et. al, CVPR 2019 -- [41] in the paper*), and our symmetric **A** representation.
 
-`python run_rotation_learning_experiment.py`
+`python run_rotation_learning_demo.py`
 
 ### Run the `rss_demo.ipynb` notebook!
 Note the additional dependancy `lrcurve` (for live plotting)
